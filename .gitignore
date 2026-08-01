@@ -1,0 +1,6 @@
+# Nichts Persönliches ins Repo — der API-Schlüssel liegt ohnehin nur
+# im Browser-Speicher des Handys, nie in einer Datei.
+.DS_Store
+Thumbs.db
+*.log
+__pycache__/

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- App-Symbol: Aktenblatt mit „Aa“ – dasselbe Motiv wie im Kopf der App. -->
+  <rect width="512" height="512" rx="96" fill="#2B4C5C"/>
+  <rect x="128" y="82" width="256" height="348" rx="14" fill="#F7F6F1"/>
+  <g stroke="#2B4C5C" stroke-width="16" stroke-linecap="round" opacity=".35">
+    <path d="M176 154h120"/>
+    <path d="M176 208h160"/>
+    <path d="M176 262h96"/>
+  </g>
+  <text x="256" y="392" text-anchor="middle"
+        font-family="Georgia, 'Palatino Linotype', Palatino, serif"
+        font-size="118" font-weight="700" fill="#2B4C5C">Aa</text>
+</svg>

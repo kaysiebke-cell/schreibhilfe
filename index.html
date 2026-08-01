@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2B4C5C">
+<title>Schreib hilfe</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Schreibhilfe">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  // Hell/Dunkel VOR dem Zeichnen setzen — sonst blitzt beim Start die falsche Farbe auf.
+  try {
+    var g = localStorage.getItem('sh.theme');
+    if (!g) g = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = g;
+  } catch (e) {}
+</script>
+</head>
+<body>
+
+<!-- ============================================================
+     Icon-Vorrat: einfarbige Strich-Icons, per <use href="#i-…"> geholt.
+     ============================================================ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-pen"      viewBox="0 0 24 24"><path d="M4 20h4L20 8a2.83 2.83 0 0 0-4-4L4 16v4z"/><path d="M14 6l4 4"/></symbol>
+  <symbol id="i-mic"      viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></symbol>
+  <symbol id="i-search"   viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></symbol>
+  <symbol id="i-sparkle"  viewBox="0 0 24 24"><path d="M11 3l1.7 4.8L17.5 9.5 12.7 11.2 11 16l-1.7-4.8L4.5 9.5l4.8-1.7z"/><path d="M18 15l.7 1.9 1.9.7-1.9.7L18 21l-.7-1.7-1.9-.7 1.9-.7z"/></symbol>
+  <symbol id="i-undo"     viewBox="0 0 24 24"><path d="M4 10h10a5 5 0 1 1 0 10h-3M8 6l-4 4 4 4"/></symbol>
+  <symbol id="i-share"    viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/></symbol>
+  <symbol id="i-message"  viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></symbol>
+  <symbol id="i-mail"     viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.6 7.2L12 13l8.4-5.8"/></symbol>
+  <symbol id="i-copy"     viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-trash"    viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6.5 7l.9 12a2 2 0 0 0 2 1.9h5.2a2 2 0 0 0 2-1.9L17.5 7"/></symbol>
+  <symbol id="i-check"    viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.1 14.6a1.5 1.5 0 0 0 .3 1.7l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.5 1.5 0 0 0-1.7-.3 1.5 1.5 0 0 0-.9 1.4v.3a2 2 0 1 1-4 0v-.2a1.5 1.5 0 0 0-1-1.4 1.5 1.5 0 0 0-1.7.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.5 1.5 0 0 0 .3-1.7 1.5 1.5 0 0 0-1.4-.9H3a2 2 0 1 1 0-4h.2a1.5 1.5 0 0 0 1.4-1 1.5 1.5 0 0 0-.3-1.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.5 1.5 0 0 0 1.7.3H9a1.5 1.5 0 0 0 .9-1.4V3a2 2 0 1 1 4 0v.2a1.5 1.5 0 0 0 .9 1.4 1.5 1.5 0 0 0 1.7-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.5 1.5 0 0 0-.3 1.7V9a1.5 1.5 0 0 0 1.4.9h.3a2 2 0 1 1 0 4h-.2a1.5 1.5 0 0 0-1.4.9z"/></symbol>
+  <symbol id="i-moon"     viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol>
+  <symbol id="i-close"    viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-text"     viewBox="0 0 24 24"><path d="M4 6h16M4 11h16M4 16h10"/></symbol>
+</svg>
+
+<!-- ============================================================
+     Kopfzeile
+     ============================================================ -->
+<header class="topbar">
+  <div class="topbar__mark">
+    <span class="topbar__stamp" aria-hidden="true">
+      <svg viewBox="0 0 40 40">
+        <rect x="7.5" y="4.5" width="25" height="31" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M12.5 12.5h12M12.5 18h15M12.5 23.5h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".55"/>
+        <text x="20" y="33.5" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">Aa</text>
+      </svg>
+    </span>
+    <div>
+      <h1 class="wortmarke">
+        <span class="wortmarke__a">Schreib</span>
+        <span class="wortmarke__strich">|</span>
+        <span class="wortmarke__b">hilfe</span>
+      </h1>
+      <p class="topbar__sub">Eigenes Werkzeug &middot; nur auf diesem Gerät</p>
+    </div>
+  </div>
+
+  <div class="topbar__tools">
+    <button class="topbar__icon" id="btn-kleiner"  title="Schrift kleiner" aria-label="Schrift kleiner"><span class="schriftknopf">A&minus;</span></button>
+    <button class="topbar__icon" id="btn-groesser" title="Schrift größer"  aria-label="Schrift größer"><span class="schriftknopf gross">A+</span></button>
+    <button class="topbar__icon" id="btn-theme"    title="Hell/Dunkel umschalten" aria-label="Hell oder Dunkel"><svg class="ic"><use href="#i-moon"></use></svg></button>
+    <button class="topbar__icon" id="btn-settings" title="Einstellungen" aria-label="Einstellungen"><svg class="ic"><use href="#i-settings"></use></svg></button>
+  </div>
+</header>
+
+<main id="app">
+
+  <!-- ---------- Schreiben ---------- -->
+  <section class="view">
+    <div class="view__head">
+      <h2><svg class="ic"><use href="#i-pen"></use></svg> Dein Text</h2>
+      <div class="view__head-actions">
+        <span class="badge badge--zaehler" id="zaehler">0 Wörter</span>
+        <button class="btn btn--ghost btn--small" id="btn-leeren"><svg class="ic"><use href="#i-trash"></use></svg> Löschen</button>
+      </div>
+    </div>
+
+    <div class="panel panel--schreib">
+      <textarea id="text"
+        placeholder="Hier schreiben – oder unten auf „Diktieren“ tippen."
+        spellcheck="true" lang="de" autocapitalize="sentences"
+        autocorrect="on" aria-label="Dein Text"></textarea>
+
+      <div class="panel__fuss">
+        <p class="hint">
+          <svg class="ic"><use href="#i-mic"></use></svg>
+          <strong>Diktieren:</strong> das Mikrofon auf deiner Tastatur benutzen.
+          <strong>Rote Wellenlinien</strong> kommen ebenfalls von der Tastatur – tipp
+          das Wort an, dann schlägt sie die richtige Schreibweise vor.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- Prüfen ---------- -->
+  <section class="view">
+    <div class="view__head">
+      <h2><svg class="ic"><use href="#i-search"></use></svg> Prüfen &amp; verbessern</h2>
+      <div class="view__head-actions">
+        <button class="btn btn--ghost btn--small" id="btn-zurueck" hidden><svg class="ic"><use href="#i-undo"></use></svg> Rückgängig</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="knopfreihe">
+        <button class="btn btn--primary btn--breit" id="btn-pruefen"><svg class="ic"><use href="#i-check"></use></svg> Text prüfen</button>
+        <button class="btn btn--breit" id="btn-ki" hidden><svg class="ic"><use href="#i-sparkle"></use></svg> Mit KI korrigieren</button>
+      </div>
+      <p class="hint">
+        Sucht nur, was die Tastatur nicht sehen kann: das/dass, seit/seid,
+        doppelte Wörter, Abstände und Satzanfänge.
+      </p>
+      <p class="hint" id="ki-status"></p>
+      <div id="funde"></div>
+    </div>
+  </section>
+
+  <!-- ---------- Weiterleiten ---------- -->
+  <section class="view">
+    <div class="view__head">
+      <h2><svg class="ic"><use href="#i-share"></use></svg> Weiterleiten</h2>
+    </div>
+
+    <div class="panel">
+      <div class="kacheln">
+        <button class="kachel" id="btn-teilen">
+          <svg class="ic ic--xl"><use href="#i-share"></use></svg>
+          <span>Teilen<small>Facebook, Kontakte, alles</small></span>
+        </button>
+        <button class="kachel" id="btn-whatsapp">
+          <svg class="ic ic--xl"><use href="#i-message"></use></svg>
+          <span>WhatsApp<small>direkt öffnen</small></span>
+        </button>
+        <button class="kachel" id="btn-sms">
+          <svg class="ic ic--xl"><use href="#i-text"></use></svg>
+          <span>SMS<small>an einen Kontakt</small></span>
+        </button>
+        <button class="kachel" id="btn-mail">
+          <svg class="ic ic--xl"><use href="#i-mail"></use></svg>
+          <span>E-Mail<small>Programm öffnen</small></span>
+        </button>
+        <button class="kachel" id="btn-kopieren">
+          <svg class="ic ic--xl"><use href="#i-copy"></use></svg>
+          <span>Kopieren<small>woanders einfügen</small></span>
+        </button>
+      </div>
+      <p class="hint" id="teilen-status"></p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============================================================
+     Einstellungen
+     ============================================================ -->
+<dialog id="dlg-settings">
+  <div class="dlg__head">
+    <h2><svg class="ic"><use href="#i-settings"></use></svg> Einstellungen</h2>
+    <button class="btn btn--ghost btn--small" id="btn-settings-zu" aria-label="Schließen"><svg class="ic"><use href="#i-close"></use></svg></button>
+  </div>
+
+  <div class="form">
+    <label class="field">
+      API-Schlüssel <em>für die KI-Korrektur</em>
+      <input id="api-key" type="password" placeholder="sk-ant-…" autocomplete="off">
+      <span class="field__hint">
+        Ohne Schlüssel funktioniert alles außer dem KI-Knopf. Der Schlüssel bleibt
+        nur auf diesem Gerät und wird an niemanden sonst geschickt.
+      </span>
+    </label>
+
+    <label class="field">
+      KI-Modell
+      <select id="modell">
+        <option value="claude-opus-5">Beste Qualität &middot; Opus 5</option>
+        <option value="claude-sonnet-5">Mittelweg &middot; Sonnet 5</option>
+        <option value="claude-haiku-4-5">Günstig &amp; schnell &middot; Haiku 4.5</option>
+      </select>
+    </label>
+
+    <div class="form__actions">
+      <button class="btn btn--ghost" id="btn-schluessel-weg"><svg class="ic"><use href="#i-trash"></use></svg> Schlüssel löschen</button>
+      <button class="btn btn--primary" id="btn-speichern"><svg class="ic"><use href="#i-check"></use></svg> Speichern</button>
+    </div>
+  </div>
+</dialog>
+
+<script src="js/app.js"></script>
+</body>
+</html>
