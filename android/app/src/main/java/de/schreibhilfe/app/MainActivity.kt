@@ -2,6 +2,9 @@ package de.schreibhilfe.app
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.webkit.JavascriptInterface
@@ -147,13 +150,18 @@ class MainActivity : AppCompatActivity() {
     /**
      * Brücke für die Web-App.
      *
-     * `navigator.share` gibt es in einer Android-WebView nicht — der Teilen-Knopf
-     * würde sonst ins Leere laufen. Deshalb löst die App das System-Teilen-Menü
-     * selbst aus. Die Web-App erkennt an `window.AndroidBridge`, dass sie in der
-     * App läuft, und nimmt dann diesen Weg statt `navigator.share`.
+     * Eine Android-WebView kennt weder `navigator.share` noch die
+     * Zwischenablage über `navigator.clipboard` — beide Knöpfe würden ins
+     * Leere laufen. Deshalb erledigt die App das selbst. Die Web-App erkennt
+     * an `window.AndroidBridge`, dass sie in der App läuft, und nimmt dann
+     * diesen Weg statt der Web-Schnittstellen.
+     *
+     * Die Methoden hier werden aus einem eigenen Faden der WebView gerufen,
+     * nicht aus dem der Oberfläche — deshalb überall `runOnUiThread`.
      */
     inner class AndroidBruecke {
 
+        /** Öffnet das System-Teilen-Menü: WhatsApp, SMS, E-Mail und alles Weitere. */
         @JavascriptInterface
         fun teilen(text: String) {
             if (text.isBlank()) return
@@ -163,6 +171,16 @@ class MainActivity : AppCompatActivity() {
             }
             runOnUiThread {
                 oeffneAussen(Intent.createChooser(senden, getString(R.string.teilen_titel)))
+            }
+        }
+
+        /** Legt den Text in die Zwischenablage, damit er sich woanders einfügen lässt. */
+        @JavascriptInterface
+        fun kopieren(text: String) {
+            if (text.isBlank()) return
+            runOnUiThread {
+                val ablage = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                ablage.setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), text))
             }
         }
     }

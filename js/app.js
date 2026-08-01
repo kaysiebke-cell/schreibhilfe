@@ -15,14 +15,10 @@ const el = {
   btnPruefen:    $('btn-pruefen'),
   btnKi:         $('btn-ki'),
   btnZurueck:    $('btn-zurueck'),
-  kiStatus:      $('ki-status'),
+  status:        $('status'),
   funde:         $('funde'),
   btnTeilen:     $('btn-teilen'),
-  btnWhatsapp:   $('btn-whatsapp'),
-  btnSms:        $('btn-sms'),
-  btnMail:       $('btn-mail'),
   btnKopieren:   $('btn-kopieren'),
-  teilenStatus:  $('teilen-status'),
   dlg:           $('dlg-settings'),
   btnSettings:   $('btn-settings'),
   btnSettingsZu: $('btn-settings-zu'),
@@ -94,7 +90,8 @@ el.text.value = Speicher.lies('text', '');
 function textGeaendert() {
   Speicher.schreib('text', el.text.value);
   const woerter = el.text.value.trim() ? el.text.value.trim().split(/\s+/).length : 0;
-  el.zaehler.textContent = woerter === 1 ? '1 Wort' : woerter + ' Wörter';
+  // Bei leerem Text bleibt der Zähler leer — dann sieht man ihn gar nicht.
+  el.zaehler.textContent = woerter === 0 ? '' : woerter === 1 ? '1 Wort' : woerter + ' Wörter';
 }
 el.text.addEventListener('input', textGeaendert);
 textGeaendert();
@@ -106,6 +103,7 @@ el.btnLeeren.addEventListener('click', () => {
   el.text.value = '';
   textGeaendert();
   el.funde.innerHTML = '';
+  el.status.textContent = '';
 });
 
 /* Rückgängig für Korrekturen */
@@ -120,7 +118,7 @@ el.btnZurueck.addEventListener('click', () => {
   vorherigerText = null;
   el.btnZurueck.hidden = true;
   el.funde.innerHTML = '';
-  el.kiStatus.textContent = '';
+  el.status.textContent = '';
   textGeaendert();
 });
 
@@ -270,36 +268,16 @@ function findeProbleme(text) {
   return funde;
 }
 
-function meldung(text, art) {
-  const kasten = document.createElement('div');
-  kasten.className = 'melde' + (art === 'info' ? ' melde--info' : '');
-  kasten.append(icon(art === 'info' ? 'i-search' : 'i-check'), document.createTextNode(' ' + text));
-  return kasten;
-}
-
 function zeigeFunde() {
   el.funde.innerHTML = '';
+  el.status.textContent = '';
   const text = el.text.value;
 
-  if (!text.trim()) {
-    el.funde.appendChild(meldung('Es steht noch kein Text da.', 'info'));
-    return;
-  }
+  if (!text.trim()) { el.status.textContent = 'Es steht noch kein Text da.'; return; }
 
   const funde = findeProbleme(text);
 
-  if (funde.length === 0) {
-    el.funde.appendChild(meldung('Nichts gefunden – der Text sieht gut aus.'));
-    return;
-  }
-
-  const kopf = document.createElement('p');
-  kopf.className = 'hint';
-  kopf.style.marginBottom = '.6rem';
-  kopf.textContent = funde.length === 1
-    ? '1 Stelle gefunden. Tippe auf „Ändern“.'
-    : funde.length + ' Stellen gefunden. Tippe jeweils auf „Ändern“.';
-  el.funde.appendChild(kopf);
+  if (funde.length === 0) { el.status.textContent = 'Nichts gefunden.'; return; }
 
   for (const fund of funde) {
     const karte = document.createElement('div');
@@ -360,14 +338,14 @@ function kiVerfuegbar() {
 
 async function kiKorrektur() {
   const text = el.text.value.trim();
-  if (!text) { el.kiStatus.textContent = 'Es steht noch kein Text da.'; return; }
+  if (!text) { el.status.textContent = 'Es steht noch kein Text da.'; return; }
 
   const schluessel = Speicher.lies('apiKey', '');
   const modell = Speicher.lies('modell', 'claude-opus-5');
 
   el.btnKi.disabled = true;
   el.btnKi.classList.add('btn--laeuft');
-  el.kiStatus.textContent = 'Die KI liest deinen Text … einen Moment.';
+  el.status.textContent = 'Die KI liest deinen Text … einen Moment.';
 
   const anfrage = {
     model: modell,
@@ -405,7 +383,7 @@ async function kiKorrektur() {
     const daten = await antwort.json();
 
     if (daten.stop_reason === 'refusal') {
-      el.kiStatus.textContent = 'Die KI wollte diesen Text nicht bearbeiten.';
+      el.status.textContent = 'Die KI wollte diesen Text nicht bearbeiten.';
       return;
     }
 
@@ -415,16 +393,16 @@ async function kiKorrektur() {
       .join('')
       .trim();
 
-    if (!korrigiert) { el.kiStatus.textContent = 'Es kam keine Antwort zurück.'; return; }
+    if (!korrigiert) { el.status.textContent = 'Es kam keine Antwort zurück.'; return; }
 
     merkeFuerZurueck(el.text.value);
     el.text.value = korrigiert;
     textGeaendert();
     el.funde.innerHTML = '';
-    el.kiStatus.textContent = 'Fertig korrigiert. Nicht einverstanden? Oben auf „Rückgängig“ tippen.';
+    el.status.textContent = 'Fertig korrigiert. Nicht einverstanden? Oben auf „Rückgängig“ tippen.';
 
   } catch (fehler) {
-    el.kiStatus.textContent = !navigator.onLine
+    el.status.textContent = !navigator.onLine
       ? 'Kein Internet. Die KI-Korrektur braucht eine Verbindung.'
       : 'Es hat nicht geklappt: ' + fehler.message;
   } finally {
@@ -440,62 +418,57 @@ el.btnKi.addEventListener('click', kiKorrektur);
 
 function holeText() {
   const text = el.text.value.trim();
-  if (!text) { el.teilenStatus.textContent = 'Es steht noch kein Text da.'; return null; }
-  el.teilenStatus.textContent = '';
+  if (!text) { el.status.textContent = 'Es steht noch kein Text da.'; return null; }
+  el.status.textContent = '';
   return text;
 }
 
-const istApple = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
-/* Läuft die Seite in der Android-App, gibt es „navigator.share“ nicht —
-   die WebView kennt es schlicht nicht. Dann übernimmt die App das
-   System-Teilen-Menü über die Brücke. Im normalen Browser bleibt alles wie bisher. */
-const inAndroidApp = typeof window.AndroidBridge?.teilen === 'function';
+/* Läuft die Seite in der Android-App, gibt es weder „navigator.share“ noch eine
+   zuverlässige Zwischenablage — die WebView kennt beides nicht. Dann macht die
+   App selbst das System-Teilen-Menü auf bzw. legt den Text in die Zwischenablage.
+   „Teilen“ deckt WhatsApp, SMS und E-Mail mit ab: das sind genau die Einträge
+   im Menü, das Android aufmacht. Im normalen Browser bleiben die Web-Wege. */
+const bruecke = window.AndroidBridge;
+const kannBrueckeTeilen   = typeof bruecke?.teilen   === 'function';
+const kannBrueckeKopieren = typeof bruecke?.kopieren === 'function';
 
 el.btnTeilen.addEventListener('click', async () => {
   const text = holeText(); if (!text) return;
 
-  if (inAndroidApp) { window.AndroidBridge.teilen(text); return; }
+  if (kannBrueckeTeilen) { bruecke.teilen(text); return; }
 
-  if (!navigator.share) {
-    el.teilenStatus.textContent =
-      'Dieser Browser kann das System-Teilen nicht. Nimm „Kopieren“ und füge den Text in der anderen App ein.';
+  if (navigator.share) {
+    try { await navigator.share({ text }); return; }
+    catch (fehler) { if (fehler.name === 'AbortError') return; }
+  }
+  // Kein Teilen möglich: dann wenigstens kopieren, damit der Knopf etwas tut.
+  kopiere(text, 'Teilen geht hier nicht — der Text ist kopiert.');
+});
+
+el.btnKopieren.addEventListener('click', () => {
+  const text = holeText(); if (!text) return;
+  kopiere(text, 'Text kopiert.');
+});
+
+async function kopiere(text, meldung) {
+  if (kannBrueckeKopieren) {
+    bruecke.kopieren(text);
+    el.status.textContent = meldung;
     return;
   }
-  try { await navigator.share({ text }); }
-  catch (fehler) { if (fehler.name !== 'AbortError') el.teilenStatus.textContent = 'Teilen abgebrochen.'; }
-});
-
-el.btnWhatsapp.addEventListener('click', () => {
-  const text = holeText(); if (!text) return;
-  const ziel = 'https://wa.me/?text=' + encodeURIComponent(text);
-  // In der App fängt die WebView die Adresse ab und reicht sie an WhatsApp weiter;
-  // ein neues Fenster („_blank“) würde sie dort verschlucken.
-  if (inAndroidApp) location.href = ziel; else window.open(ziel, '_blank');
-});
-
-el.btnSms.addEventListener('click', () => {
-  const text = holeText(); if (!text) return;
-  location.href = 'sms:' + (istApple ? '&' : '?') + 'body=' + encodeURIComponent(text);
-});
-
-el.btnMail.addEventListener('click', () => {
-  const text = holeText(); if (!text) return;
-  const betreff = text.split('\n')[0].slice(0, 60);
-  location.href = 'mailto:?subject=' + encodeURIComponent(betreff) + '&body=' + encodeURIComponent(text);
-});
-
-el.btnKopieren.addEventListener('click', async () => {
-  const text = holeText(); if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
-    el.teilenStatus.textContent = 'Text kopiert. Jetzt in der anderen App einfügen.';
+    el.status.textContent = meldung;
   } catch {
+    // Ohne Zwischenablage-Recht: markieren und über den alten Weg kopieren.
+    el.text.focus();
     el.text.select();
-    document.execCommand('copy');
-    el.teilenStatus.textContent = 'Text kopiert.';
+    const geklappt = document.execCommand('copy');
+    el.status.textContent = geklappt
+      ? meldung
+      : 'Kopieren hat nicht geklappt. Der Text ist markiert — lange tippen und „Kopieren“ wählen.';
   }
-});
+}
 
 /* ============================================================
    6. Einstellungen

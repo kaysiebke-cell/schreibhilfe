@@ -42,14 +42,19 @@ Die App baut **nicht** nach, was das Handy schon kann. Sie ergänzt nur, was feh
 | Ganzen Text auf einmal korrigieren lassen | ➜ **diese App** (KI-Knopf) |
 | Text aufbewahren und weiterreichen | ➜ **diese App** |
 
-Der Knopf **„Text prüfen"** sucht deshalb ausdrücklich nur nach Fehlern, die ein
+Der Knopf **„Prüfen"** sucht deshalb ausdrücklich nur nach Fehlern, die ein
 Rechtschreibprüfer nicht finden *kann* — weil beide Schreibweisen für sich
 genommen richtige Wörter sind. Jeder Fund wird einzeln angezeigt; nichts ändert
 sich von allein, und **„Rückgängig"** holt jede Änderung zurück.
 
+**„Teilen"** öffnet das System-Teilen-Menü von Android — darin stehen WhatsApp,
+SMS, E-Mail und alles andere. Eigene Knöpfe dafür hat die App nicht, das wäre
+dieselbe Liste ein zweites Mal.
+
 ## 🤖 KI-Korrektur einschalten (freiwillig)
 
-Ohne das funktioniert alles außer dem Knopf „Mit KI korrigieren".
+Ohne das funktioniert alles außer dem KI-Knopf — der taucht erst auf, wenn ein
+Schlüssel hinterlegt ist.
 
 1. Schlüssel holen auf <https://console.anthropic.com> ➜ *API Keys*
 2. In der App oben rechts aufs Zahnrad ➜ Schlüssel einfügen ➜ *Speichern*
