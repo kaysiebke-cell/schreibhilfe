@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Schreibhilfe</string>
+    <string name="teilen_titel">Text weiterleiten an …</string>
+    <string name="keine_app_dafuer">Dafür ist keine App auf dem Handy.</string>
+</resources>

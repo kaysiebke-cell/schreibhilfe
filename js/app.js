@@ -447,8 +447,16 @@ function holeText() {
 
 const istApple = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
+/* Läuft die Seite in der Android-App, gibt es „navigator.share“ nicht —
+   die WebView kennt es schlicht nicht. Dann übernimmt die App das
+   System-Teilen-Menü über die Brücke. Im normalen Browser bleibt alles wie bisher. */
+const inAndroidApp = typeof window.AndroidBridge?.teilen === 'function';
+
 el.btnTeilen.addEventListener('click', async () => {
   const text = holeText(); if (!text) return;
+
+  if (inAndroidApp) { window.AndroidBridge.teilen(text); return; }
+
   if (!navigator.share) {
     el.teilenStatus.textContent =
       'Dieser Browser kann das System-Teilen nicht. Nimm „Kopieren“ und füge den Text in der anderen App ein.';
@@ -460,7 +468,10 @@ el.btnTeilen.addEventListener('click', async () => {
 
 el.btnWhatsapp.addEventListener('click', () => {
   const text = holeText(); if (!text) return;
-  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  const ziel = 'https://wa.me/?text=' + encodeURIComponent(text);
+  // In der App fängt die WebView die Adresse ab und reicht sie an WhatsApp weiter;
+  // ein neues Fenster („_blank“) würde sie dort verschlucken.
+  if (inAndroidApp) location.href = ziel; else window.open(ziel, '_blank');
 });
 
 el.btnSms.addEventListener('click', () => {

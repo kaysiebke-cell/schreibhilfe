@@ -1,0 +1,125 @@
+name: Android-App bauen (APK)
+
+# Baut aus der Web-App im Wurzelverzeichnis eine installierbare Android-APK.
+# Nach jedem Push hängt die fertige APK am Release „v1.0" — der Download-Link
+# bleibt dabei immer derselbe (siehe APK-HERUNTERLADEN.md).
+
+on:
+  push:
+    branches: [ "**" ]
+    paths:
+      - "index.html"
+      - "css/**"
+      - "js/**"
+      - "sw.js"
+      - "manifest.webmanifest"
+      - "icon.svg"
+      - "android/**"
+      - ".github/workflows/android.yml"
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: JDK 17 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android-SDK einrichten
+        uses: android-actions/setup-android@v3
+
+      - name: Gradle-Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      # Ohne festen Schlüssel bekäme jede APK eine andere Signatur — dann ließe sich
+      # kein Update über eine bestehende Installation legen (nur deinstallieren, was
+      # den gespeicherten Text und den API-Schlüssel löscht). Der Schlüssel liegt als
+      # Base64 in den Repository-Secrets. Fehlt er, wird eine Debug-APK gebaut.
+      - name: Signaturschlüssel bereitstellen
+        id: schluessel
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNIER_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "vorhanden=ja" >> "$GITHUB_OUTPUT"
+            echo "Signaturschlüssel gefunden — es wird eine Release-APK gebaut."
+          else
+            echo "vorhanden=nein" >> "$GITHUB_OUTPUT"
+            echo "::warning::Kein SIGNIER_KEYSTORE_B64 hinterlegt — es wird eine Debug-APK gebaut. Updates über eine bestehende Installation sind damit NICHT möglich."
+          fi
+
+      - name: APK bauen
+        working-directory: android
+        env:
+          SIGNIER_KEYSTORE: ${{ steps.schluessel.outputs.vorhanden == 'ja' && format('{0}/release.jks', runner.temp) || '' }}
+          SIGNIER_KEYSTORE_PASSWORT: ${{ secrets.SIGNIER_KEYSTORE_PASSWORT }}
+          SIGNIER_ALIAS: ${{ secrets.SIGNIER_ALIAS }}
+          SIGNIER_ALIAS_PASSWORT: ${{ secrets.SIGNIER_ALIAS_PASSWORT }}
+          # Laufnummer als versionCode: Android verlangt für ein Update eine höhere Zahl.
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          chmod +x ./gradlew
+          if [ "${{ steps.schluessel.outputs.vorhanden }}" = "ja" ]; then
+            ./gradlew --no-daemon assembleRelease
+          else
+            ./gradlew --no-daemon assembleDebug
+          fi
+
+      - name: APK umbenennen
+        run: |
+          mkdir -p out
+          if [ "${{ steps.schluessel.outputs.vorhanden }}" = "ja" ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk out/schreibhilfe.apk
+          else
+            cp android/app/build/outputs/apk/debug/app-debug.apk out/schreibhilfe.apk
+          fi
+          ls -lh out/schreibhilfe.apk
+
+      - name: Schlüssel wieder entfernen
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+
+      - name: APK als Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: schreibhilfe-apk
+          path: out/schreibhilfe.apk
+          if-no-files-found: error
+
+      - name: Release mit APK veröffentlichen (direkter Download, ohne ZIP)
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.0' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'Schreibhilfe v1.0' }}
+          make_latest: true
+          files: out/schreibhilfe.apk
+          body: |
+            Installierbare Android-App — Schreibhilfe.
+
+            **Herunterladen:** unten unter „Assets" → `schreibhilfe.apk`.
+            **Installieren:** APK aufs Handy laden, öffnen, „Aus dieser Quelle installieren" erlauben.
+
+            Neu ab dieser Fassung: In WhatsApp, Facebook oder der Mail-App den Text
+            markieren → **Teilen → Schreibhilfe**. Der Text landet direkt im
+            Schreibfeld und wird sofort geprüft.
+
+            _Dieses Release wird bei jeder Änderung automatisch mit der aktuellen APK aktualisiert._

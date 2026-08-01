@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dieselben Farben wie in der Web-App: Papier und Petrol. -->
+    <color name="paper">#EDECE5</color>
+    <color name="paper_raised">#F7F6F1</color>
+    <color name="petrol">#2B4C5C</color>
+    <color name="petrol_deep">#1B333F</color>
+</resources>

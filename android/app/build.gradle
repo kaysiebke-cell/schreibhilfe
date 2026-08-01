@@ -1,0 +1,94 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// --- Signierung ---------------------------------------------------------------
+// Ein DEBUG-Schlüssel wird auf jedem Rechner (und jedem CI-Läufer) neu erzeugt.
+// Damit hätte jede APK eine andere Signatur, und Android verweigert die Installation
+// über eine bestehende App: man müsste deinstallieren — und verlöre dabei den
+// gespeicherten Text und den API-Schlüssel. Deshalb hier ein fester Schlüssel aus
+// Umgebungsvariablen. Fehlt er (lokales Ausprobieren), baut Gradle einfach weiter.
+def signKeystore  = System.getenv("SIGNIER_KEYSTORE")
+def signStorePass = System.getenv("SIGNIER_KEYSTORE_PASSWORT")
+def signAlias     = System.getenv("SIGNIER_ALIAS")
+def signAliasPass = System.getenv("SIGNIER_ALIAS_PASSWORT")
+def signVorhanden = signKeystore != null && !signKeystore.isEmpty() && file(signKeystore).exists()
+
+android {
+    namespace 'de.schreibhilfe.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "de.schreibhilfe.app"
+        minSdk 24
+        targetSdk 34
+        // Android verlangt für ein Update eine HÖHERE Zahl. In der CI zählt die
+        // Laufnummer hoch, lokal bleibt es bei 1.
+        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            if (signVorhanden) {
+                storeFile file(signKeystore)
+                storePassword signStorePass
+                keyAlias signAlias
+                keyPassword signAliasPass
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Persönliches Werkzeug: keine Verschleierung nötig, hält den Build einfach.
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (signVorhanden) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+// --- Die Web-App im Wurzelverzeichnis ist die einzige Quelle der Wahrheit ---
+// Dieselben Dateien bedienen GitHub Pages und die APK. Statt sie doppelt im Repo
+// zu halten, kopiert der Build sie vor dem Zusammenbauen nach
+// src/main/assets/www (der Ordner ist ge-.gitignore-t).
+def webDst = file("src/main/assets/www")
+
+tasks.register('copyWebApp', Copy) {
+    description = 'Kopiert die Web-App aus dem Wurzelverzeichnis in die App-Assets.'
+    from("$rootDir/..") {
+        include 'index.html'
+        include 'sw.js'
+        include 'manifest.webmanifest'
+        include 'icon.svg'
+        include 'css/**'
+        include 'js/**'
+    }
+    into webDst
+}
+
+// Vor jedem Asset-Merge (Debug/Release) sicherstellen, dass die Assets aktuell sind.
+tasks.configureEach { t ->
+    if (t.name.startsWith('merge') && t.name.endsWith('Assets')) {
+        t.dependsOn 'copyWebApp'
+    }
+}
+tasks.named('clean') { delete webDst }
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

@@ -1,6 +1,17 @@
 # Nichts Persönliches ins Repo — der API-Schlüssel liegt ohnehin nur
-# im Browser-Speicher des Handys, nie in einer Datei.
+# im Speicher des Handys, nie in einer Datei.
 .DS_Store
 Thumbs.db
 *.log
 __pycache__/
+
+# Android-Build
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+# Die Web-App wird beim Bauen hierher kopiert — sie liegt bereits im Wurzelverzeichnis.
+android/app/src/main/assets/
+*.apk
+*.jks
+*.keystore
