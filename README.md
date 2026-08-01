@@ -1,13 +1,34 @@
 # Schreib | hilfe
 
-Eine Schreibhilfe fürs Handy. Kein App Store, keine Anmeldung, keine Daten
-gehen irgendwohin. Die App legt sich auf den Startbildschirm und startet
-danach auch ohne Internet.
+Eine Schreibhilfe fürs Handy. Kein App Store, keine Anmeldung. Ohne den
+KI-Knopf verlässt kein Wort das Gerät.
+
+## ⬇️ Aufs Handy — die App herunterladen
+
+**➡️ [schreibhilfe.apk herunterladen](https://github.com/kaysiebke-cell/schreibhilfe/releases/download/v1.0/schreibhilfe.apk)**
+
+Den Link **im Handy-Browser** öffnen → Datei antippen → *„Aus dieser Quelle
+installieren"* erlauben → **Installieren**. Fertig.
+
+Der Link bleibt bei jeder neuen Fassung derselbe — am besten als **Lesezeichen**
+speichern. Ausführlich, samt Stolpersteinen: **[APK-HERUNTERLADEN.md](APK-HERUNTERLADEN.md)**
+
+**Ohne Installation** geht es auch im Browser:
+<https://kaysiebke-cell.github.io/schreibhilfe/>
+
+## ✍️ Der schnelle Weg: gar nicht erst die App öffnen
+
+Du musst **nicht** in die App wechseln, um dort zu schreiben. Schreib wie immer
+in WhatsApp, Facebook oder der Mail-App:
+
+1. Text **markieren**
+2. **Teilen** → **Schreibhilfe** (oder im Markier-Menü direkt auf *Schreibhilfe*)
+3. Der Text steht sofort da — **und ist schon geprüft**
+4. Korrigieren → **Teilen** → zurück, wo er herkam
 
 ## Was die App macht — und was Android schon macht
 
-Die App baut **nicht** nach, was das Handy schon kann. Sie ergänzt nur das,
-was fehlt:
+Die App baut **nicht** nach, was das Handy schon kann. Sie ergänzt nur, was fehlt:
 
 | Aufgabe | Wer macht das |
 |---|---|
@@ -15,52 +36,28 @@ was fehlt:
 | Wortvorschläge, Textbausteine | **Deine Tastatur** – Wörterbuch / Textersetzung |
 | Einzelne Tippfehler rot unterringeln | **Deine Tastatur** – antippen, Vorschlag wählen |
 | Teilen an WhatsApp, Facebook, Kontakte | **Android** – das System-Teilen-Menü |
-| Vorlesen lassen | **Android** – „Vorlesen“ / Auswahl vorlesen |
+| Vorlesen lassen | **Android** – „Vorlesen" / Auswahl vorlesen |
 | das/dass, seit/seid, wider/wieder | ➜ **diese App** |
 | Doppelte Wörter, Abstände, Satzanfänge | ➜ **diese App** |
 | Ganzen Text auf einmal korrigieren lassen | ➜ **diese App** (KI-Knopf) |
-| Text sicher aufbewahren und weiterreichen | ➜ **diese App** |
+| Text aufbewahren und weiterreichen | ➜ **diese App** |
 
-Der Knopf **„Text prüfen“** sucht deshalb ausdrücklich nur nach Fehlern, die
-ein Rechtschreibprüfer nicht finden *kann* — weil beide Schreibweisen für sich
-genommen richtige Wörter sind.
+Der Knopf **„Text prüfen"** sucht deshalb ausdrücklich nur nach Fehlern, die ein
+Rechtschreibprüfer nicht finden *kann* — weil beide Schreibweisen für sich
+genommen richtige Wörter sind. Jeder Fund wird einzeln angezeigt; nichts ändert
+sich von allein, und **„Rückgängig"** holt jede Änderung zurück.
 
-## Aufs Handy bringen
+## 🤖 KI-Korrektur einschalten (freiwillig)
 
-Die App braucht eine `https`-Adresse, sonst lässt Android sie nicht
-installieren. Zwei einfache Wege:
-
-**A) Netlify Drop** (am schnellsten, kein Konto nötig)
-1. <https://app.netlify.com/drop> öffnen
-2. Diesen Ordner ins Fenster ziehen
-3. Die angezeigte Adresse auf dem Handy öffnen
-4. Browser-Menü ➜ *Zum Startbildschirm hinzufügen*
-
-**B) GitHub Pages**
-1. Ordner in ein GitHub-Repository legen
-2. *Settings ➜ Pages ➜ Deploy from branch ➜ main / root*
-3. Adresse auf dem Handy öffnen und zum Startbildschirm hinzufügen
-
-### Zum Ausprobieren am PC
-
-```bash
-python3 -m http.server 8321
-```
-
-Dann <http://localhost:8321> öffnen.
-
-## KI-Korrektur einschalten (freiwillig)
-
-Ohne das funktioniert alles außer dem Knopf „Mit KI korrigieren“.
+Ohne das funktioniert alles außer dem Knopf „Mit KI korrigieren".
 
 1. Schlüssel holen auf <https://console.anthropic.com> ➜ *API Keys*
-2. In der App oben rechts auf das Zahnrad ➜ Schlüssel einfügen ➜ *Speichern*
+2. In der App oben rechts aufs Zahnrad ➜ Schlüssel einfügen ➜ *Speichern*
 
-Der Schlüssel bleibt **nur auf diesem Handy** (im Speicher des Browsers) und
-geht an niemanden außer an Anthropic beim Korrigieren.
+Der Schlüssel bleibt **nur auf diesem Handy** und geht an niemanden außer an
+Anthropic beim Korrigieren.
 
-Drei Modelle stehen zur Wahl. Kosten pro einer Million Zeichenbausteine
-(„Token“ — eine normale E-Mail liegt bei ein paar hundert):
+Kosten je eine Million „Token" (eine normale E-Mail sind ein paar hundert):
 
 | Modell | hinein | heraus |
 |---|---|---|
@@ -68,28 +65,71 @@ Drei Modelle stehen zur Wahl. Kosten pro einer Million Zeichenbausteine
 | Sonnet 5 (Mittelweg) | 3 $ | 15 $ |
 | Haiku 4.5 (günstig, schnell) | 1 $ | 5 $ |
 
-Für Briefe und Nachrichten reicht **Haiku 4.5** dicke — da kostet eine
-Korrektur Bruchteile eines Cents.
+Für Briefe und Nachrichten reicht **Haiku 4.5** dicke — eine Korrektur kostet
+dort Bruchteile eines Cents.
 
-Nach jeder KI-Korrektur steht oben ein **Rückgängig**-Knopf. Der Text ist nie
-verloren.
+## 🔒 Datenschutz
 
-## Dateien
-
-```
-index.html            Aufbau der Seite
-css/style.css         Gestaltung (Papier-Optik, hell und dunkel)
-js/app.js             Ablauf: Prüfen, KI, Teilen, Einstellungen
-sw.js                 Offline-Betrieb
-manifest.webmanifest  Angaben für den Startbildschirm
-icon.svg              App-Symbol
-```
-
-## Datenschutz
-
-* Der Text wird nur im Browser des Handys gespeichert und beim Tippen
-  automatisch gesichert.
+* Der Text wird nur auf dem Handy gespeichert, beim Tippen automatisch.
 * Ohne KI-Knopf verlässt **nichts** das Gerät.
 * Beim KI-Knopf geht der Text an die Anthropic-Schnittstelle und kommt
   korrigiert zurück. Sonst nirgendwohin.
-* „Alles löschen“ räumt das Schreibfeld, das Zahnrad räumt den Schlüssel.
+* „Löschen" räumt das Schreibfeld, das Zahnrad räumt den Schlüssel.
+
+---
+
+## Für die Werkbank
+
+### Aufbau
+
+```
+index.html                    Aufbau der Seite
+css/style.css                 Gestaltung (Papier-Optik, hell und dunkel)
+js/app.js                     Prüfen, KI, Teilen, Einstellungen
+sw.js                         Offline-Betrieb im Browser
+manifest.webmanifest          Angaben für den Startbildschirm
+icon.svg                      App-Symbol
+
+android/                      Rahmen für die APK (WebView um dieselbe Web-App)
+.github/workflows/android.yml  baut die APK bei jedem Push
+APK-HERUNTERLADEN.md          Anleitung fürs Handy + Signaturschlüssel
+```
+
+Die Dateien im Wurzelverzeichnis sind die **einzige Quelle**: dieselbe Web-App
+bedient GitHub Pages *und* steckt in der APK. Der Android-Build kopiert sie beim
+Bauen nach `assets/www`.
+
+Geladen wird in der App über den `WebViewAssetLoader` unter
+`https://appassets.androidplatform.net` statt über `file://` — nur so gelten
+`localStorage` und die KI-Anfrage als sicherer Ursprung.
+
+### Etwas ändern
+
+```bash
+git add -A && git commit -m "Änderung" && git push
+```
+
+Danach passiert von allein:
+
+* **GitHub Pages** aktualisiert sich in ~1 Minute
+* **GitHub Actions** baut eine neue APK und hängt sie an das Release `v1.0` —
+  gleicher Link wie immer, ~3 Minuten
+
+Der Workflow prüft nach dem Bauen selbst nach, ob `assets/www` wirklich in der
+APK steckt, und bricht sonst ab. Ein früherer Lauf war grün und lieferte
+trotzdem eine leere APK — die App wäre auf dem Handy weiß geblieben.
+
+### Am PC ausprobieren
+
+```bash
+python3 -m http.server 8321
+```
+
+Dann <http://localhost:8321> öffnen.
+
+### Signaturschlüssel
+
+Liegt außerhalb des Repos unter `~/schreibhilfe-signatur/` und ist als vier
+Secrets im Repo hinterlegt. **Die `.jks`-Datei gut sichern** — geht sie
+verloren, lässt sich nie wieder ein Update über eine bestehende Installation
+legen. Einzelheiten in [APK-HERUNTERLADEN.md](APK-HERUNTERLADEN.md).
