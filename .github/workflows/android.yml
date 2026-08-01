@@ -93,6 +93,28 @@ jobs:
           fi
           ls -lh out/schreibhilfe.apk
 
+      # Ein früherer Versuch lief grün durch und lieferte trotzdem eine APK OHNE
+      # Web-App — die App wäre auf dem Handy weiß geblieben. Deshalb hier eine
+      # harte Kontrolle, bevor irgendetwas veröffentlicht wird.
+      - name: Prüfen, ob die Web-App wirklich in der APK steckt
+        run: |
+          python3 - <<'PY'
+          import sys, zipfile
+          noetig = [
+              "assets/www/index.html",
+              "assets/www/css/style.css",
+              "assets/www/js/app.js",
+          ]
+          drin = set(zipfile.ZipFile("out/schreibhilfe.apk").namelist())
+          fehlt = [d for d in noetig if d not in drin]
+          if fehlt:
+              print("::error::Die APK enthält die Web-App nicht: " + ", ".join(fehlt))
+              sys.exit(1)
+          print("Web-App vollständig in der APK:")
+          for d in sorted(x for x in drin if x.startswith("assets/www")):
+              print("  " + d)
+          PY
+
       - name: Schlüssel wieder entfernen
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks"
