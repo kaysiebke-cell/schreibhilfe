@@ -148,16 +148,24 @@ textarea#text:focus{outline:none;border-color:var(--petrol)}
 .hint{margin:0;font-size:.76rem;color:var(--ink-soft);line-height:1.35}
 .hint:empty{display:none}
 
-/* ---- Knopfleiste unten ---- */
+/* ---- Knopfleiste unten ----
+   Jeder Knopf ist mindestens 48px hoch und breit — darunter trifft man mit
+   dem Daumen nicht mehr zuverlässig. Passt die Reihe nicht, bricht sie um;
+   lieber zwei Zeilen als eine Zeile, die man nicht bedienen kann. */
 .leiste{
   flex:none;
-  display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;
+  display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;
   padding:.4rem .5rem;
   padding-bottom:max(.4rem, env(safe-area-inset-bottom));
   border-top:1px solid var(--line);
   background:var(--paper-raised);
   width:100%;max-width:820px;margin:0 auto;
 }
+.leiste .btn{min-height:3rem}
+.leiste .btn .ic{width:1.2em;height:1.2em}
+/* Rückgängig und Löschen sitzen rechts, abgesetzt von den Knöpfen mit
+   Beschriftung — damit man Löschen nicht neben „Kopieren“ erwischt. */
+.leiste__rechts{display:flex;gap:.4rem;margin-left:auto;flex:none}
 
 .btn{
   font-family:var(--sans);font-size:.82rem;font-weight:600;
@@ -174,7 +182,7 @@ textarea#text:focus{outline:none;border-color:var(--petrol)}
 .btn--primary{background:var(--petrol);color:#fff;border-color:var(--petrol)}
 :root[data-theme="dark"] .btn--primary{color:#101418}
 .btn--breit{flex:1 1 auto;min-width:0}
-.btn--icon{padding:.5rem;color:var(--ink-soft)}
+.btn--icon{padding:.5rem;min-width:3rem;color:var(--ink-soft)}
 .btn--ghost{border-color:transparent;background:none;color:var(--ink-soft)}
 .btn--laeuft,.btn:disabled{opacity:.5;cursor:default}
 

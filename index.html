@@ -70,8 +70,13 @@
   <button class="btn" id="btn-ki" hidden><svg class="ic"><use href="#i-sparkle"></use></svg> KI</button>
   <button class="btn" id="btn-teilen"><svg class="ic"><use href="#i-share"></use></svg> Teilen</button>
   <button class="btn" id="btn-kopieren"><svg class="ic"><use href="#i-copy"></use></svg> Kopieren</button>
-  <button class="btn btn--icon" id="btn-zurueck" hidden title="Rückgängig" aria-label="Rückgängig"><svg class="ic"><use href="#i-undo"></use></svg></button>
-  <button class="btn btn--icon" id="btn-leeren" title="Text löschen" aria-label="Text löschen"><svg class="ic"><use href="#i-trash"></use></svg></button>
+
+  <!-- Die beiden bleiben zusammen: bricht die Reihe um, rutschen sie
+       gemeinsam in die zweite Zeile statt sich aufzuteilen. -->
+  <div class="leiste__rechts">
+    <button class="btn btn--icon" id="btn-zurueck" hidden title="Rückgängig" aria-label="Rückgängig"><svg class="ic"><use href="#i-undo"></use></svg></button>
+    <button class="btn btn--icon" id="btn-leeren" title="Text löschen" aria-label="Text löschen"><svg class="ic"><use href="#i-trash"></use></svg></button>
+  </div>
 </footer>
 
 <dialog id="dlg-settings">
