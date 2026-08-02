@@ -59,7 +59,9 @@
     spellcheck="true" lang="de" autocapitalize="sentences"
     autocorrect="on" aria-label="Dein Text"></textarea>
 
-  <div id="funde"></div>
+  <!-- Die Funde entstehen erst nach dem Prüfen. Ohne „aria-live" bekommt eine
+       Vorlesefunktion gar nicht mit, dass hier etwas erschienen ist. -->
+  <div id="funde" role="region" aria-live="polite" aria-label="Gefundene Stellen"></div>
   <p class="hint" id="status" role="status"></p>
 </main>
 

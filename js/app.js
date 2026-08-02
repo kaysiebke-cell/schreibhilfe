@@ -353,8 +353,20 @@ async function kiKorrektur() {
     system: KI_ANWEISUNG,
     messages: [{ role: 'user', content: text }],
   };
-  // „effort“ gibt es nur bei den neueren Modellen – Haiku würde damit einen Fehler werfen.
-  if (modell !== 'claude-haiku-4-5') anfrage.output_config = { effort: 'low' };
+  if (modell !== 'claude-haiku-4-5') {
+    // „effort“ gibt es nur bei den neueren Modellen – Haiku würde damit einen Fehler werfen.
+    anfrage.output_config = { effort: 'low' };
+    // Opus 5 und Sonnet 5 denken von sich aus nach, und dieses Nachdenken zählt
+    // gegen dieselben 4000 Tokens wie die Antwort. Bei einem langen Brief bliebe
+    // dann womöglich nur ein abgeschnittener Text übrig. Rechtschreibung
+    // korrigieren braucht kein Nachdenken – also aus.
+    anfrage.thinking = { type: 'disabled' };
+  }
+
+  // Ohne Abbruch wartet „fetch“ notfalls ewig – etwa wenn das Handy mitten in
+  // der Anfrage das Netz verliert. Dann bliebe der Knopf für immer grau.
+  const abbruch = new AbortController();
+  const wecker = setTimeout(() => abbruch.abort(), 90000);
 
   try {
     const antwort = await fetch('https://api.anthropic.com/v1/messages', {
@@ -367,6 +379,7 @@ async function kiKorrektur() {
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify(anfrage),
+      signal: abbruch.signal,
     });
 
     if (!antwort.ok) {
@@ -402,10 +415,17 @@ async function kiKorrektur() {
     el.status.textContent = 'Fertig korrigiert. Nicht einverstanden? Oben auf „Rückgängig“ tippen.';
 
   } catch (fehler) {
-    el.status.textContent = !navigator.onLine
-      ? 'Kein Internet. Die KI-Korrektur braucht eine Verbindung.'
-      : 'Es hat nicht geklappt: ' + fehler.message;
+    // Reihenfolge wichtig: „navigator.onLine“ meldet auf Android auch dann noch
+    // „online“, wenn die Verbindung längst hängt. Der Abbruch ist das sichere Zeichen.
+    if (fehler.name === 'AbortError') {
+      el.status.textContent = 'Die KI hat zu lange gebraucht. Bitte noch einmal versuchen.';
+    } else if (!navigator.onLine) {
+      el.status.textContent = 'Kein Internet. Die KI-Korrektur braucht eine Verbindung.';
+    } else {
+      el.status.textContent = 'Es hat nicht geklappt: ' + fehler.message;
+    }
   } finally {
+    clearTimeout(wecker);
     el.btnKi.disabled = false;
     el.btnKi.classList.remove('btn--laeuft');
   }
