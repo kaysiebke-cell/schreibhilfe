@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Dasselbe Motiv wie icon.svg, aber für „maskable“: Android schneidet das
+       Symbol je nach Hersteller rund, als Kreis oder als Tropfen zu. Deshalb
+       füllt der Hintergrund die ganze Fläche (die Ecken darf das System
+       wegschneiden) und das Blatt sitzt auf 72 % geschrumpft in der Mitte,
+       innerhalb der sicheren Zone. -->
+  <rect width="512" height="512" fill="#2B4C5C"/>
+  <g transform="translate(256 256) scale(.72) translate(-256 -256)">
+    <rect x="128" y="82" width="256" height="348" rx="14" fill="#F7F6F1"/>
+    <g stroke="#2B4C5C" stroke-width="16" stroke-linecap="round" opacity=".35">
+      <path d="M176 154h120"/>
+      <path d="M176 208h160"/>
+      <path d="M176 262h96"/>
+    </g>
+    <text x="256" y="392" text-anchor="middle"
+          font-family="Georgia, 'Palatino Linotype', Palatino, serif"
+          font-size="118" font-weight="700" fill="#2B4C5C">Aa</text>
+  </g>
+</svg>

@@ -93,7 +93,9 @@ css/style.css                 Gestaltung (Papier-Optik, hell und dunkel)
 js/app.js                     Prüfen, KI, Teilen, Einstellungen
 sw.js                         Offline-Betrieb im Browser
 manifest.webmanifest          Angaben für den Startbildschirm
-icon.svg                      App-Symbol
+icon.svg                      App-Symbol (Quelle)
+icon-maskable.svg             dasselbe Motiv mit Rand — Android schneidet rund zu
+icon-*.png                    daraus erzeugt, für den Startbildschirm im Browser
 
 android/                      Rahmen für die APK (WebView um dieselbe Web-App)
 .github/workflows/android.yml  baut die APK bei jedem Push
@@ -123,6 +125,17 @@ Danach passiert von allein:
 Der Workflow prüft nach dem Bauen selbst nach, ob `assets/www` wirklich in der
 APK steckt, und bricht sonst ab. Ein früherer Lauf war grün und lieferte
 trotzdem eine leere APK — die App wäre auf dem Handy weiß geblieben.
+
+### Symbole neu erzeugen
+
+Nur nötig, wenn sich `icon.svg` oder `icon-maskable.svg` ändert:
+
+```bash
+inkscape icon.svg -w 192 -h 192 -o icon-192.png && inkscape icon.svg -w 512 -h 512 -o icon-512.png && inkscape icon-maskable.svg -w 512 -h 512 -o icon-maskable-512.png
+```
+
+Danach die Zahl in `sw.js` (`schreibhilfe-vN`) hochsetzen, sonst behalten
+bereits installierte Browser-Fassungen die alten Dateien.
 
 ### Am PC ausprobieren
 

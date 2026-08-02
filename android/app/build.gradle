@@ -33,6 +33,7 @@ tasks.register('copyWebApp', Copy) {
         include 'sw.js'
         include 'manifest.webmanifest'
         include 'icon.svg'
+        include 'icon-*.png'
         include 'css/**'
         include 'js/**'
     }
