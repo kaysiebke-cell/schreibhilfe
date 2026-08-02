@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -79,6 +80,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.addJavascriptInterface(AndroidBruecke(), "AndroidBridge")
+
+        // Ohne WebChromeClient sind window.alert, confirm und prompt in einer
+        // WebView wirkungslos: confirm liefert wortlos false, und ein Knopf,
+        // der eine Rückfrage stellt, tut dann schlicht nichts. Genau daran ist
+        // der Löschen-Knopf gescheitert. Die Web-App fragt inzwischen nicht
+        // mehr nach — der Client steht hier, damit die Falle nicht wiederkommt.
+        webView.webChromeClient = WebChromeClient()
 
         webView.webViewClient = object : WebViewClient() {
 

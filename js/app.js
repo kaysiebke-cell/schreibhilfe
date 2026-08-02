@@ -96,14 +96,16 @@ function textGeaendert() {
 el.text.addEventListener('input', textGeaendert);
 textGeaendert();
 
+/* Kein „Wirklich löschen?“-Fenster: In der Android-App gibt es kein
+   window.confirm — es liefert wortlos false, und der Knopf täte dann gar
+   nichts. Der Text ist auch so nicht weg, „Rückgängig“ holt ihn zurück. */
 el.btnLeeren.addEventListener('click', () => {
   if (!el.text.value) return;
-  if (!confirm('Wirklich den ganzen Text löschen?')) return;
   merkeFuerZurueck(el.text.value);
   el.text.value = '';
   textGeaendert();
   el.funde.innerHTML = '';
-  el.status.textContent = '';
+  el.status.textContent = 'Text gelöscht. Mit dem Pfeil daneben zurückholen.';
 });
 
 /* Rückgängig für Korrekturen */
