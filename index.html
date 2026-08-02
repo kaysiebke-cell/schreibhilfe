@@ -13,15 +13,16 @@
 <link rel="stylesheet" href="css/style.css">
 <script>
   // Hell/Dunkel VOR dem Zeichnen setzen — sonst blitzt beim Start die falsche Farbe auf.
+  // Drei Stellungen: "auto" folgt dem Handy, "light" und "dark" sind fest.
+  var systemDunkel = matchMedia('(prefers-color-scheme: dark)').matches;
+  var wahl = 'auto';
   try {
     // Gespeichert wird als JSON ("dark"), gebraucht wird der nackte Wert (dark).
     var g = JSON.parse(localStorage.getItem('sh.theme'));
-    if (g !== 'dark' && g !== 'light') g = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    document.documentElement.dataset.theme = g;
-  } catch (e) {
-    document.documentElement.dataset.theme =
-      matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
+    if (g === 'dark' || g === 'light' || g === 'auto') wahl = g;
+  } catch (e) {}
+  document.documentElement.dataset.theme =
+    (wahl === 'dark' || (wahl === 'auto' && systemDunkel)) ? 'dark' : 'light';
 </script>
 </head>
 <body>
@@ -36,6 +37,9 @@
   <symbol id="i-check"    viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
   <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.1 14.6a1.5 1.5 0 0 0 .3 1.7l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.5 1.5 0 0 0-1.7-.3 1.5 1.5 0 0 0-.9 1.4v.3a2 2 0 1 1-4 0v-.2a1.5 1.5 0 0 0-1-1.4 1.5 1.5 0 0 0-1.7.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.5 1.5 0 0 0 .3-1.7 1.5 1.5 0 0 0-1.4-.9H3a2 2 0 1 1 0-4h.2a1.5 1.5 0 0 0 1.4-1 1.5 1.5 0 0 0-.3-1.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.5 1.5 0 0 0 1.7.3H9a1.5 1.5 0 0 0 .9-1.4V3a2 2 0 1 1 4 0v.2a1.5 1.5 0 0 0 .9 1.4 1.5 1.5 0 0 0 1.7-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.5 1.5 0 0 0-.3 1.7V9a1.5 1.5 0 0 0 1.4.9h.3a2 2 0 1 1 0 4h-.2a1.5 1.5 0 0 0-1.4.9z"/></symbol>
   <symbol id="i-moon"     viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol>
+  <symbol id="i-sun"      viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 12H2M22 12h-2.2M6.5 6.5L4.9 4.9M19.1 19.1l-1.6-1.6M17.5 6.5l1.6-1.6M4.9 19.1l1.6-1.6"/></symbol>
+  <!-- Halb gefüllter Kreis: das übliche Zeichen für „richtet sich nach dem Gerät“. -->
+  <symbol id="i-auto"     viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-close"    viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
 </svg>
 
@@ -48,7 +52,7 @@
     <span class="zaehler" id="zaehler"></span>
     <button class="topbar__icon" id="btn-kleiner"  title="Schrift kleiner" aria-label="Schrift kleiner"><span class="schriftknopf">A&minus;</span></button>
     <button class="topbar__icon" id="btn-groesser" title="Schrift größer"  aria-label="Schrift größer"><span class="schriftknopf gross">A+</span></button>
-    <button class="topbar__icon" id="btn-theme"    title="Hell/Dunkel" aria-label="Hell oder Dunkel"><svg class="ic"><use href="#i-moon"></use></svg></button>
+    <button class="topbar__icon" id="btn-theme"><svg class="ic"><use href="#i-auto" id="theme-symbol"></use></svg></button>
     <button class="topbar__icon" id="btn-settings" title="Einstellungen" aria-label="Einstellungen"><svg class="ic"><use href="#i-settings"></use></svg></button>
   </div>
 </header>
@@ -98,6 +102,14 @@
         <option value="claude-sonnet-5">Mittelweg &middot; Sonnet 5</option>
         <option value="claude-haiku-4-5">Günstig &amp; schnell &middot; Haiku 4.5</option>
       </select>
+    </label>
+
+    <!-- Nur sichtbar, wenn das Gerät eine Systempalette liefert (Android 12+). -->
+    <label class="field field--schalter" id="feld-systemfarben" hidden>
+      <input id="systemfarben" type="checkbox">
+      <span>Farben vom System übernehmen
+        <em>Android 12 und neuer. Sie richten sich nach deinem Hintergrundbild.</em>
+      </span>
     </label>
 
     <div class="form__actions">

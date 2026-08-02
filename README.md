@@ -37,6 +37,7 @@ Die App baut **nicht** nach, was das Handy schon kann. Sie ergänzt nur, was feh
 | Einzelne Tippfehler rot unterringeln | **Deine Tastatur** – antippen, Vorschlag wählen |
 | Teilen an WhatsApp, Facebook, Kontakte | **Android** – das System-Teilen-Menü |
 | Vorlesen lassen | **Android** – „Vorlesen" / Auswahl vorlesen |
+| Hell/Dunkel, Schriftgröße, Farbpalette | **Android** – die App übernimmt sie |
 | das/dass, seit/seid, wider/wieder | ➜ **diese App** |
 | Doppelte Wörter, Abstände, Satzanfänge | ➜ **diese App** |
 | Ganzen Text auf einmal korrigieren lassen | ➜ **diese App** (KI-Knopf) |
@@ -50,6 +51,18 @@ sich von allein, und **„Rückgängig"** holt jede Änderung zurück.
 **„Teilen"** öffnet das System-Teilen-Menü von Android — darin stehen WhatsApp,
 SMS, E-Mail und alles andere. Eigene Knöpfe dafür hat die App nicht, das wäre
 dieselbe Liste ein zweites Mal.
+
+## 🎨 Was die App vom Handy übernimmt
+
+* **Hell/Dunkel** — das Symbol oben rechts schaltet zwischen *wie das Handy*,
+  *immer hell* und *immer dunkel*. In der ersten Stellung folgt die App der
+  Systemeinstellung, auch nach einem Neustart.
+* **Schriftgröße** — die Android-Einstellung wirkt in der App. A− / A+ kommen
+  obendrauf.
+* **Systemfarben** — ab Android 12 kann die App die Palette übernehmen, die
+  Android aus deinem Hintergrundbild ableitet. Schalter im Zahnrad, lässt sich
+  jederzeit abstellen. Grün, Gelb und Rot der Fundliste bleiben davon
+  unberührt, damit ein gefundener Fehler erkennbar bleibt.
 
 ## 🤖 KI-Korrektur einschalten (freiwillig)
 

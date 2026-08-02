@@ -29,6 +29,9 @@ const el = {
   btnKleiner:    $('btn-kleiner'),
   btnGroesser:   $('btn-groesser'),
   btnTheme:      $('btn-theme'),
+  themeSymbol:   $('theme-symbol'),
+  feldSystemfarben: $('feld-systemfarben'),
+  systemfarben:  $('systemfarben'),
 };
 
 /* ------------------------------------------------------------
@@ -63,13 +66,108 @@ function icon(name, klasse = 'ic') {
    1. Darstellung: Hell/Dunkel und Schriftgröße
    ============================================================ */
 
+/* Drei Stellungen statt zwei: „auto“ richtet sich nach dem Handy — auch nach
+   einem Neustart. Vorher war die einmal getroffene Wahl für immer festgenagelt. */
+const THEMEN = ['auto', 'light', 'dark'];
+const THEMA_TEXT = {
+  auto:  ['i-auto', 'Farben: wie das Handy'],
+  light: ['i-sun',  'Farben: immer hell'],
+  dark:  ['i-moon', 'Farben: immer dunkel'],
+};
+const systemMag = matchMedia('(prefers-color-scheme: dark)');
+
+function themaLies() {
+  const w = Speicher.lies('theme', 'auto');
+  return THEMEN.includes(w) ? w : 'auto';
+}
+
+function themaAnwenden() {
+  const wahl = themaLies();
+  const dunkel = wahl === 'dark' || (wahl === 'auto' && systemMag.matches);
+  document.documentElement.dataset.theme = dunkel ? 'dark' : 'light';
+
+  const [symbol, beschriftung] = THEMA_TEXT[wahl];
+  el.themeSymbol.setAttribute('href', '#' + symbol);
+  el.btnTheme.title = beschriftung;
+  el.btnTheme.setAttribute('aria-label', beschriftung + ' – zum Umschalten tippen');
+
+  meldeLeisten(dunkel);
+}
+
+/* Die Systemleisten oben und unten gehören zur App, liegen aber außerhalb der
+   Web-Seite. Ohne diese Meldung bliebe eine dunkle App mit hellen Leisten
+   stehen, sobald die Wahl in der App vom System abweicht. */
+function meldeLeisten(dunkel) {
+  const stil = getComputedStyle(document.documentElement);
+  const oben  = stil.getPropertyValue('--paper-raised').trim() || '#F7F6F1';
+  const unten = stil.getPropertyValue('--paper').trim()        || '#EDECE5';
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', oben);
+  if (typeof window.AndroidBridge?.leisten === 'function') {
+    try { window.AndroidBridge.leisten(dunkel, oben, unten); } catch {}
+  }
+}
+
 el.btnTheme.addEventListener('click', () => {
-  const neu = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = neu;
-  Speicher.schreib('theme', neu);
-  const farbe = getComputedStyle(document.body).getPropertyValue('--paper-raised').trim();
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', farbe || '#2B4C5C');
+  Speicher.schreib('theme', THEMEN[(THEMEN.indexOf(themaLies()) + 1) % THEMEN.length]);
+  themaAnwenden();
 });
+
+// Nur in der Stellung „auto“ auf einen Wechsel am Handy reagieren.
+systemMag.addEventListener('change', () => { if (themaLies() === 'auto') themaAnwenden(); });
+
+/* ------------------------------------------------------------
+   Systemfarben (Material You). Die Palette reicht die Android-App
+   als window.SystemFarben herein; im Browser gibt es sie nicht.
+   Die Bedeutungsfarben (grün/gelb/rot) bleiben unangetastet — ein
+   gefundener Fehler muss erkennbar bleiben, egal welches
+   Hintergrundbild eingestellt ist.
+   ------------------------------------------------------------ */
+const FARB_ZUORDNUNG = {
+  petrol:'--petrol', petrolDeep:'--petrol-deep', paper:'--paper',
+  paperRaised:'--paper-raised', surface:'--surface', ink:'--ink',
+  inkSoft:'--ink-soft', line:'--line',
+};
+
+function alsRegel(auswahl, satz) {
+  const zeilen = Object.entries(FARB_ZUORDNUNG)
+    .filter(([k]) => satz[k])
+    .map(([k, v]) => v + ':' + satz[k]);
+  return auswahl + '{' + zeilen.join(';') + '}';
+}
+
+function systemfarbenAnwenden() {
+  const palette = window.SystemFarben;
+  el.feldSystemfarben.hidden = !palette;
+  const an = !!palette && Speicher.lies('systemfarben', true);
+  el.systemfarben.checked = an;
+
+  let stil = document.getElementById('systemfarben-stil');
+  if (an) {
+    if (!stil) {
+      stil = document.createElement('style');
+      stil.id = 'systemfarben-stil';
+      document.head.appendChild(stil);
+    }
+    stil.textContent =
+      alsRegel(':root[data-systemfarben][data-theme="light"]', palette.hell) +
+      alsRegel(':root[data-systemfarben][data-theme="dark"]',  palette.dunkel);
+    document.documentElement.dataset.systemfarben = 'an';
+  } else {
+    stil?.remove();
+    delete document.documentElement.dataset.systemfarben;
+  }
+  meldeLeisten(document.documentElement.dataset.theme === 'dark');
+}
+
+el.systemfarben.addEventListener('change', () => {
+  Speicher.schreib('systemfarben', el.systemfarben.checked);
+  systemfarbenAnwenden();
+});
+// Die Palette trifft erst ein, wenn die Seite fertig geladen ist.
+window.addEventListener('systemfarben', systemfarbenAnwenden);
+
+themaAnwenden();
+systemfarbenAnwenden();
 
 let schriftgroesse = Speicher.lies('schrift', 1.05);
 function setzeSchrift(wert) {

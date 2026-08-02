@@ -6,6 +6,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -16,6 +18,8 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
 
@@ -77,6 +81,11 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true      // localStorage: gespeicherter Text, Schlüssel, Schriftgröße
             allowFileAccess = false       // nicht nötig, alles kommt über den AssetLoader
             allowContentAccess = false
+            // Eine WebView ignoriert die Android-Einstellung „Schriftgröße“ von
+            // Haus aus: textZoom steht fest auf 100. Wer sie im System groß
+            // gestellt hat, bekäme in der App trotzdem Normalgröße. A− / A+
+            // wirken weiterhin obendrauf.
+            textZoom = (resources.configuration.fontScale * 100).toInt()
         }
 
         webView.addJavascriptInterface(AndroidBruecke(), "AndroidBridge")
@@ -110,6 +119,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView, url: String) {
                 seiteFertig = true
+                reicheSystemfarbenHinein()
                 uebergebenerText?.let { reicheTextHinein(it); uebergebenerText = null }
             }
         }
@@ -147,6 +157,65 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    /**
+     * Material You: Android 12 leitet aus dem Hintergrundbild eine Farbpalette
+     * ab. Aus CSS kommt man an die nicht heran, also liest die App sie hier aus
+     * und legt sie als `window.SystemFarben` in die Seite. Ob die Web-App sie
+     * benutzt, entscheidet der Schalter in den Einstellungen — die
+     * Bedeutungsfarben (grün/gelb/rot) bleiben in jedem Fall unangetastet,
+     * damit ein Fund erkennbar bleibt.
+     */
+    private fun reicheSystemfarbenHinein() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+
+        fun hex(id: Int) = String.format("#%06X", 0xFFFFFF and ContextCompat.getColor(this, id))
+
+        val palette = JSONObject().apply {
+            put("hell", JSONObject().apply {
+                put("petrol", hex(android.R.color.system_accent1_600))
+                put("petrolDeep", hex(android.R.color.system_accent1_800))
+                put("paper", hex(android.R.color.system_neutral1_100))
+                put("paperRaised", hex(android.R.color.system_neutral1_50))
+                put("surface", hex(android.R.color.system_neutral1_10))
+                put("ink", hex(android.R.color.system_neutral1_900))
+                put("inkSoft", hex(android.R.color.system_neutral2_700))
+                put("line", hex(android.R.color.system_neutral2_300))
+            })
+            put("dunkel", JSONObject().apply {
+                put("petrol", hex(android.R.color.system_accent1_200))
+                put("petrolDeep", hex(android.R.color.system_accent1_100))
+                put("paper", hex(android.R.color.system_neutral1_900))
+                put("paperRaised", hex(android.R.color.system_neutral1_800))
+                put("surface", hex(android.R.color.system_neutral1_700))
+                put("ink", hex(android.R.color.system_neutral1_50))
+                put("inkSoft", hex(android.R.color.system_neutral2_200))
+                put("line", hex(android.R.color.system_neutral2_600))
+            })
+        }
+
+        webView.evaluateJavascript(
+            "window.SystemFarben = $palette;" +
+                "window.dispatchEvent(new Event('systemfarben'));",
+            null
+        )
+    }
+
+    /**
+     * Färbt Status- und Navigationsleiste passend zur Web-App ein. Die Web-App
+     * meldet ihre eigene Hell/Dunkel-Wahl über die Brücke — sonst hätte man
+     * eine dunkle App mit hellen Systemleisten, sobald die Wahl in der App vom
+     * System abweicht.
+     */
+    private fun faerbeLeisten(dunkel: Boolean, oben: String, unten: String) {
+        window.statusBarColor = Color.parseColor(oben)
+        window.navigationBarColor = Color.parseColor(unten)
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            // Helle Leiste braucht dunkle Symbole und umgekehrt.
+            isAppearanceLightStatusBars = !dunkel
+            isAppearanceLightNavigationBars = !dunkel
+        }
+    }
+
     private fun oeffneAussen(intent: Intent) {
         try {
             startActivity(intent)
@@ -180,6 +249,15 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 oeffneAussen(Intent.createChooser(senden, getString(R.string.teilen_titel)))
             }
+        }
+
+        /**
+         * Meldet die aktuelle Darstellung der Web-App, damit Status- und
+         * Navigationsleiste dieselben Farben bekommen.
+         */
+        @JavascriptInterface
+        fun leisten(dunkel: Boolean, oben: String, unten: String) {
+            runOnUiThread { faerbeLeisten(dunkel, oben, unten) }
         }
 
         /** Legt den Text in die Zwischenablage, damit er sich woanders einfügen lässt. */
