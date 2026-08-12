@@ -223,7 +223,7 @@ el.btnZurueck.addEventListener('click', () => {
 });
 
 /* ============================================================
-   3. Offline-Rechtschreibprüfung
+   3. Offline-Prüfung: Rechtschreibung, Grammatik, Satzbau
    ============================================================ */
 
 /* ------------------------------------------------------------
@@ -259,6 +259,7 @@ const WOERTERBUCH = {
   'immoment':'im Moment', 'inordnung':'in Ordnung', 'imgrunde':'im Grunde',
   'vorallem':'vor allem', 'desweiteren':'des Weiteren',
   'nachwievor':'nach wie vor', 'zumindestens':'zumindest',
+  'zumteil':'zum Teil', 'jedesmal':'jedes Mal', 'garkeinen':'gar keinen',
 
   /* Englisch/Deutsch-Dubletten, die als Wort durchgehen. */
   'tip':'Tipp', 'tips':'Tipps', 'email':'E-Mail', 'emails':'E-Mails',
@@ -274,98 +275,443 @@ function uebernimmSchreibweise(original, verbesserung) {
   return verbesserung;
 }
 
-/* Sucht alle Stellen, die auffällig sind. */
-function findeProbleme(text) {
-  const funde = [];
+/* Leerzeichen sind unsichtbar. Wo genau sie der Fehler sind, muss man sie sehen. */
+const zeigeLeer = (s) => s.replace(/ /g, '␣').replace(/\n/g, '⏎');
 
-  // a) Falsch geschriebene Wörter
+/* Jeder Fund hat eine von drei Arten:
+   fehler  – sicher falsch (oranger Balken)
+   tipp    – kommt auf den Zusammenhang an, deshalb selbst noch einmal lesen
+   hinweis – nur zum Nachdenken, es gibt nichts zum Ändern (kein Knopf) */
+function machFund(von, bis, alt, neu, grund, art, leer) {
+  return {
+    von, bis, alt, neu,
+    zeigeAlt: leer ? zeigeLeer(alt) : alt,
+    zeigeNeu: leer ? zeigeLeer(neu) : neu,
+    grund, art,
+  };
+}
+
+/* ------------------------------------------------------------
+   Der Regelmotor.
+   Eine Regel besteht aus einem Muster, einem Bauplan für den Ersatz und
+   einer Begründung in einfachen Worten. Dazu drei Schalter:
+     pruefe   – darf einen Treffer nachträglich verwerfen
+     gruppe   – grenzt den Fund auf eine Klammer ein: das Muster darf die
+                Umgebung mitlesen, angezeigt und ersetzt wird nur die Klammer
+     leer     – macht Leerzeichen im Vorher/Nachher sichtbar
+   ------------------------------------------------------------ */
+function wendeRegelnAn(text, regeln, funde) {
+  for (const regel of regeln) {
+    for (const treffer of text.matchAll(regel.muster)) {
+      if (regel.pruefe && !regel.pruefe(treffer, text)) continue;
+      const versatz = regel.gruppe ? treffer.slice(1, regel.gruppe).join('').length : 0;
+      const alt = regel.gruppe ? treffer[regel.gruppe] : treffer[0];
+      const neu = regel.bau(...treffer);
+      if (neu === alt) continue;
+      const von = treffer.index + versatz;
+      funde.push(machFund(von, von + alt.length, alt, neu,
+                          regel.grund, regel.art || 'fehler', regel.leer));
+    }
+  }
+}
+
+/* ------------------------------------------------------------
+   a) Wörter aus der Liste oben
+   ------------------------------------------------------------ */
+function pruefeWoerter(text, funde) {
   for (const treffer of text.matchAll(WORT_MUSTER)) {
     const wort = treffer[0];
     const richtig = WOERTERBUCH[wort.toLowerCase()];
     if (!richtig) continue;
     const ersatz = uebernimmSchreibweise(wort, richtig);
     if (ersatz === wort) continue;
-    funde.push({
-      von: treffer.index, bis: treffer.index + wort.length,
-      alt: wort, neu: ersatz,
-      zeigeAlt: wort, zeigeNeu: ersatz,
-      grund: 'Schreibweise', tipp: false,
-    });
+    funde.push(machFund(treffer.index, treffer.index + wort.length,
+                        wort, ersatz, 'Schreibweise', 'fehler'));
   }
+}
 
-  // b) Abstände und Satzzeichen
-  const regeln = [
-    { muster:/ {2,}/g,                        bau:() => ' ',
-      grund:'Mehrere Leerzeichen hintereinander' },
-    { muster:/[ \t]+([,.;:!?])/g,             bau:(m, z) => z,
-      grund:'Vor dem Satzzeichen gehört kein Leerzeichen' },
-    { muster:/([,;:])([A-Za-zÄÖÜäöüß])/g,     bau:(m, z, b) => z + ' ' + b,
-      grund:'Nach dem Satzzeichen fehlt ein Leerzeichen' },
-    /* Punkt/Ausrufe-/Fragezeichen, direkt gefolgt vom nächsten Satz.
-       Mindestens zwei Buchstaben davor, damit Abkürzungen wie „z.B.“ in Ruhe
-       gelassen werden – und der Wächter hält Web- und E-Mail-Adressen raus. */
-    { muster:/([A-Za-zÄÖÜäöüß]{2}[.!?])([A-Za-zÄÖÜäöüß])/g,
-      bau:(m, z, b) => z + ' ' + b,
-      pruefe:(text, stelle) => !/[@]|https?:|www\.|\.(de|com|org|net|eu)\b/i
-                                 .test(text.slice(Math.max(0, stelle - 25), stelle + 25)),
-      grund:'Nach dem Satzzeichen fehlt ein Leerzeichen' },
-    { muster:/\b([A-Za-zÄÖÜäöüß]+) \1\b/gi,   bau:(m, w) => w,
-      grund:'Das Wort steht doppelt da' },
-  ];
-  for (const regel of regeln) {
-    for (const treffer of text.matchAll(regel.muster)) {
+/* ------------------------------------------------------------
+   b) Abstände und Satzzeichen
+   ------------------------------------------------------------ */
+
+/* Steht direkt vor dieser Stelle eine Abkürzung („z. B.“, „usw.“)? Dann ist der
+   Punkt kein Satzende, und weder Leerzeichen noch Großschreibung fehlen. */
+const ABKUERZUNG = /(?:^|[\s(„"])(?:[A-Za-zÄÖÜäöüß]|ca|bzw|usw|evtl|ggf|inkl|exkl|vgl|bspw|Nr|Dr|Prof|Abs|Mio|Mrd|Tel|Str)\.$/;
+const istAbkuerzung = (text, punkt) => ABKUERZUNG.test(text.slice(Math.max(0, punkt - 9), punkt + 1));
+
+/* Web- und E-Mail-Adressen haben ihre eigenen Punkte. */
+const istAdresse = (text, stelle) =>
+  /[@]|https?:|www\.|\.(de|com|org|net|eu)\b/i.test(text.slice(Math.max(0, stelle - 25), stelle + 25));
+
+/* Folgt hinter dem Treffer ein großgeschriebenes Wort?
+   Muss außerhalb des Musters stehen: Regeln mit „i“ sehen den Unterschied
+   zwischen groß und klein nicht mehr — auch nicht in [A-ZÄÖÜ]. */
+const grossDahinter = (treffer, text) =>
+  /^[ \t]+[A-ZÄÖÜ]/.test(text.slice(treffer.index + treffer[0].length));
+
+const ZEICHEN_REGELN = [
+  { muster:/ {2,}/g,                        bau:() => ' ', leer:true,
+    grund:'Mehrere Leerzeichen hintereinander' },
+  { muster:/[ \t]+([,.;:!?])/g,             bau:(m, z) => z, leer:true,
+    grund:'Vor dem Satzzeichen gehört kein Leerzeichen' },
+  { muster:/([,;:])([A-Za-zÄÖÜäöüß])/g,     bau:(m, z, b) => z + ' ' + b, leer:true,
+    grund:'Nach dem Satzzeichen fehlt ein Leerzeichen' },
+  /* Punkt/Ausrufe-/Fragezeichen, direkt gefolgt vom nächsten Satz.
+     Mindestens zwei Buchstaben davor, damit Abkürzungen wie „z.B.“ in Ruhe
+     gelassen werden – die beiden Wächter halten den Rest raus. */
+  { muster:/([A-Za-zÄÖÜäöüß]{2}[.!?])([A-Za-zÄÖÜäöüß])/g,
+    bau:(m, z, b) => z + ' ' + b, leer:true,
+    pruefe:(treffer, text) => !istAdresse(text, treffer.index)
+                           && !istAbkuerzung(text, treffer.index + 2),
+    grund:'Nach dem Satzzeichen fehlt ein Leerzeichen' },
+  /* Drei Punkte sind Absicht, zwei sind ein Versehen. */
+  { muster:/,{2,}/g,                        bau:() => ',',
+    grund:'Das Komma steht doppelt da' },
+  { muster:/([;:!?])\1+/g,                  bau:(m, z) => z,
+    grund:'Das Satzzeichen steht doppelt da' },
+  { muster:/\b([A-Za-zÄÖÜäöüß]+)([ \t]+)\1\b/gi, bau:(m, w) => w,
+    grund:'Das Wort steht doppelt da' },
+  /* „Peter's Auto“ – der Apostroph kommt aus dem Englischen. */
+  { muster:/\b([A-ZÄÖÜ][A-Za-zÄÖÜäöüß]{1,})['’´`]s\b/g, bau:(m, name) => name + 's',
+    art:'tipp',
+    grund:'Vor dem Genitiv-s steht im Deutschen kein Apostroph.' },
+];
+
+/* ------------------------------------------------------------
+   c) Großschreibung
+   ------------------------------------------------------------ */
+
+/* Nach „beim/zum/vom“ wird aus dem Tunwort ein Hauptwort: „beim Schreiben“.
+   Diese Wörter sehen genauso aus, sind aber keine Hauptwörter — sie stehen
+   vor einem Hauptwort oder bilden eine feste Wendung („zum einen“). */
+const KEIN_HAUPTWORT = new Set([
+  'einen','anderen','ersten','zweiten','dritten','vierten','letzten','meisten',
+  'wenigsten','besten','ganzen','großen','kleinen','neuen','alten','guten',
+  'schönen','gleichen','selben','vergangenen','nächsten','kommenden','langen',
+  'kurzen','jungen','hohen','tiefen','warmen','kalten','richtigen','falschen',
+  'eigenen','beiden','vielen','wenigen','allen','keinen','solchen','diesen',
+  'jenen','meinen','deinen','seinen','ihren','unseren','euren','teuren',
+]);
+
+const GROSS_REGELN = [
+  // Der allererste Buchstabe
+  { muster:/(^[ \t]*)([a-zäöüß])/g, gruppe:2,
+    bau:(m, vor, b) => b.toUpperCase(),
+    grund:'Satzanfang großschreiben' },
+  /* Nach Punkt, Ausrufe- oder Fragezeichen — auch über einen Zeilenumbruch
+     hinweg. Eine neue Zeile allein ist kein Satzanfang: nach der Anrede
+     („Liebe Anna,“) geht es klein weiter, und umbrochene Absätze aus anderen
+     Apps stünden sonst voller falscher Funde.
+     Auslassungspunkte („warte … dann“) sind ebenfalls kein Satzende. */
+  { muster:/([.!?]+["»›)]?\s+)([a-zäöüß])/g, gruppe:2,
+    bau:(m, vor, b) => b.toUpperCase(),
+    pruefe:(treffer, text) => !/^\.{2,}/.test(treffer[1])
+                           && !istAbkuerzung(text, treffer.index)
+                           && !istAdresse(text, treffer.index),
+    grund:'Satzanfang großschreiben' },
+  // „beim schreiben“ → „beim Schreiben“. Folgt ein großgeschriebenes Wort,
+  // ist das -en-Wort ein Eigenschaftswort davor („zum neuen Haus“) — Finger weg.
+  { muster:/\b(beim|zum|vom|ans|aufs)([ \t]+)([a-zäöüß]{3,}en)\b/gi,
+    gruppe:3,
+    bau:(m, vor, l, wort) => wort[0].toUpperCase() + wort.slice(1),
+    pruefe:(treffer, text) => !KEIN_HAUPTWORT.has(treffer[3].toLowerCase())
+                           && !/sten$/i.test(treffer[3])
+                           && !grossDahinter(treffer, text),
+    art:'tipp',
+    grund:'Nach „beim/zum/vom“ wird aus dem Tunwort ein Hauptwort.' },
+];
+
+/* ------------------------------------------------------------
+   d) Grammatik: die Verwechslungen, die kein Rechtschreibprüfer sieht
+   ------------------------------------------------------------ */
+
+const FUERWOERTER = 'ich|du|er|sie|es|wir|ihr|man';
+
+/* Zeitwörter, nach denen „dass“ folgt. Absichtlich nur die gebeugten Formen:
+   nach einem Mittelwort („das Buch gelesen, das ich …“) steht oft ein
+   Bezugswort, da wäre „das“ richtig. */
+const DENK_ZEITWOERTER =
+  'denke|denkst|denkt|dachte|dachtest|dachten|glaube|glaubst|glaubt|glaubte|glaubten|' +
+  'hoffe|hoffst|hofft|hoffte|meine|meinst|meint|meinte|finde|findest|findet|fand|' +
+  'weiß|weißt|wissen|wusste|wusstest|wussten|sage|sagst|sagt|sagte|sagten|' +
+  'erzähle|erzählst|erzählt|erzählte|verstehe|verstehst|versteht|vermute|vermutest|vermutet|' +
+  'fürchte|fürchtest|fürchtet|bedeutet|heißt|hieß|merke|merkst|merkt|merkte|' +
+  'sehe|siehst|sieht|höre|hörst|hört|schreibe|schreibst|schreibt|schrieb|' +
+  'verspreche|versprichst|verspricht|bemerke|bemerkt|entschuldige';
+
+/* Zeitangaben nach „seit“. */
+const ZEITANGABEN =
+  'einem|einer|dem|der|den|ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|' +
+  'vielen|mehreren|einigen|kurzem|langem|längerem|geraumer|damals|gestern|heute|' +
+  'neuestem|jeher|wann|Jahren?|Monaten?|Wochen?|Tagen?|Stunden?|Minuten?|' +
+  'Jahrzehnten?|Ewigkeiten|Anfang|Beginn|Montag|Dienstag|Mittwoch|Donnerstag|' +
+  'Freitag|Samstag|Sonntag';
+
+/* Steigerungsformen. Danach heißt es „als“, nie „wie“. Bewusst als Liste und
+   nicht als Endung „-er“: sonst geriete jedes „der wie …“ in die Fänge. */
+const STEIGERUNGEN =
+  'größer|kleiner|besser|schlechter|schneller|langsamer|älter|jünger|höher|tiefer|' +
+  'länger|kürzer|stärker|schwächer|lieber|teurer|billiger|schöner|hässlicher|' +
+  'einfacher|leichter|schwerer|öfter|näher|dicker|dünner|wärmer|kälter|klüger|' +
+  'dümmer|lauter|leiser|glücklicher|müder|wichtiger|schlimmer|ruhiger|netter|' +
+  'freundlicher|klarer|heller|dunkler|weicher|härter|süßer|gesünder|reicher|' +
+  'ärmer|sicherer|genauer|deutlicher|häufiger|seltener|breiter|schmaler|' +
+  'hübscher|mehr|weniger|anders';
+
+/* Zeitwörter ohne Wem-Fall: „Ich glaube, dass der Zug kommt“. Nach „sagen“ oder
+   „schreiben“ darf hinter dem „das“ auch ein Wem-Fall stehen („Ich schreibe das
+   der Firma“) — deshalb stehen die hier nicht mit drin. */
+const DENK_ZEITWOERTER_ENG =
+  'glaube|glaubst|glaubt|glaubte|denke|denkst|denkt|dachte|meine|meinst|meint|meinte|' +
+  'hoffe|hoffst|hofft|hoffte|weiß|weißt|wusste|vermute|vermutet|fürchte|fürchtet|' +
+  'verstehe|versteht|bedeutet|heißt';
+
+/* Eigenschaftswörter, nach denen ein „dass“-Satz folgt: „Es ist gut, dass …“ */
+const DASS_EIGENSCHAFTEN =
+  'wichtig|wichtiger|gut|schön|schade|klar|froh|sicher|möglich|schlimm|toll|' +
+  'blöd|traurig|nett|richtig|falsch|schlecht|logisch|normal|selten';
+
+/* Was hinter dem „dass“ stehen darf, ohne dass es ein Bezugswort sein könnte.
+   „ein/eine“ fehlt mit Absicht: „das eine Auto“ ist richtig so. */
+const FOLGT_NEBENSATZ = FUERWOERTER + '|die|der|den|dem|kein|keine|keinen';
+
+const GRAMMATIK_REGELN = [
+  /* das/dass nach einem Zeitwort des Denkens und Sagens. Fehlt auch noch das
+     Komma, kommt es gleich mit — beides gehört zusammen. */
+  { muster:new RegExp('\\b(' + DENK_ZEITWOERTER + ')(,?)([ \\t]+)das\\b' +
+                      '(?=[ \\t]+(?:' + FUERWOERTER + ')\\b)', 'gi'),
+    bau:(m, verb, komma, l) => verb + ',' + l + 'dass',
+    art:'tipp',
+    grund:'Hier leitet „dass“ den Nebensatz ein – mit Komma davor.' },
+  { muster:new RegExp('\\b(' + DENK_ZEITWOERTER_ENG + ')(,?)([ \\t]+)das\\b' +
+                      '(?=[ \\t]+(?:' + FOLGT_NEBENSATZ + ')\\b)', 'gi'),
+    bau:(m, verb, komma, l) => verb + ',' + l + 'dass',
+    art:'tipp',
+    grund:'Hier leitet „dass“ den Nebensatz ein – mit Komma davor.' },
+  { muster:new RegExp('\\b(' + DASS_EIGENSCHAFTEN + ')(,?)([ \\t]+)das\\b' +
+                      '(?=[ \\t]+(?:' + FOLGT_NEBENSATZ + ')\\b)', 'gi'),
+    bau:(m, wort, komma, l) => wort + ',' + l + 'dass',
+    art:'tipp',
+    grund:'Hier leitet „dass“ den Nebensatz ein – mit Komma davor.' },
+
+  /* seit/seid */
+  { muster:new RegExp('\\bseid([ \\t]+)(?=(?:' + ZEITANGABEN + ')\\b)', 'gi'),
+    bau:(m, l) => 'seit' + l,
+    grund:'Bei Zeitangaben heißt es „seit“ – „seid“ nur bei „ihr seid“.' },
+  /* „Seit ihr das wisst …“ – aber „Seit ihr Vater gestorben ist“ bleibt stehen:
+     folgt ein Hauptwort, gehört „ihr“ dazu und „seit“ ist richtig. */
+  { muster:/\bseit([ \t]+)ihr\b/gi,
+    bau:(m, l) => 'seid' + l + 'ihr',
+    pruefe:(treffer, text) => !grossDahinter(treffer, text),
+    grund:'„ihr seid“ – hier gehört ein d ans Ende.' },
+  { muster:new RegExp('\\bihr([ \\t]+)seit\\b(?![ \\t]+(?:' + ZEITANGABEN + ')\\b)', 'gi'),
+    bau:(m, l) => 'ihr' + l + 'seid',
+    grund:'„ihr seid“ – hier gehört ein d ans Ende.' },
+  { muster:/\bseit([ \t]+)(ruhig|still|nett|lieb|vorsichtig|ehrlich|froh|gegrüßt|willkommen|gespannt|unbesorgt|bereit)\b/gi,
+    bau:(m, l, wort) => 'seid' + l + wort,
+    grund:'Aufforderung an mehrere: „seid ruhig“ mit d.' },
+
+  /* Vergleich: größer als, nicht größer wie */
+  { muster:new RegExp('\\b(' + STEIGERUNGEN + ')([ \\t]+)wie\\b', 'gi'),
+    bau:(m, wort, l) => wort + l + 'als',
+    grund:'Nach der Steigerung heißt es „als“: größer als, lieber als.' },
+  { muster:/\bals([ \t]+)wie\b/gi,
+    bau:() => 'als',
+    grund:'„als wie“ ist doppelt gemoppelt – „als“ reicht.' },
+];
+
+/* ------------------------------------------------------------
+   e) Komma vor dem Nebensatz
+   ------------------------------------------------------------ */
+
+/* Nach diesen Wörtern folgt kein Komma: „auch wenn“, „und weil“, „so dass“
+   gehören zusammen, das Komma stünde davor. */
+const KEIN_KOMMA_DAVOR = new Set([
+  'und','oder','aber','sondern','denn','so','als','auch','selbst','sogar','außer',
+  'nur','immer','je','erst','schon','gerade','eben','besonders','allem','dann',
+  'noch','kaum','wie','egal','ganz','vor','doch','geschweige',
+]);
+
+/* Wort → braucht es ein Fürwort dahinter, damit es sicher ein Nebensatz ist?
+   „damit“ und „während“ gibt es auch ohne Nebensatz („damit bin ich zufrieden“,
+   „während des Essens“) — da wäre ein Komma falsch. */
+const NEBENSATZ_WOERTER = [
+  ['dass', false], ['weil', false], ['obwohl', false], ['sodass', false],
+  ['sobald', false], ['solange', false], ['bevor', false], ['nachdem', false],
+  ['falls', false], ['sofern', false], ['indem', false], ['wenn', false],
+  ['ob', false], ['damit', true], ['während', true],
+];
+
+const KOMMA_REGELN = NEBENSATZ_WOERTER.map(([wort, nurVorFuerwort]) => ({
+  muster: new RegExp('\\b([A-Za-zÄÖÜäöüß]{2,})([ \\t]+)(' + wort + ')\\b' +
+                     (nurVorFuerwort ? '(?=[ \\t]+(?:' + FUERWOERTER + ')\\b)' : ''), 'gi'),
+  bau: (m, davor, l, schluessel) => davor + ',' + l + schluessel,
+  pruefe: (treffer) => !KEIN_KOMMA_DAVOR.has(treffer[1].toLowerCase()),
+  art: 'tipp',
+  grund: 'Vor „' + wort + '“ beginnt ein Nebensatz – da gehört ein Komma hin.',
+})).concat([
+  /* „aber/sondern/denn“ verbinden zwei Sätze — dann steht ein Komma davor.
+     Nur mit Fürwort dahinter, sonst gerät „Das ist aber schön“ mit hinein. */
+  { muster:new RegExp('\\b([A-Za-zÄÖÜäöüß]{2,})([ \\t]+)(aber|sondern|denn)\\b' +
+                      '(?=[ \\t]+(?:' + FUERWOERTER + ')\\b)', 'gi'),
+    bau:(m, davor, l, wort) => davor + ',' + l + wort,
+    pruefe:(treffer) => !KEIN_KOMMA_DAVOR.has(treffer[1].toLowerCase()),
+    art:'tipp',
+    grund:'Hier stoßen zwei Sätze aneinander – davor gehört ein Komma.' },
+]);
+
+/* ------------------------------------------------------------
+   f) Passt das Zeitwort zum Fürwort?
+
+   „ich habe“, „du hast“, „er hat“ — wer da durcheinanderkommt, hört es beim
+   eigenen Lesen oft nicht. Geprüft werden die acht häufigsten Zeitwörter und
+   nur die Fürwörter, die eindeutig sind: „sie“, „ihr“ und „es“ bleiben außen
+   vor, weil dort beide Formen richtig sein können („sie ist“ und „sie sind“,
+   „ihr ist kalt“, „es sind viele gekommen“).
+   ------------------------------------------------------------ */
+const ZEITWOERTER = [
+  { ich:'bin',   du:'bist',   er:'ist',  wir:'sind'   },
+  { ich:'habe',  du:'hast',   er:'hat',  wir:'haben'  },
+  { ich:'werde', du:'wirst',  er:'wird', wir:'werden' },
+  { ich:'kann',  du:'kannst', er:'kann', wir:'können' },
+  { ich:'muss',  du:'musst',  er:'muss', wir:'müssen' },
+  { ich:'will',  du:'willst', er:'will', wir:'wollen' },
+  { ich:'soll',  du:'sollst', er:'soll', wir:'sollen' },
+  { ich:'darf',  du:'darfst', er:'darf', wir:'dürfen' },
+];
+const SPALTE = { ich:'ich', du:'du', er:'er', man:'er', wir:'wir' };
+const FORM_ZU_ZEITWORT = new Map();
+for (const zeile of ZEITWOERTER) {
+  for (const form of Object.values(zeile)) FORM_ZU_ZEITWORT.set(form, zeile);
+}
+
+const KONGRUENZ_MUSTER = [
+  // „wir hat“
+  { muster:/\b(ich|du|er|man|wir)([ \t]+)([a-zäöüß]+)\b/gi, fuerwort:1, form:3 },
+  // „hat wir“ — in Fragen und nach vorangestelltem Satzteil
+  { muster:/\b([a-zäöüß]+)([ \t]+)(ich|du|er|man|wir)\b/gi, fuerwort:3, form:1 },
+];
+
+function pruefeKongruenz(text, funde) {
+  for (const stelle of KONGRUENZ_MUSTER) {
+    for (const treffer of text.matchAll(stelle.muster)) {
+      const fuerwort = treffer[stelle.fuerwort];
+      const form = treffer[stelle.form];
+      const zeile = FORM_ZU_ZEITWORT.get(form.toLowerCase());
+      if (!zeile) continue;
+      const richtig = zeile[SPALTE[fuerwort.toLowerCase()]];
+      if (!richtig || richtig === form.toLowerCase()) continue;
+
       const alt = treffer[0];
-      if (regel.pruefe && !regel.pruefe(text, treffer.index)) continue;
-      const neu = regel.bau(...treffer);
-      if (neu === alt) continue;
-      funde.push({
-        von: treffer.index, bis: treffer.index + alt.length,
-        alt, neu,
-        zeigeAlt: alt.replace(/ /g, '␣'), zeigeNeu: neu.replace(/ /g, '␣'),
-        grund: regel.grund, tipp: false,
-      });
+      const neu = stelle.form === 1
+        ? uebernimmSchreibweise(form, richtig) + treffer[2] + fuerwort
+        : fuerwort + treffer[2] + uebernimmSchreibweise(form, richtig);
+      funde.push(machFund(treffer.index, treffer.index + alt.length, alt, neu,
+        'So passt das Zeitwort zum Fürwort: „' + fuerwort.toLowerCase() + ' ' + richtig + '“.',
+        'fehler'));
+    }
+  }
+}
+
+/* ------------------------------------------------------------
+   g) Der Punkt am Ende
+   ------------------------------------------------------------ */
+function pruefeSatzende(text, funde) {
+  const bisEnde = text.replace(/\s+$/, '');
+  if (!bisEnde || /[.!?:…»"'\)\]]$/.test(bisEnde)) return;
+  /* Gezählt wird nur die letzte Zeile: „Herzliche Grüße“ und ein Name darunter
+     sind ganze Sätze, brauchen aber keinen Punkt. */
+  const woerter = bisEnde.slice(bisEnde.lastIndexOf('\n') + 1).trim().split(/\s+/);
+  if (woerter.length < 5) return;
+  const letztes = woerter[woerter.length - 1];
+  if (!/[A-Za-zÄÖÜäöüß0-9]$/.test(letztes)) return;
+  const von = bisEnde.length - letztes.length;
+  funde.push(machFund(von, bisEnde.length, letztes, letztes + '.',
+                      'Am Ende fehlt der Punkt.', 'tipp'));
+}
+
+/* ------------------------------------------------------------
+   h) Satzbau: Hinweise ohne Knopf
+
+   Hier gibt es nichts zu ersetzen — der Satz ist nicht falsch, er ist nur
+   schwer zu lesen. Deshalb steht kein „Ändern“ daneben, nur der Hinweis.
+   ------------------------------------------------------------ */
+function machHinweis(von, bis, grund, stelle) {
+  return { von, bis, alt:'', neu:'', grund, stelle, art:'hinweis' };
+}
+
+function pruefeSatzbau(text, hinweise) {
+  for (const treffer of text.matchAll(/[^.!?\n]+/g)) {
+    const roh = treffer[0];
+    const satz = roh.trim();
+    if (!satz) continue;
+    const anfang = treffer.index + roh.indexOf(satz[0]);
+    const woerter = satz.split(/\s+/).length;
+    const binder = (satz.match(/\b(und|oder|aber|dann|weil)\b/gi) || []).length;
+
+    if (woerter > 25) {
+      hinweise.push(machHinweis(anfang, anfang + satz.length,
+        'Langer Satz: ' + woerter + ' Wörter. Zwei kürzere Sätze liest man leichter.', satz));
+    } else if (woerter >= 12 && binder >= 3) {
+      hinweise.push(machHinweis(anfang, anfang + satz.length,
+        'Der Satz hängt an vielen Bindewörtern. Ein Punkt dazwischen tut ihm gut.', satz));
     }
   }
 
-  // c) Satzanfang großschreiben
-  for (const treffer of text.matchAll(/(^|[.!?]\s+)([a-zäöüß])/g)) {
-    const buchstabe = treffer[2];
-    const stelle = treffer.index + treffer[1].length;
-    funde.push({
-      von: stelle, bis: stelle + 1,
-      alt: buchstabe, neu: buchstabe.toUpperCase(),
-      zeigeAlt: buchstabe, zeigeNeu: buchstabe.toUpperCase(),
-      grund: 'Satzanfang großschreiben', tipp: false,
-    });
-  }
-
-  // d) Hinweise auf typische Verwechslungen
-  const hinweise = [
-    { muster:/,\s*das\s+(ich|du|er|sie|es|wir|ihr|man)\b/gi,
-      bau:(m) => m.replace(/das/i, 'dass'),
-      grund:'Nach dem Komma leitet „dass“ den Nebensatz ein.' },
-    { muster:/\bseid\s+(einem|einer|dem|der|gestern|heute|langem|Jahren|Monaten|Wochen|Tagen)\b/gi,
-      bau:(m) => m.replace(/seid/i, 'seit'),
-      grund:'Bei Zeitangaben heißt es „seit“ – „seid“ nur bei „ihr seid“.' },
-    { muster:/\bseit\s+ihr\b/gi,
-      bau:() => 'seid ihr',
-      grund:'„ihr seid“ – hier gehört ein d ans Ende.' },
+  /* Zeichen, die immer zu zweit auftreten. Fehlt der Partner, merkt man es
+     beim Schreiben selten. */
+  const paare = [
+    ['(', ')', 'Klammern'],
+    ['„', '“', 'Anführungszeichen'],
   ];
-  for (const hinweis of hinweise) {
-    for (const treffer of text.matchAll(hinweis.muster)) {
-      const alt = treffer[0];
-      const neu = hinweis.bau(alt);
-      if (neu === alt) continue;
-      funde.push({
-        von: treffer.index, bis: treffer.index + alt.length,
-        alt, neu, zeigeAlt: alt, zeigeNeu: neu,
-        grund: hinweis.grund, tipp: true,
-      });
+  for (const [auf, zu, name] of paare) {
+    const offen = text.split(auf).length - 1;
+    const geschlossen = text.split(zu).length - 1;
+    if (offen !== geschlossen) {
+      hinweise.push(machHinweis(text.length, text.length,
+        name + ': ' + offen + '-mal geöffnet, ' + geschlossen + '-mal geschlossen.', ''));
     }
   }
+  const geraden = text.split('"').length - 1;
+  if (geraden % 2 === 1) {
+    hinweise.push(machHinweis(text.length, text.length,
+      'Ein Anführungszeichen steht allein da.', ''));
+  }
+}
 
-  funde.sort((a, b) => a.von - b.von);
-  return funde;
+/* ------------------------------------------------------------
+   Zwei Funde an derselben Stelle gehen nicht: die erste Änderung würde die
+   zweite ins Leere laufen lassen. Nach dem Ändern wird ohnehin neu gesucht,
+   dann taucht der verdeckte Fund von selbst wieder auf.
+   ------------------------------------------------------------ */
+function ohneUeberschneidung(funde) {
+  funde.sort((a, b) => a.von - b.von || (b.bis - b.von) - (a.bis - a.von));
+  const behalten = [];
+  let bisher = -1;
+  for (const fund of funde) {
+    if (fund.von < bisher) continue;
+    behalten.push(fund);
+    bisher = fund.bis;
+  }
+  return behalten;
+}
+
+/* Sucht alle Stellen, die auffällig sind. */
+function findeProbleme(text) {
+  const korrekturen = [];
+  pruefeWoerter(text, korrekturen);
+  wendeRegelnAn(text, ZEICHEN_REGELN, korrekturen);
+  wendeRegelnAn(text, GROSS_REGELN, korrekturen);
+  wendeRegelnAn(text, GRAMMATIK_REGELN, korrekturen);
+  wendeRegelnAn(text, KOMMA_REGELN, korrekturen);
+  pruefeKongruenz(text, korrekturen);
+  pruefeSatzende(text, korrekturen);
+
+  const hinweise = [];
+  pruefeSatzbau(text, hinweise);
+
+  // Erst das zum Ändern, danach das zum Nachdenken.
+  return ohneUeberschneidung(korrekturen).concat(hinweise);
 }
 
 function zeigeFunde() {
@@ -381,40 +727,67 @@ function zeigeFunde() {
 
   for (const fund of funde) {
     const karte = document.createElement('div');
-    karte.className = 'fund' + (fund.tipp ? ' fund--tipp' : '');
+    karte.className = 'fund fund--' + fund.art;
 
     const beschreibung = document.createElement('div');
     beschreibung.className = 'fund__text';
 
-    const zeile = document.createElement('div');
-    zeile.className = 'fund__wort';
-    const alt = document.createElement('span'); alt.className = 'fund__falsch';  alt.textContent = fund.zeigeAlt;
-    const pfeil = document.createElement('span'); pfeil.className = 'fund__pfeil'; pfeil.textContent = '→';
-    const neu = document.createElement('span'); neu.className = 'fund__richtig'; neu.textContent = fund.zeigeNeu;
-    zeile.append(alt, pfeil, neu);
+    if (fund.art === 'hinweis') {
+      // Nichts zu ersetzen: statt „falsch → richtig“ steht hier der Satz selbst.
+      if (fund.stelle) {
+        const stelle = document.createElement('div');
+        stelle.className = 'fund__stelle';
+        stelle.textContent = '„' + kuerze(fund.stelle) + '“';
+        beschreibung.appendChild(stelle);
+      }
+    } else {
+      const zeile = document.createElement('div');
+      zeile.className = 'fund__wort';
+      const alt = document.createElement('span'); alt.className = 'fund__falsch';  alt.textContent = fund.zeigeAlt;
+      const pfeil = document.createElement('span'); pfeil.className = 'fund__pfeil'; pfeil.textContent = '→';
+      const neu = document.createElement('span'); neu.className = 'fund__richtig'; neu.textContent = fund.zeigeNeu;
+      zeile.append(alt, pfeil, neu);
+      beschreibung.appendChild(zeile);
+    }
 
     const grund = document.createElement('small');
     grund.className = 'fund__grund';
     grund.textContent = fund.grund;
+    beschreibung.appendChild(grund);
+    karte.appendChild(beschreibung);
 
-    beschreibung.append(zeile, grund);
+    if (fund.art !== 'hinweis') {
+      const knopf = document.createElement('button');
+      knopf.className = 'btn btn--primary btn--small';
+      knopf.append(icon('i-check'), document.createTextNode(' Ändern'));
+      knopf.addEventListener('click', () => {
+        const jetzt = el.text.value;
+        // Sicherheitsprüfung: Steht an dieser Stelle noch dasselbe?
+        if (jetzt.slice(fund.von, fund.bis) !== fund.alt) { zeigeFunde(); return; }
+        merkeFuerZurueck(jetzt);
+        el.text.value = jetzt.slice(0, fund.von) + fund.neu + jetzt.slice(fund.bis);
+        textGeaendert();
+        zeigeFunde();   // neu suchen, damit die Positionen wieder stimmen
+      });
+      karte.appendChild(knopf);
+    }
 
-    const knopf = document.createElement('button');
-    knopf.className = 'btn btn--primary btn--small';
-    knopf.append(icon('i-check'), document.createTextNode(' Ändern'));
-    knopf.addEventListener('click', () => {
-      const jetzt = el.text.value;
-      // Sicherheitsprüfung: Steht an dieser Stelle noch dasselbe?
-      if (jetzt.slice(fund.von, fund.bis) !== fund.alt) { zeigeFunde(); return; }
-      merkeFuerZurueck(jetzt);
-      el.text.value = jetzt.slice(0, fund.von) + fund.neu + jetzt.slice(fund.bis);
-      textGeaendert();
-      zeigeFunde();   // neu suchen, damit die Positionen wieder stimmen
-    });
-
-    karte.append(beschreibung, knopf);
     el.funde.appendChild(karte);
   }
+
+  el.status.textContent = zusammenfassung(funde);
+}
+
+const kuerze = (satz) => satz.length > 70 ? satz.slice(0, 70).trimEnd() + ' …' : satz;
+
+/* Eine Zeile, die sich vorlesen lässt: wie viel ist es, und was davon ist was. */
+function zusammenfassung(funde) {
+  const hinweise = funde.filter((f) => f.art === 'hinweis').length;
+  const aendern = funde.length - hinweise;
+  const teile = [];
+  if (aendern)  teile.push(aendern === 1 ? '1 Stelle zum Ändern' : aendern + ' Stellen zum Ändern');
+  if (hinweise) teile.push(hinweise === 1 ? '1 Hinweis zum Satzbau' : hinweise + ' Hinweise zum Satzbau');
+  return teile.join(' · ') + '.';
 }
 
 el.btnPruefen.addEventListener('click', zeigeFunde);
