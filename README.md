@@ -46,6 +46,7 @@ Die App baut **nicht** nach, was das Handy schon kann. Sie ergänzt nur, was feh
 | Zu lange Sätze, fehlender Punkt am Ende | ➜ **diese App** |
 | Zeigen, an welchem Wort man gerade schreibt | ➜ **diese App** |
 | Ganzen Text auf einmal korrigieren lassen | ➜ **diese App** (KI-Knopf) |
+| In eine andere Sprache übersetzen | ➜ **diese App** (KI-Knopf) |
 | Text aufbewahren und weiterreichen | ➜ **diese App** |
 
 Der Knopf **„Prüfen"** sucht deshalb ausdrücklich nur nach Fehlern, die ein
@@ -98,6 +99,17 @@ Schlüssel hinterlegt ist.
 1. Schlüssel holen auf <https://console.anthropic.com> ➜ *API Keys*
 2. In der App oben rechts aufs Zahnrad ➜ Schlüssel einfügen ➜ *Speichern*
 
+Der **KI-Knopf** fragt dann, was er tun soll:
+
+* **Rechtschreibung und Grammatik** — den ganzen Text auf einmal korrigieren.
+* **Übersetzen** — in eine von vierzehn Sprachen. Deutsch steht mit in der
+  Liste, für den umgekehrten Weg: fremdsprachigen Text ins Feld, Deutsch
+  wählen, fertig.
+
+Beides ersetzt den Text im Feld; **„Zurückholen"** bringt das Original zurück.
+Beides schickt den Text an die Anthropic-Schnittstelle — ohne diesen Knopf
+verlässt nichts das Gerät.
+
 Der Schlüssel bleibt **nur auf diesem Handy** und geht an niemanden außer an
 Anthropic beim Korrigieren.
 
@@ -137,7 +149,7 @@ icon-maskable.svg             dasselbe Motiv mit Rand — Android schneidet rund
 icon-*.png                    daraus erzeugt, für den Startbildschirm im Browser
 
 android/                      Rahmen für die APK (WebView um dieselbe Web-App)
-.github/workflows/android.yml  baut die APK bei jedem Push
+.github/workflows/android.yml  baut auf jedem Zweig, veröffentlicht nur von main
 APK-HERUNTERLADEN.md          Anleitung fürs Handy + Signaturschlüssel
 ```
 

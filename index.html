@@ -41,6 +41,8 @@
   <!-- Halb gefüllter Kreis: das übliche Zeichen für „richtet sich nach dem Gerät“. -->
   <symbol id="i-auto"     viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-close"    viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <!-- Erdkugel: das übliche Zeichen für Sprache und Übersetzen. -->
+  <symbol id="i-globus"   viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.4 5.3 3.4 8.5s-1.2 6.2-3.4 8.5c-2.2-2.3-3.4-5.3-3.4-8.5S9.8 5.8 12 3.5z"/></symbol>
 </svg>
 
 <header class="topbar">
@@ -99,6 +101,32 @@
     <button class="btn btn--icon" id="btn-leeren" title="Text löschen" aria-label="Text löschen"><svg class="ic"><use href="#i-trash"></use></svg></button>
   </div>
 </footer>
+
+<!-- Korrigieren und Übersetzen stehen zusammen hinter dem KI-Knopf: Beides
+     braucht denselben Schlüssel und dasselbe Internet, und ein sechster Knopf
+     hätte die Leiste auf schmalen Handys wieder aufgeklappt. -->
+<dialog id="dlg-ki">
+  <div class="dlg__head">
+    <h2>Was soll die KI tun?</h2>
+    <button class="btn btn--icon" id="btn-ki-zu" aria-label="Schließen"><svg class="ic"><use href="#i-close"></use></svg></button>
+  </div>
+
+  <div class="form">
+    <button class="btn btn--primary btn--breit" id="btn-korrigieren">
+      <svg class="ic"><use href="#i-check"></use></svg> Rechtschreibung und Grammatik
+    </button>
+
+    <label class="field">
+      Sprache
+      <select id="zielsprache"></select>
+    </label>
+    <button class="btn btn--breit" id="btn-uebersetzen">
+      <svg class="ic"><use href="#i-globus"></use></svg> Übersetzen
+    </button>
+
+    <p class="hint">Beides schickt deinen Text an die KI. „Zurückholen“ bringt danach das Original zurück.</p>
+  </div>
+</dialog>
 
 <dialog id="dlg-settings">
   <div class="dlg__head">
