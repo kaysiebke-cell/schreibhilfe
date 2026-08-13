@@ -117,11 +117,11 @@
     </button>
 
     <label class="field">
-      Sprache
+      Sprache <em>Wählen allein übersetzt noch nicht — danach unten tippen.</em>
       <select id="zielsprache"></select>
     </label>
     <button class="btn btn--breit" id="btn-uebersetzen">
-      <svg class="ic"><use href="#i-globus"></use></svg> Übersetzen
+      <svg class="ic"><use href="#i-globus"></use></svg><span class="btn__wort"> Übersetzen</span>
     </button>
 
     <p class="hint">Beides schickt deinen Text an die KI. „Zurückholen“ bringt danach das Original zurück.</p>
@@ -136,9 +136,12 @@
 
   <div class="form">
     <label class="field">
-      API-Schlüssel <em>für die KI-Korrektur</em>
+      API-Schlüssel <em>für Korrigieren und Übersetzen</em>
       <input id="api-key" type="password" placeholder="sk-ant-…" autocomplete="off">
     </label>
+    <!-- Das Feld zeigt Punkte statt Zeichen. Ohne diese Zeile sieht niemand,
+         ob überhaupt etwas gespeichert ist und ob es plausibel aussieht. -->
+    <p class="hint" id="schluessel-stand"></p>
 
     <label class="field">
       KI-Modell
