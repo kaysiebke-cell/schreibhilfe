@@ -294,21 +294,63 @@ addEventListener('resize', markiereWort);
 
 /* Kein „Wirklich löschen?“-Fenster: In der Android-App gibt es kein
    window.confirm — es liefert wortlos false, und der Knopf täte dann gar
-   nichts. Der Text ist auch so nicht weg, „Rückgängig“ holt ihn zurück. */
+   nichts. Der Text ist auch so nicht weg, ein zweites Tippen holt ihn zurück.
+
+   Genau dafür wechselt der Knopf sein Bild: Nach dem Löschen zeigt er einen
+   Rückholpfeil und tut auch das. Zwei Bedeutungen auf einem Knopf sind sonst
+   heikel — hier nicht, weil man sie sieht. Sobald wieder getippt wird, steht
+   dort wieder der Mülleimer. */
 el.btnLeeren.addEventListener('click', () => {
+  if (zurueckImEimer && vorherigerText !== null) { holeZurueck(); return; }
   if (!el.text.value) return;
-  merkeFuerZurueck(el.text.value);
+  merkeFuerZurueck(el.text.value, true);
   el.text.value = '';
   textGeaendert();
   el.funde.innerHTML = '';
-  el.status.textContent = 'Text gelöscht.';
+  el.status.textContent = 'Text gelöscht. Der Pfeil daneben holt ihn zurück.';
 });
 
-/* Rückgängig für Korrekturen */
+/* ------------------------------------------------------------
+   Zurückholen — an zwei Stellen, aber nie an beiden gleichzeitig.
+
+   Nach dem Löschen liegt es auf dem Mülleimer selbst: Der Daumen ist schon
+   dort, und der Knopf zeigt dann einen Rückholpfeil statt des Eimers.
+
+   Nach einer Korrektur (KI oder „Ändern“) geht das nicht — dort wäre der
+   Mülleimer weiterhin der Löschknopf, und wer löschen will, holte
+   versehentlich den alten Text zurück. Dafür ist der beschriftete Knopf über
+   der Leiste da. Er ist auch der wichtigere Fall: Einen gelöschten Text tippt
+   man neu, die eigene Formulierung von vor der KI-Korrektur nicht.
+   ------------------------------------------------------------ */
 let vorherigerText = null;
-function merkeFuerZurueck(t) {
+let zurueckImEimer = false;
+
+function merkeFuerZurueck(t, aufDemEimer = false) {
   vorherigerText = t;
-  el.btnZurueck.hidden = false;
+  zurueckImEimer = aufDemEimer;
+  el.btnZurueck.hidden = aufDemEimer;   // entweder der Eimer oder der Knopf
+  zeigeEimerAls();
+}
+
+/* Das Bild im Knopf muss sagen, was das Tippen tut. */
+function zeigeEimerAls() {
+  const pfeil = zurueckImEimer && vorherigerText !== null;
+  el.btnLeeren.querySelector('use').setAttribute('href', pfeil ? '#i-undo' : '#i-trash');
+  const was = pfeil ? 'Text zurückholen' : 'Text löschen';
+  el.btnLeeren.title = was;
+  el.btnLeeren.setAttribute('aria-label', was);
+}
+
+function holeZurueck() {
+  if (vorherigerText === null) return;
+  el.text.value = vorherigerText;
+  vorherigerText = null;
+  zurueckImEimer = false;
+  el.btnZurueck.hidden = true;
+  zeigeEimerAls();
+  el.funde.innerHTML = '';
+  el.status.textContent = '';
+  textGeaendert();
 }
 
 /* Sobald wieder getippt wird, ist der gemerkte Stand überholt: Er stammt von
@@ -319,18 +361,12 @@ function merkeFuerZurueck(t) {
 function vergissZurueck() {
   if (vorherigerText === null) return;
   vorherigerText = null;
+  zurueckImEimer = false;
   el.btnZurueck.hidden = true;
+  zeigeEimerAls();
   el.status.textContent = '';
 }
-el.btnZurueck.addEventListener('click', () => {
-  if (vorherigerText === null) return;
-  el.text.value = vorherigerText;
-  vorherigerText = null;
-  el.btnZurueck.hidden = true;
-  el.funde.innerHTML = '';
-  el.status.textContent = '';
-  textGeaendert();
-});
+el.btnZurueck.addEventListener('click', holeZurueck);
 
 /* ============================================================
    3. Offline-Prüfung: Rechtschreibung, Grammatik, Satzbau
