@@ -1084,8 +1084,45 @@ kiVerfuegbar();
    7. Offline-Betrieb
    ============================================================ */
 
+/* Im Browser hält der Service Worker die App auch ohne Internet bereit.
+
+   In der Android-App richtet er nur Schaden an. Die Dateien liegen dort schon
+   in der APK — offline ist ohnehin alles da. Sein Zwischenspeicher überlebt
+   aber das App-Update: Beim ersten Start nach der Installation liefert er
+   weiter die alte Fassung, und die Neuerungen sieht man erst beim zweiten Mal.
+   Genau das ist passiert. Also in der App: abmelden, aufräumen, einmal neu
+   laden. Danach kommen die Dateien direkt aus der APK und sind immer aktuell.
+
+   Die App lädt über https (appassets.androidplatform.net) und nicht über
+   file:// — deshalb greift der Service Worker dort überhaupt. */
+const inDerApp = typeof window.AndroidBridge !== 'undefined';
+
+async function zwischenspeicherAufraeumen() {
+  try {
+    const kamAusDemSpeicher = !!navigator.serviceWorker.controller;
+    const angemeldet = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(angemeldet.map((r) => r.unregister()));
+    if (window.caches) {
+      const namen = await caches.keys();
+      await Promise.all(namen.map((n) => caches.delete(n)));
+    }
+    /* Diese Seite stammt noch aus dem alten Zwischenspeicher. Einmal neu
+       laden, damit die Fassung aus der APK erscheint — höchstens einmal je
+       Start, sonst drehte sich die App im Kreis. Der Text geht dabei nicht
+       verloren, er liegt im Speicher des Geräts. */
+    if (kamAusDemSpeicher && !sessionStorage.getItem('sh.aufgeraeumt')) {
+      sessionStorage.setItem('sh.aufgeraeumt', '1');
+      location.reload();
+    }
+  } catch { /* Dann bleibt es beim zweiten Start — schlimmer wird es nicht. */ }
+}
+
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => { /* App läuft auch ohne */ });
-  });
+  if (inDerApp) {
+    zwischenspeicherAufraeumen();
+  } else {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => { /* App läuft auch ohne */ });
+    });
+  }
 }
