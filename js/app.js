@@ -1084,6 +1084,11 @@ async function kiAnfrage(anweisung, text) {
       };
       let zusatz = '';
       try { zusatz = (await antwort.json())?.error?.message || ''; } catch {}
+      // Kein Guthaben mehr: Das steht als englischer Fließtext in der Antwort,
+      // und niemand soll raten müssen, was „credit balance is too low“ heißt.
+      if (/credit balance/i.test(zusatz)) {
+        throw new Error('Das Guthaben ist aufgebraucht. Im Zahnrad steht ein Verweis zum Aufladen.');
+      }
       throw new Error((texte[antwort.status] || 'Fehler ' + antwort.status) + (zusatz ? ' (' + zusatz + ')' : ''));
     }
 

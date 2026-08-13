@@ -288,3 +288,9 @@ dialog::backdrop{background:rgba(20,25,30,.5)}
 /* Zahl links, Knopf rechts — der Knopf ist nur da, wenn es etwas zurückzusetzen gibt. */
 .zeile{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-top:-.35rem}
 .btn--klein{font-size:.72rem;padding:.35rem .5rem;flex:none}
+/* Verweise nach draußen: Android macht daraus den Systembrowser. Trefferfläche
+   großzügig, damit man sie mit dem Daumen erwischt. */
+.verweis{
+  font-size:.74rem;color:var(--petrol);text-decoration:underline;
+  white-space:nowrap;flex:none;padding:.4rem 0;
+}

@@ -96,8 +96,12 @@ dieselbe Liste ein zweites Mal.
 Ohne das funktioniert alles außer dem KI-Knopf — der taucht erst auf, wenn ein
 Schlüssel hinterlegt ist.
 
-1. Schlüssel holen auf <https://console.anthropic.com> ➜ *API Keys*
+1. Schlüssel holen auf <https://platform.claude.com/settings/keys>
 2. In der App oben rechts aufs Zahnrad ➜ Schlüssel einfügen ➜ *Speichern*
+
+Beide Adressen stehen als Verweis im Zahnrad — *Schlüssel erstellen* und
+*Guthaben aufladen*. Sie öffnen den Systembrowser, man muss also nichts
+abtippen.
 
 Der **KI-Knopf** fragt dann, was er tun soll:
 

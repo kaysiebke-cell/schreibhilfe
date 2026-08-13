@@ -141,7 +141,13 @@
     </label>
     <!-- Das Feld zeigt Punkte statt Zeichen. Ohne diese Zeile sieht niemand,
          ob überhaupt etwas gespeichert ist und ob es plausibel aussieht. -->
-    <p class="hint" id="schluessel-stand"></p>
+    <div class="zeile">
+      <p class="hint" id="schluessel-stand"></p>
+      <!-- Öffnet den Systembrowser: Die WebView reicht fremde Adressen an
+           Android weiter, damit man nicht in der App festhängt. -->
+      <a class="verweis" href="https://platform.claude.com/settings/keys"
+         target="_blank" rel="noopener">Schlüssel erstellen&nbsp;↗</a>
+    </div>
 
     <label class="field">
       KI-Modell
@@ -158,6 +164,10 @@
     <div class="zeile">
       <p class="hint" id="kosten-stand"></p>
       <button class="btn btn--ghost btn--klein" id="btn-kosten-weg" hidden>zurücksetzen</button>
+    </div>
+    <div class="zeile">
+      <a class="verweis" href="https://platform.claude.com/settings/billing"
+         target="_blank" rel="noopener">Guthaben aufladen&nbsp;↗</a>
     </div>
 
     <label class="field field--schalter">
