@@ -121,8 +121,18 @@ Kosten je eine Million „Token" (eine normale E-Mail sind ein paar hundert):
 | Sonnet 5 (Mittelweg) | 3 $ | 15 $ |
 | Haiku 4.5 (günstig, schnell) | 1 $ | 5 $ |
 
-Für Briefe und Nachrichten reicht **Haiku 4.5** dicke — eine Korrektur kostet
-dort Bruchteile eines Cents.
+Für Briefe und Nachrichten reicht **Haiku 4.5** dicke. Ein Brief von 300
+Wörtern kostet dort **rund 0,24 Cent** — mit fünf Dollar Guthaben sind das
+etwa zweitausend Briefe.
+
+Die App rechnet selbst mit: Nach jeder Anfrage steht der Betrag hinter der
+Meldung, und im Zahnrad steht, was bisher zusammengekommen ist. Der Zähler
+läuft nur auf dem Gerät und lässt sich zurücksetzen.
+
+Das Guthaben wird **im Voraus** bezahlt. Solange „Automatisches Neuladen" aus
+ist, kann nichts über den geladenen Betrag hinaus anfallen — mehr Kontrolle
+als jedes Abo. Ein Claude-Pro-Abo hilft hier übrigens **nicht**: Das gilt für
+die Claude-App, nicht für den API-Zugang.
 
 ## 🔒 Datenschutz
 

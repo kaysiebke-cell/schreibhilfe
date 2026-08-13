@@ -285,3 +285,6 @@ dialog::backdrop{background:rgba(20,25,30,.5)}
 .field--schalter input{width:1.35rem;height:1.35rem;flex:none;margin-top:.1rem;accent-color:var(--petrol)}
 .field--schalter em{display:block;font-weight:400;font-style:normal;font-size:.73rem;color:var(--ink-soft);line-height:1.35}
 .form__actions{display:flex;justify-content:flex-end;gap:.45rem;flex-wrap:wrap}
+/* Zahl links, Knopf rechts — der Knopf ist nur da, wenn es etwas zurückzusetzen gibt. */
+.zeile{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-top:-.35rem}
+.btn--klein{font-size:.72rem;padding:.35rem .5rem;flex:none}

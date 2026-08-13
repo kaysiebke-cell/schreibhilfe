@@ -40,6 +40,8 @@ const el = {
   systemfarben:  $('systemfarben'),
   wortmarker:    $('wortmarker'),
   schluesselStand: $('schluessel-stand'),
+  kostenStand:   $('kosten-stand'),
+  btnKostenWeg:  $('btn-kosten-weg'),
 };
 
 /* ------------------------------------------------------------
@@ -978,6 +980,50 @@ const SPRACHEN = [
   'Griechisch', 'Niederländisch', 'Portugiesisch',
 ];
 
+/* ------------------------------------------------------------
+   Was die letzte Anfrage gekostet hat.
+
+   Die Antwort sagt, wie viele Token hinein- und hinausgegangen sind. Mal dem
+   Preis des Modells ergibt das den Betrag — auf den Bruchteil eines Cents
+   genau, nicht geschätzt. Gerechnet wird in US-Cent, so rechnet Anthropic ab.
+   ------------------------------------------------------------ */
+const PREISE = {                       // Dollar je Million Token
+  'claude-opus-5':    { hinein: 5, heraus: 25 },
+  'claude-sonnet-5':  { hinein: 3, heraus: 15 },
+  'claude-haiku-4-5': { hinein: 1, heraus: 5  },
+};
+
+function centFuer(modell, verbrauch) {
+  if (!verbrauch) return null;
+  const name = Object.keys(PREISE).find((k) => String(modell || '').startsWith(k));
+  if (!name) return null;
+  const preis = PREISE[name];
+  const dollar = (verbrauch.input_tokens  || 0) / 1e6 * preis.hinein
+               + (verbrauch.output_tokens || 0) / 1e6 * preis.heraus;
+  return dollar * 100;
+}
+
+/* Kleine Beträge brauchen Nachkommastellen, große nicht. */
+function alsGeld(cent) {
+  if (cent >= 100) return (cent / 100).toFixed(2).replace('.', ',') + ' $';
+  if (cent >= 1)   return cent.toFixed(1).replace('.', ',') + ' Cent';
+  return cent.toFixed(2).replace('.', ',') + ' Cent';
+}
+
+/* Der Zähler bleibt auf dem Gerät und lässt sich jederzeit zurücksetzen. */
+function merkeKosten(cent) {
+  const bisher = Speicher.lies('kosten', { anzahl: 0, cent: 0 });
+  Speicher.schreib('kosten', { anzahl: bisher.anzahl + 1, cent: bisher.cent + cent });
+}
+
+function zeigeKosten() {
+  const { anzahl, cent } = Speicher.lies('kosten', { anzahl: 0, cent: 0 });
+  el.kostenStand.textContent = anzahl === 0
+    ? 'Noch nichts verbraucht.'
+    : 'Bisher: ' + anzahl + (anzahl === 1 ? ' Anfrage · ' : ' Anfragen · ') + alsGeld(cent) + ' (US)';
+  el.btnKostenWeg.hidden = anzahl === 0;
+}
+
 function kiVerfuegbar() {
   const vorhanden = !!Speicher.lies('apiKey', '');
   el.btnKi.hidden = !vorhanden;
@@ -1050,7 +1096,8 @@ async function kiAnfrage(anweisung, text) {
       .join('')
       .trim();
 
-    return ergebnis ? { ergebnis } : { fehler: 'Es kam keine Antwort zurück.' };
+    const cent = centFuer(daten.model || modell, daten.usage);
+    return ergebnis ? { ergebnis, cent } : { fehler: 'Es kam keine Antwort zurück.' };
 
   } catch (fehler) {
     // Reihenfolge wichtig: „navigator.onLine“ meldet auf Android auch dann noch
@@ -1072,7 +1119,7 @@ async function kiLauf(anweisung, laeuft, fertig) {
   el.btnKi.classList.add('btn--laeuft');
   el.status.textContent = laeuft;
 
-  const { ergebnis, fehler } = await kiAnfrage(anweisung, text);
+  const { ergebnis, fehler, cent } = await kiAnfrage(anweisung, text);
 
   el.btnKi.disabled = false;
   el.btnKi.classList.remove('btn--laeuft');
@@ -1083,7 +1130,9 @@ async function kiLauf(anweisung, laeuft, fertig) {
   el.text.value = ergebnis;
   textGeaendert();
   el.funde.innerHTML = '';
-  el.status.textContent = fertig;
+  if (cent !== null && cent !== undefined) { merkeKosten(cent); zeigeKosten(); }
+  el.status.textContent = fertig
+    + (cent !== null && cent !== undefined ? ' · ' + alsGeld(cent) : '');
 }
 
 /* ------------------------------------------------------------
@@ -1217,6 +1266,7 @@ el.btnSettings.addEventListener('click', () => {
   zeigeSchluesselStand();
   el.modell.value = Speicher.lies('modell', 'claude-opus-5');
   el.wortmarker.checked = hervorhebenAn();
+  zeigeKosten();
   el.dlg.showModal();
 });
 
@@ -1235,6 +1285,11 @@ el.btnSpeichern.addEventListener('click', () => {
   zeigeSchluesselStand();
   kiVerfuegbar();
   el.dlg.close();
+});
+
+el.btnKostenWeg.addEventListener('click', () => {
+  Speicher.loesch('kosten');
+  zeigeKosten();
 });
 
 el.btnSchluesselWeg.addEventListener('click', () => {
