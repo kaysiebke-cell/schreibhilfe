@@ -39,6 +39,7 @@ const el = {
   feldSystemfarben: $('feld-systemfarben'),
   systemfarben:  $('systemfarben'),
   wortmarker:    $('wortmarker'),
+  schluesselStand: $('schluessel-stand'),
 };
 
 /* ------------------------------------------------------------
@@ -195,10 +196,16 @@ function zeilenInDerLeiste() {
   return oben.size;
 }
 
+/* In zwei Stufen, damit das wichtigste Wort am längsten bleibt:
+   erst gehen „Teilen“ und „Kopieren“ (Pfeil und Doppelblatt kennt man),
+   und erst wenn es dann immer noch nicht reicht, auch „KI“. */
 function leisteAnpassen() {
-  // Erst mit Wörtern messen: Vielleicht ist inzwischen wieder Platz.
-  leiste.classList.remove('leiste--eng');
-  if (zeilenInDerLeiste() > 1) leiste.classList.add('leiste--eng');
+  // Erst mit allen Wörtern messen: Vielleicht ist inzwischen wieder Platz.
+  leiste.classList.remove('leiste--eng', 'leiste--sehr-eng');
+  if (zeilenInDerLeiste() === 1) return;
+  leiste.classList.add('leiste--eng');
+  if (zeilenInDerLeiste() === 1) return;
+  leiste.classList.add('leiste--sehr-eng');
 }
 
 addEventListener('resize', leisteAnpassen);
@@ -1025,7 +1032,7 @@ async function kiAnfrage(anweisung, text) {
 
     if (!antwort.ok) {
       const texte = {
-        401: 'Der API-Schlüssel stimmt nicht. Bitte in den Einstellungen prüfen.',
+        401: 'Der Schlüssel wird abgelehnt. Er wird nur bei der Erstellung einmal angezeigt — hast du ihn vollständig kopiert? Sonst auf console.anthropic.com einen neuen anlegen.',
         400: 'Die Anfrage wurde abgelehnt.',
         429: 'Zu viele Anfragen. Bitte kurz warten und noch einmal versuchen.',
       };
@@ -1094,8 +1101,18 @@ for (const sprache of SPRACHEN) {
   el.zielsprache.appendChild(eintrag);
 }
 
+/* Die Sprache zu wählen übersetzt noch nichts — das muss der Knopf sagen.
+   Vorher stand dort bloß „Übersetzen“, und wer die Sprache gewählt hatte,
+   wartete verständlicherweise darauf, dass etwas passiert. */
+function beschrifteUebersetzen() {
+  el.btnUebersetzen.querySelector('.btn__wort').textContent =
+    ' Nach ' + el.zielsprache.value + ' übersetzen';
+}
+el.zielsprache.addEventListener('change', beschrifteUebersetzen);
+
 el.btnKi.addEventListener('click', () => {
   el.zielsprache.value = Speicher.lies('sprache', 'Englisch');
+  beschrifteUebersetzen();
   el.dlgKi.showModal();
 });
 el.btnKiZu.addEventListener('click', () => el.dlgKi.close());
@@ -1178,8 +1195,26 @@ async function kopiere(text, meldung) {
    6. Einstellungen
    ============================================================ */
 
+/* Was liegt gespeichert? Genug, um es wiederzuerkennen, nicht genug, um es
+   abzuschreiben. Ein Schlüssel von Anthropic fängt mit „sk-ant-“ an und ist
+   rund hundert Zeichen lang — passt das nicht, steht es hier. */
+function zeigeSchluesselStand() {
+  const schluessel = Speicher.lies('apiKey', '');
+  if (!schluessel) {
+    el.schluesselStand.textContent = 'Kein Schlüssel gespeichert — deshalb fehlt der KI-Knopf.';
+    return;
+  }
+  const kurz = schluessel.slice(0, 11) + '…' + schluessel.slice(-4);
+  const laenge = schluessel.length + ' Zeichen';
+  el.schluesselStand.textContent = schluessel.startsWith('sk-ant-')
+    ? 'Gespeichert: ' + kurz + ' · ' + laenge
+    : 'Gespeichert: ' + kurz + ' · ' + laenge
+      + ' — beginnt nicht mit „sk-ant-“. Das sieht nicht nach einem Anthropic-Schlüssel aus.';
+}
+
 el.btnSettings.addEventListener('click', () => {
   el.apiKey.value = Speicher.lies('apiKey', '');
+  zeigeSchluesselStand();
   el.modell.value = Speicher.lies('modell', 'claude-opus-5');
   el.wortmarker.checked = hervorhebenAn();
   el.dlg.showModal();
@@ -1197,6 +1232,7 @@ el.btnSpeichern.addEventListener('click', () => {
   if (schluessel) Speicher.schreib('apiKey', schluessel);
   else Speicher.loesch('apiKey');
   Speicher.schreib('modell', el.modell.value);
+  zeigeSchluesselStand();
   kiVerfuegbar();
   el.dlg.close();
 });
@@ -1204,6 +1240,7 @@ el.btnSpeichern.addEventListener('click', () => {
 el.btnSchluesselWeg.addEventListener('click', () => {
   Speicher.loesch('apiKey');
   el.apiKey.value = '';
+  zeigeSchluesselStand();
   kiVerfuegbar();
   el.dlg.close();
 });

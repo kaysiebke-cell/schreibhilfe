@@ -220,10 +220,18 @@ textarea#text:focus{outline:none;border-color:var(--petrol)}
    Beschriftung — damit man Löschen nicht neben „Kopieren“ erwischt. */
 .leiste__rechts{display:flex;gap:.4rem;margin-left:auto;flex:none}
 /* Ohne Wort bleibt die Trefferfläche trotzdem daumengroß. */
-.leiste--eng .btn__wort{display:none}
-.leiste--eng #btn-ki,
+/* Teilen und Kopieren dürfen ihr Wort verlieren — Pfeil und Doppelblatt kennt
+   man. Beim KI-Knopf ginge das schief: Ein Funkeln sagt niemandem, was
+   dahintersteckt, und ohne Wort wusste keiner mehr, wo Korrigieren und
+   Übersetzen wohnen. „Prüfen“ behält sein Wort ohnehin. */
+.leiste--eng #btn-teilen .btn__wort,
+.leiste--eng #btn-kopieren .btn__wort{display:none}
 .leiste--eng #btn-teilen,
 .leiste--eng #btn-kopieren{padding:.5rem;min-width:3rem}
+/* Letzte Stufe, nur auf sehr schmalen Geräten: dann geht auch „KI“ —
+   immer noch besser als eine Leiste, die auf zwei Zeilen aufklappt. */
+.leiste--sehr-eng #btn-ki .btn__wort{display:none}
+.leiste--sehr-eng #btn-ki{padding:.5rem;min-width:3rem}
 
 .btn{
   font-family:var(--sans);font-size:.82rem;font-weight:600;
