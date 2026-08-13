@@ -75,18 +75,27 @@
        Vorlesefunktion gar nicht mit, dass hier etwas erschienen ist. -->
   <div id="funde" role="region" aria-live="polite" aria-label="Gefundene Stellen"></div>
   <p class="hint" id="status" role="status"></p>
+
+  <!-- „Zurückholen" steht hier und nicht unten in der Leiste: Als sechster Knopf
+       sprengte es die Reihe, und die blieb dann aufgeklappt stehen. Hier taucht
+       es nur auf, wenn es etwas zurückzuholen gibt — direkt unter der Meldung,
+       auf die es sich bezieht. -->
+  <button class="btn" id="btn-zurueck" hidden>
+    <svg class="ic"><use href="#i-undo"></use></svg> Zurückholen
+  </button>
 </main>
 
 <footer class="leiste">
+  <!-- Reicht die Breite nicht für alle Beschriftungen, lässt die App die beiden
+       hinteren Wörter weg (.leiste--eng) — lieber ein Sinnbild ohne Wort als
+       eine Leiste, die auf zwei Zeilen aufklappt. „Prüfen" behält sein Wort
+       immer, das ist der Knopf, um den es geht. -->
   <button class="btn btn--primary btn--breit" id="btn-pruefen"><svg class="ic"><use href="#i-check"></use></svg> Prüfen</button>
-  <button class="btn" id="btn-ki" hidden><svg class="ic"><use href="#i-sparkle"></use></svg> KI</button>
-  <button class="btn" id="btn-teilen"><svg class="ic"><use href="#i-share"></use></svg> Teilen</button>
-  <button class="btn" id="btn-kopieren"><svg class="ic"><use href="#i-copy"></use></svg> Kopieren</button>
+  <button class="btn" id="btn-ki" hidden title="KI-Korrektur" aria-label="KI-Korrektur"><svg class="ic"><use href="#i-sparkle"></use></svg><span class="btn__wort"> KI</span></button>
+  <button class="btn" id="btn-teilen" title="Teilen" aria-label="Teilen"><svg class="ic"><use href="#i-share"></use></svg><span class="btn__wort"> Teilen</span></button>
+  <button class="btn" id="btn-kopieren" title="Kopieren" aria-label="Kopieren"><svg class="ic"><use href="#i-copy"></use></svg><span class="btn__wort"> Kopieren</span></button>
 
-  <!-- Die beiden bleiben zusammen: bricht die Reihe um, rutschen sie
-       gemeinsam in die zweite Zeile statt sich aufzuteilen. -->
   <div class="leiste__rechts">
-    <button class="btn btn--icon" id="btn-zurueck" hidden title="Rückgängig" aria-label="Rückgängig"><svg class="ic"><use href="#i-undo"></use></svg></button>
     <button class="btn btn--icon" id="btn-leeren" title="Text löschen" aria-label="Text löschen"><svg class="ic"><use href="#i-trash"></use></svg></button>
   </div>
 </footer>

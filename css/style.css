@@ -194,10 +194,17 @@ textarea#text:focus{outline:none;border-color:var(--petrol)}
 .hint{margin:0;font-size:.76rem;color:var(--ink-soft);line-height:1.35}
 .hint:empty{display:none}
 
+/* „Zurückholen" steht über der Leiste, nicht darin — sonst wäre es der Knopf,
+   der die Reihe sprengt. Es nimmt nur die Breite seines Wortes ein und ist
+   überhaupt nur da, wenn es etwas zurückzuholen gibt. */
+#btn-zurueck{align-self:flex-start;min-height:3rem}
+
 /* ---- Knopfleiste unten ----
    Jeder Knopf ist mindestens 48px hoch und breit — darunter trifft man mit
-   dem Daumen nicht mehr zuverlässig. Passt die Reihe nicht, bricht sie um;
-   lieber zwei Zeilen als eine Zeile, die man nicht bedienen kann. */
+   dem Daumen nicht mehr zuverlässig. Das bleibt so.
+   Wird es eng, fallen zuerst die Wörter hinter den Sinnbildern weg
+   (.leiste--eng, die App misst das selbst) — erst wenn auch das nicht reicht,
+   bricht die Reihe um. */
 .leiste{
   flex:none;
   display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;
@@ -212,6 +219,11 @@ textarea#text:focus{outline:none;border-color:var(--petrol)}
 /* Rückgängig und Löschen sitzen rechts, abgesetzt von den Knöpfen mit
    Beschriftung — damit man Löschen nicht neben „Kopieren“ erwischt. */
 .leiste__rechts{display:flex;gap:.4rem;margin-left:auto;flex:none}
+/* Ohne Wort bleibt die Trefferfläche trotzdem daumengroß. */
+.leiste--eng .btn__wort{display:none}
+.leiste--eng #btn-ki,
+.leiste--eng #btn-teilen,
+.leiste--eng #btn-kopieren{padding:.5rem;min-width:3rem}
 
 .btn{
   font-family:var(--sans);font-size:.82rem;font-weight:600;
