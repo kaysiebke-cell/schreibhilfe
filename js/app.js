@@ -171,6 +171,34 @@ window.addEventListener('systemfarben', systemfarbenAnwenden);
 themaAnwenden();
 systemfarbenAnwenden();
 
+/* ------------------------------------------------------------
+   Die Knopfleiste soll auf eine Zeile passen.
+
+   Wie breit ein Wort wirklich wird, hängt am Gerät: Bildschirmbreite,
+   Systemschriftgröße, Schriftart. Ein fester Wert im Stylesheet trifft das
+   nicht. Also misst die App nach: bricht die Reihe um, fallen die Wörter
+   hinter den Sinnbildern weg. Ist wieder Platz — etwa wenn das Handy quer
+   gedreht wird —, kommen sie zurück.
+   ------------------------------------------------------------ */
+const leiste = document.querySelector('.leiste');
+
+function zeilenInDerLeiste() {
+  const oben = new Set();
+  for (const knopf of leiste.querySelectorAll('button')) {
+    if (!knopf.hidden) oben.add(Math.round(knopf.getBoundingClientRect().top));
+  }
+  return oben.size;
+}
+
+function leisteAnpassen() {
+  // Erst mit Wörtern messen: Vielleicht ist inzwischen wieder Platz.
+  leiste.classList.remove('leiste--eng');
+  if (zeilenInDerLeiste() > 1) leiste.classList.add('leiste--eng');
+}
+
+addEventListener('resize', leisteAnpassen);
+leisteAnpassen();
+
 let schriftgroesse = Speicher.lies('schrift', 1.05);
 function setzeSchrift(wert) {
   schriftgroesse = Math.min(1.75, Math.max(0.9, Math.round(wert * 100) / 100));
@@ -178,6 +206,7 @@ function setzeSchrift(wert) {
   Speicher.schreib('schrift', schriftgroesse);
   // Andere Schriftgröße heißt anderer Zeilenfall — der Streifen muss mit.
   if (el.spiegel) markiereWort();
+  if (typeof leiste !== 'undefined' && leiste) leisteAnpassen();
 }
 setzeSchrift(schriftgroesse);
 el.btnGroesser.addEventListener('click', () => setzeSchrift(schriftgroesse + 0.1));
@@ -272,7 +301,7 @@ el.btnLeeren.addEventListener('click', () => {
   el.text.value = '';
   textGeaendert();
   el.funde.innerHTML = '';
-  el.status.textContent = 'Text gelöscht. Mit dem Pfeil daneben zurückholen.';
+  el.status.textContent = 'Text gelöscht.';
 });
 
 /* Rückgängig für Korrekturen */
@@ -887,6 +916,8 @@ const KI_ANWEISUNG =
 function kiVerfuegbar() {
   const vorhanden = !!Speicher.lies('apiKey', '');
   el.btnKi.hidden = !vorhanden;
+  // Ein Knopf mehr in der Reihe: Passt sie noch auf eine Zeile?
+  leisteAnpassen();
   return vorhanden;
 }
 
@@ -966,7 +997,7 @@ async function kiKorrektur() {
     el.text.value = korrigiert;
     textGeaendert();
     el.funde.innerHTML = '';
-    el.status.textContent = 'Fertig korrigiert. Nicht einverstanden? Oben auf „Rückgängig“ tippen.';
+    el.status.textContent = 'Fertig korrigiert. Nicht einverstanden? „Zurückholen“ darunter.';
 
   } catch (fehler) {
     // Reihenfolge wichtig: „navigator.onLine“ meldet auf Android auch dann noch
