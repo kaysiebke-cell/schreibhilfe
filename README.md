@@ -39,7 +39,11 @@ Die App baut **nicht** nach, was das Handy schon kann. Sie ergänzt nur, was feh
 | Vorlesen lassen | **Android** – „Vorlesen" / Auswahl vorlesen |
 | Hell/Dunkel, Schriftgröße, Farbpalette | **Android** – die App übernimmt sie |
 | das/dass, seit/seid, wider/wieder | ➜ **diese App** |
+| „größer wie" → „größer als" | ➜ **diese App** |
+| „wir hat" → „wir haben" | ➜ **diese App** |
+| Komma vor „weil", „dass", „wenn", „aber" | ➜ **diese App** |
 | Doppelte Wörter, Abstände, Satzanfänge | ➜ **diese App** |
+| Zu lange Sätze, fehlender Punkt am Ende | ➜ **diese App** |
 | Ganzen Text auf einmal korrigieren lassen | ➜ **diese App** (KI-Knopf) |
 | Text aufbewahren und weiterreichen | ➜ **diese App** |
 
@@ -47,6 +51,21 @@ Der Knopf **„Prüfen"** sucht deshalb ausdrücklich nur nach Fehlern, die ein
 Rechtschreibprüfer nicht finden *kann* — weil beide Schreibweisen für sich
 genommen richtige Wörter sind. Jeder Fund wird einzeln angezeigt; nichts ändert
 sich von allein, und **„Rückgängig"** holt jede Änderung zurück.
+
+Die Funde haben drei Sorten, am farbigen Balken links zu erkennen:
+
+* **Orange** — sicher falsch. „Wir hat" wird zu „Wir haben", der Satzanfang
+  wird großgeschrieben, das doppelte Wort fliegt raus.
+* **Blau mit Knopf** — kommt auf den Zusammenhang an: das fehlende Komma vor
+  „weil", „dass" aus „das", der Punkt am Ende. Lies die Stelle noch einmal,
+  bevor du änderst.
+* **Blau ohne Knopf** — ein Hinweis zum Satzbau, kein Fehler: ein Satz mit
+  30 Wörtern, eine Kette aus lauter „und", eine Klammer ohne Gegenstück. Hier
+  gibt es nichts zu ersetzen, das entscheidest du selbst.
+
+Lieber eine Lücke als ein falscher Alarm: Regeln, die auch richtige Sätze
+anmeckern würden, sind bewusst nicht drin. „Das Buch, das ich gelesen habe"
+bleibt deshalb in Ruhe, und „seit ihr Vater krank ist" ebenso.
 
 **„Teilen"** öffnet das System-Teilen-Menü von Android — darin stehen WhatsApp,
 SMS, E-Mail und alles andere. Eigene Knöpfe dafür hat die App nicht, das wäre

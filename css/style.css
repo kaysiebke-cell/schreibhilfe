@@ -136,10 +136,17 @@ textarea#text:focus{outline:none;border-color:var(--petrol)}
   border-radius:var(--radius);
   padding:.35rem .45rem;
 }
-.fund--tipp{border-left-color:var(--petrol)}
+/* Blau statt orange: hier ist nichts sicher falsch, es kommt auf den
+   Zusammenhang an. Hinweise zum Satzbau haben gar keinen Knopf. */
+.fund--tipp,.fund--hinweis{border-left-color:var(--petrol)}
 .fund + .fund{margin-top:.3rem}
 .fund__text{flex:1;min-width:0}
 .fund__wort{font-family:var(--mono);font-size:.85rem;line-height:1.3}
+/* Der zitierte Satz: eine Zeile, danach Auslassungspunkte. */
+.fund__stelle{
+  font-family:var(--serif);font-size:.8rem;line-height:1.3;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
 .fund__falsch{color:var(--urgent);text-decoration:line-through;text-decoration-thickness:1px}
 .fund__pfeil{color:var(--ink-soft);margin:0 .3rem}
 .fund__richtig{color:var(--ok);font-weight:700}
