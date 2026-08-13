@@ -17,6 +17,7 @@ const el = {
   btnKi:         $('btn-ki'),
   btnZurueck:    $('btn-zurueck'),
   btnZurueckgeben: $('btn-zurueckgeben'),
+  btnEinfuegen:  $('btn-einfuegen'),
   status:        $('status'),
   funde:         $('funde'),
   btnTeilen:     $('btn-teilen'),
@@ -242,6 +243,7 @@ function textGeaendert() {
   // Auch wenn die App den Text selbst setzt (Löschen, Ändern, KI), muss der
   // Zwilling dahinter wieder stimmen.
   markiereWort();
+  if (typeof zeigeEinfuegen === 'function') zeigeEinfuegen();
 }
 /* Nur echtes Tippen löst „input“ aus. Setzt die App den Text selbst (Löschen,
    Ändern, KI), bleibt das Ereignis aus — der Pfeil überlebt also genau die
@@ -1369,6 +1371,38 @@ function zeigeRueckgabe() {
 }
 addEventListener('rueckgabe', zeigeRueckgabe);
 zeigeRueckgabe();
+
+/* ------------------------------------------------------------
+   Der Weg über die Zwischenablage.
+
+   „Schreibhilfe“ steht nicht in jedem Markier-Menü — manche Apps bieten fremde
+   Einträge gar nicht an, und Xiaomi schiebt sie hinter das ⋮. „Kopieren“
+   dagegen gibt es überall und immer ganz vorn. Also: kopieren, Schreibhilfe
+   öffnen, hier einfügen.
+
+   Angeboten wird der Knopf nur bei leerem Feld — steht schon Text da, würde er
+   ihn überschreiben. Und nur auf Knopfdruck: Von allein liest die App die
+   Zwischenablage nicht aus.
+   ------------------------------------------------------------ */
+/* Nicht über „bruecke“: Diese Konstante entsteht weiter unten in der Datei,
+   und der erste Aufruf kommt schon beim Start — dann gäbe es einen Fehler,
+   und alles dahinter liefe nicht mehr. window.AndroidBridge ist immer sicher
+   zu fragen. */
+function zeigeEinfuegen() {
+  el.btnEinfuegen.hidden =
+    typeof window.AndroidBridge?.frageZwischenablage !== 'function'
+    || el.text.value.trim() !== '';
+}
+
+el.btnEinfuegen.addEventListener('click', () => window.AndroidBridge.frageZwischenablage());
+
+addEventListener('zwischenablage', (ereignis) => {
+  const text = String(ereignis.detail || '').trim();
+  if (!text) { el.status.textContent = 'In der Zwischenablage steht kein Text.'; return; }
+  el.text.value = text;
+  textGeaendert();
+  zeigeFunde();          // gleich prüfen, wie beim Weg über das Markier-Menü
+});
 
 el.btnZurueckgeben.addEventListener('click', () => {
   const text = holeText(); if (!text) return;

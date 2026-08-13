@@ -44,5 +44,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Kachel in den Schnelleinstellungen. Muss einmal von Hand nach oben
+             gezogen werden: Schnelleinstellungen aufziehen → Bearbeiten. -->
+        <service
+            android:name=".SchnellKachel"
+            android:exported="true"
+            android:icon="@drawable/ic_kachel"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
     </application>
 </manifest>

@@ -32,6 +32,20 @@ Schritt 4 ist der eigentliche Trick: kein Kopieren, kein Teilen, kein Suchen
 der richtigen Stelle. Der Weg über **Teilen → Schreibhilfe** geht auch, nur
 gibt es dort keinen Rückweg — von dort führt „Teilen" wieder hinaus.
 
+### Wenn „Schreibhilfe" im Markier-Menü fehlt
+
+Das Menü gehört der App, in der du markierst. Manche bieten fremde Einträge
+gar nicht an, und Xiaomi schiebt sie hinter das **⋮** am Ende. Dafür gibt es
+zwei Wege, die überall funktionieren:
+
+* **Kachel in den Schnelleinstellungen** — von oben wischen, einmal tippen.
+  Einmalig einrichten: Schnelleinstellungen ganz aufziehen ➜ Stift/Bearbeiten
+  ➜ *Schreibhilfe* nach oben ziehen.
+* **Über die Zwischenablage** — *Kopieren* steht in **jedem** Markier-Menü
+  ganz vorn. Kopieren, Schreibhilfe öffnen, auf **„Aus der Zwischenablage"**
+  tippen: Der Text steht da und ist schon geprüft. Die App liest die
+  Zwischenablage nur auf diesen Knopfdruck hin, nie von allein.
+
 ## Was die App macht — und was Android schon macht
 
 Die App baut **nicht** nach, was das Handy schon kann. Sie ergänzt nur, was fehlt:
