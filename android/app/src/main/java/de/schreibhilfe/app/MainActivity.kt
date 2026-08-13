@@ -302,6 +302,34 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        /**
+         * Holt den Text aus der Zwischenablage — nur auf Knopfdruck, nie von
+         * selbst. „Kopieren“ steht in jedem Markier-Menü ganz vorn, nie hinter
+         * dem ⋮; über die Zwischenablage kommt der Text also auch aus Apps
+         * herein, die fremde Menüeinträge gar nicht anbieten.
+         *
+         * Gelesen wird im Vordergrund-Thread: Aus dem Binder-Thread der Brücke
+         * heraus wirft die Zwischenablage auf manchen Geräten. Das Ergebnis
+         * geht deshalb als Ereignis zurück an die Seite.
+         */
+        @JavascriptInterface
+        fun frageZwischenablage() {
+            runOnUiThread {
+                val ablage = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val text = ablage.primaryClip
+                    ?.takeIf { it.itemCount > 0 }
+                    ?.getItemAt(0)
+                    ?.coerceToText(this@MainActivity)
+                    ?.toString()
+                    .orEmpty()
+                webView.evaluateJavascript(
+                    "window.dispatchEvent(new CustomEvent('zwischenablage'," +
+                        "{detail:${JSONObject.quote(text)}}));",
+                    null
+                )
+            }
+        }
+
         /** Legt den Text in die Zwischenablage, damit er sich woanders einfügen lässt. */
         @JavascriptInterface
         fun kopieren(text: String) {
