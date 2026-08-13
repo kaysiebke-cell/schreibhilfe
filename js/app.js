@@ -191,7 +191,13 @@ function textGeaendert() {
   // Bei leerem Text bleibt der Zähler leer — dann sieht man ihn gar nicht.
   el.zaehler.textContent = woerter === 0 ? '' : woerter === 1 ? '1 Wort' : woerter + ' Wörter';
 }
-el.text.addEventListener('input', textGeaendert);
+/* Nur echtes Tippen löst „input“ aus. Setzt die App den Text selbst (Löschen,
+   Ändern, KI), bleibt das Ereignis aus — der Pfeil überlebt also genau die
+   Änderung, die er zurücknehmen soll. */
+el.text.addEventListener('input', () => {
+  textGeaendert();
+  vergissZurueck();
+});
 textGeaendert();
 
 /* Kein „Wirklich löschen?“-Fenster: In der Android-App gibt es kein
@@ -211,6 +217,18 @@ let vorherigerText = null;
 function merkeFuerZurueck(t) {
   vorherigerText = t;
   el.btnZurueck.hidden = false;
+}
+
+/* Sobald wieder getippt wird, ist der gemerkte Stand überholt: Er stammt von
+   vor der Änderung, und ihn jetzt zurückzuholen würde das Neugeschriebene
+   wegwerfen. Also verschwindet der Pfeil wieder — und mit ihm der Knopf, der
+   die Leiste auf zwei Zeilen auseinandergezogen hat. Vorher blieb sie
+   auseinandergeklappt, bis die App neu gestartet wurde. */
+function vergissZurueck() {
+  if (vorherigerText === null) return;
+  vorherigerText = null;
+  el.btnZurueck.hidden = true;
+  el.status.textContent = '';
 }
 el.btnZurueck.addEventListener('click', () => {
   if (vorherigerText === null) return;
