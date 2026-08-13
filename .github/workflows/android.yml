@@ -1,8 +1,17 @@
 name: Android-App bauen (APK)
 
 # Baut aus der Web-App im Wurzelverzeichnis eine installierbare Android-APK.
-# Nach jedem Push hängt die fertige APK am Release „v1.0" — der Download-Link
-# bleibt dabei immer derselbe (siehe APK-HERUNTERLADEN.md).
+#
+# Gebaut und geprüft wird auf JEDEM Zweig — ein Vorschlag soll durchgerechnet
+# sein, bevor er zusammengeführt wird. Veröffentlicht wird die APK aber nur
+# von „main" und von Versions-Tags: Am Download-Link in der README hängt die
+# Fassung, die jemand auf sein Handy lädt. Da darf kein Zweig-Bau landen, der
+# vielleicht nie zusammengeführt wird.
+#
+# Vom Zweig gibt es die APK trotzdem — unter „Artefakte" beim Lauf selbst.
+#
+# Nach jedem Push auf „main" hängt die fertige APK am Release „v1.0" — der
+# Download-Link bleibt dabei immer derselbe (siehe APK-HERUNTERLADEN.md).
 
 on:
   push:
@@ -127,7 +136,9 @@ jobs:
           if-no-files-found: error
 
       - name: Release mit APK veröffentlichen (direkter Download, ohne ZIP)
-        if: github.event_name == 'push'
+        if: >-
+          github.event_name == 'push'
+          && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.0' }}
