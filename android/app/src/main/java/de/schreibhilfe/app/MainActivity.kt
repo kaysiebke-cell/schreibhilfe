@@ -120,22 +120,49 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView, url: String) {
                 seiteFertig = true
                 reicheSystemfarbenHinein()
+                reicheRueckgabeHinein()
                 uebergebenerText?.let { reicheTextHinein(it); uebergebenerText = null }
             }
         }
     }
 
+    /**
+     * Kam der Text aus dem Markier-Menü, nimmt die andere App ihn auch wieder
+     * entgegen — dann ersetzt der verbesserte Text die Markierung an Ort und
+     * Stelle. Beim Teilen geht das nicht: Dort gibt es keinen Rückweg.
+     * Manche Apps bitten ausdrücklich nur ums Lesen (READONLY), das wird
+     * geachtet.
+     */
+    private var darfZurueckgeben = false
+
     /** Holt den Text aus „Teilen an …“ oder aus dem Markier-Menü („Verarbeiten“). */
     private fun leseTextAus(intent: Intent?): String? {
         if (intent == null) return null
+        darfZurueckgeben = false
         val text = when (intent.action) {
             Intent.ACTION_SEND ->
                 if (intent.type == "text/plain") intent.getStringExtra(Intent.EXTRA_TEXT) else null
-            Intent.ACTION_PROCESS_TEXT ->
+            Intent.ACTION_PROCESS_TEXT -> {
+                darfZurueckgeben =
+                    !intent.getBooleanExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, false)
                 intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
+            }
             else -> null
         }
         return text?.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * Sagt der Web-App, ob der Knopf „Zurückgeben“ etwas zu tun hat. Wird auch
+     * nach einem neuen Intent gemeldet — die Seite läuft dann schon und würde
+     * es sonst nicht mitbekommen.
+     */
+    private fun reicheRueckgabeHinein() {
+        webView.evaluateJavascript(
+            "window.KannZurueckgeben = $darfZurueckgeben;" +
+            "window.dispatchEvent(new Event('rueckgabe'));",
+            null
+        )
     }
 
     /** Schreibt den übergebenen Text ins Schreibfeld der Web-App. */
@@ -155,6 +182,7 @@ class MainActivity : AppCompatActivity() {
             """.trimIndent(),
             null
         )
+        reicheRueckgabeHinein()
     }
 
     /**
@@ -258,6 +286,20 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun leisten(dunkel: Boolean, oben: String, unten: String) {
             runOnUiThread { faerbeLeisten(dunkel, oben, unten) }
+        }
+
+        /**
+         * Gibt den Text an die App zurück, aus der er markiert wurde — dort
+         * ersetzt er die Markierung. Danach schließt sich die Schreibhilfe,
+         * man landet also wieder in WhatsApp, Facebook oder wo man war.
+         */
+        @JavascriptInterface
+        fun zurueckgeben(text: String) {
+            if (text.isBlank() || !darfZurueckgeben) return
+            runOnUiThread {
+                setResult(RESULT_OK, Intent().putExtra(Intent.EXTRA_PROCESS_TEXT, text))
+                finish()
+            }
         }
 
         /** Legt den Text in die Zwischenablage, damit er sich woanders einfügen lässt. */

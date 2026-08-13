@@ -208,7 +208,10 @@ textarea#text:focus{outline:none;border-color:var(--petrol)}
 /* „Zurückholen" steht über der Leiste, nicht darin — sonst wäre es der Knopf,
    der die Reihe sprengt. Es nimmt nur die Breite seines Wortes ein und ist
    überhaupt nur da, wenn es etwas zurückzuholen gibt. */
-#btn-zurueck{align-self:flex-start;min-height:3rem}
+/* Die beiden Knöpfe über der Leiste. Sie nehmen nur die Breite ihrer Wörter
+   ein und sind überhaupt nur da, wenn sie etwas zu tun haben. */
+.aktionen{display:flex;gap:.4rem;flex-wrap:wrap}
+.aktionen .btn{min-height:3rem}
 
 /* ---- Knopfleiste unten ----
    Jeder Knopf ist mindestens 48px hoch und breit — darunter trifft man mit
