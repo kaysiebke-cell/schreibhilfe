@@ -44,6 +44,7 @@ Die App baut **nicht** nach, was das Handy schon kann. Sie ergänzt nur, was feh
 | Komma vor „weil", „dass", „wenn", „aber" | ➜ **diese App** |
 | Doppelte Wörter, Abstände, Satzanfänge | ➜ **diese App** |
 | Zu lange Sätze, fehlender Punkt am Ende | ➜ **diese App** |
+| Zeigen, an welchem Wort man gerade schreibt | ➜ **diese App** |
 | Ganzen Text auf einmal korrigieren lassen | ➜ **diese App** (KI-Knopf) |
 | Text aufbewahren und weiterreichen | ➜ **diese App** |
 
@@ -66,6 +67,12 @@ Die Funde haben drei Sorten, am farbigen Balken links zu erkennen:
 Lieber eine Lücke als ein falscher Alarm: Regeln, die auch richtige Sätze
 anmeckern würden, sind bewusst nicht drin. „Das Buch, das ich gelesen habe"
 bleibt deshalb in Ruhe, und „seit ihr Vater krank ist" ebenso.
+
+**Beim Schreiben** liegt ein farbiger Streifen hinter dem Wort, an dem du
+gerade bist — damit die Stelle nicht verlorengeht, wenn der Blick kurz
+abschweift. Abschalten geht im Zahnrad. Der Streifen liegt *hinter* dem Text,
+nicht darin: Die Tastatur unterringelt weiterhin, Markieren und Diktieren
+merken nichts davon.
 
 **„Teilen"** öffnet das System-Teilen-Menü von Android — darin stehen WhatsApp,
 SMS, E-Mail und alles andere. Eigene Knöpfe dafür hat die App nicht, das wäre

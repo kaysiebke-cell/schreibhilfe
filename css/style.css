@@ -18,6 +18,10 @@
   --ok:          #4B7B5D;
   --warn:        #C08A2E;
   --urgent:      #B04A3D;
+  /* Streifen hinter dem Wort, an dem gerade geschrieben wird. Wie Grün, Gelb
+     und Rot bleibt er von den Systemfarben unberührt — er muss sich auch dann
+     noch vom Papier abheben, wenn Android die Palette stellt. */
+  --marker:      #F0E3B4;
   --radius:      3px;
   --focus-ring:  2px solid var(--petrol);
 
@@ -37,6 +41,7 @@
   --ink:#e7e9ec; --ink-soft:#9aa2ac; --line:#3a3e45;
   --petrol:#6aa3bd; --petrol-deep:#a4c7d8;
   --ok:#74b98d; --warn:#d7a24e; --urgent:#e0837a;
+  --marker:#3e4757;
 }
 :root[data-theme="dark"] select,
 :root[data-theme="dark"] option{background:var(--surface);color:var(--ink)}
@@ -108,20 +113,50 @@ body{
   display:flex;flex-direction:column;gap:.4rem;
 }
 
-textarea#text{
-  flex:1;min-height:5rem;
-  width:100%;resize:none;
+/* Feld und Zwilling liegen übereinander. Die Papierfarbe trägt der Rahmen,
+   damit der Zwilling dazwischen durchscheint. */
+.feld{
+  position:relative;flex:1;min-height:5rem;
+  display:flex;
+  background:var(--surface);
+  border-radius:var(--radius);
+}
+
+/* Zeichen für Zeichen deckungsgleich: gleiche Schrift, gleiche Innenabstände,
+   gleicher Zeilenfall. Weicht hier etwas ab, verrutscht der Streifen. */
+#spiegel,textarea#text{
   font-family:var(--sans);
   font-size:var(--schrift);
   line-height:1.6;
   letter-spacing:.012em;
   padding:.55rem .6rem;
+}
+textarea#text{
+  flex:1;min-width:0;
+  width:100%;resize:none;
   border:1px solid var(--line);
   border-radius:var(--radius);
-  background:var(--surface);
+  background:transparent;   /* der Zwilling scheint durch */
   color:var(--ink);
+  position:relative;        /* liegt über dem Zwilling */
 }
 textarea#text:focus{outline:none;border-color:var(--petrol)}
+
+/* Der Zwilling sitzt innerhalb des Randes; seine Breite setzt die App auf die
+   Innenbreite des Feldes, damit ein Rollbalken den Zeilenfall nicht verschiebt.
+   Der Text ist durchsichtig — zu sehen ist nur der Streifen. */
+#spiegel{
+  position:absolute;top:1px;left:1px;bottom:1px;
+  margin:0;overflow:hidden;
+  white-space:pre-wrap;overflow-wrap:break-word;
+  color:transparent;
+  pointer-events:none;
+  -webkit-user-select:none;user-select:none;
+}
+#spiegel mark{
+  background:var(--marker);color:transparent;
+  border-radius:2px;
+}
 
 /* ---- Fundliste ---- */
 /* Die Fundliste darf höchstens die halbe Seite nehmen — der Rest bleibt Schreibfeld. */
