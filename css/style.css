@@ -41,7 +41,11 @@
   --ink:#e7e9ec; --ink-soft:#9aa2ac; --line:#3a3e45;
   --petrol:#6aa3bd; --petrol-deep:#a4c7d8;
   --ok:#74b98d; --warn:#d7a24e; --urgent:#e0837a;
-  --marker:#3e4757;
+  /* Warm statt grau: Auf dunklem Papier verschwimmt ein blaugrauer Streifen
+     mit dem Untergrund. Der Bernstein hebt sich ab und bleibt derselbe
+     Gedanke wie das Gelb im Hellen. Heller ginge, aber dann wird der Text
+     darauf zu blass — er muss die Hauptsache bleiben. */
+  --marker:#6f5a26;
 }
 :root[data-theme="dark"] select,
 :root[data-theme="dark"] option{background:var(--surface);color:var(--ink)}
