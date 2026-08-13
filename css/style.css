@@ -186,6 +186,17 @@ textarea#text:focus{outline:none;border-color:var(--petrol)}
   font-family:var(--serif);font-size:.8rem;line-height:1.3;color:var(--ink);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
+/* Vorschläge sind ganze Sätze: untereinander statt nebeneinander. Der alte
+   Satz wird nicht durchgestrichen — er ist nicht falsch, nur schwerer. */
+.fund__satz{font-size:.82rem;line-height:1.4}
+.fund__satz--alt{color:var(--ink-soft)}
+.fund__satz--neu{color:var(--ink);font-weight:600}
+.fund__satz--neu::before{content:"→ ";color:var(--ok);font-weight:400}
+.fund--vorschlag{border-left-color:var(--ok)}
+/* Bei ganzen Sätzen steht der Knopf unten rechts statt daneben. */
+.fund--vorschlag{flex-direction:column;align-items:stretch;gap:.35rem}
+.fund--vorschlag .btn{align-self:flex-end}
+
 .fund__falsch{color:var(--urgent);text-decoration:line-through;text-decoration-thickness:1px}
 .fund__pfeil{color:var(--ink-soft);margin:0 .3rem}
 .fund__richtig{color:var(--ok);font-weight:700}
