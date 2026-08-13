@@ -25,6 +25,7 @@ const el = {
   btnKiZu:       $('btn-ki-zu'),
   btnKorrigieren: $('btn-korrigieren'),
   btnUebersetzen: $('btn-uebersetzen'),
+  btnFormulieren: $('btn-formulieren'),
   zielsprache:   $('zielsprache'),
   btnSettings:   $('btn-settings'),
   btnSettingsZu: $('btn-settings-zu'),
@@ -874,7 +875,14 @@ function findeProbleme(text) {
   return ohneUeberschneidung(korrekturen).concat(hinweise);
 }
 
+/* Woher die angezeigte Liste stammt: aus der eigenen Prüfung (null) oder von
+   der KI. Beim Übernehmen eines Vorschlags muss die App wissen, was danach
+   neu zu zeichnen ist — die eigenen Regeln laufen einfach noch einmal, die
+   Vorschläge der KI dagegen müssen ihre Stellen neu suchen. */
+let kiVorschlaege = null;
+
 function zeigeFunde() {
+  kiVorschlaege = null;
   el.funde.innerHTML = '';
   el.status.textContent = '';
   const text = el.text.value;
@@ -885,6 +893,33 @@ function zeigeFunde() {
 
   if (funde.length === 0) { el.status.textContent = 'Nichts gefunden.'; return; }
 
+  zeichneFunde(funde);
+  el.status.textContent = zusammenfassung(funde);
+}
+
+/* Eine Änderung übernehmen. Danach stimmen alle Stellen dahinter nicht mehr —
+   deshalb wird die Liste jedes Mal neu aufgebaut. */
+function uebernimm(fund) {
+  const jetzt = el.text.value;
+  // Sicherheitsprüfung: Steht an dieser Stelle noch dasselbe?
+  if (jetzt.slice(fund.von, fund.bis) !== fund.alt) {
+    kiVorschlaege ? zeigeKiVorschlaege() : zeigeFunde();
+    return;
+  }
+  merkeFuerZurueck(jetzt);
+  el.text.value = jetzt.slice(0, fund.von) + fund.neu + jetzt.slice(fund.bis);
+  textGeaendert();
+
+  if (kiVorschlaege) {
+    kiVorschlaege = kiVorschlaege.filter((v) => v !== fund);
+    zeigeKiVorschlaege();
+  } else {
+    zeigeFunde();
+  }
+}
+
+function zeichneFunde(funde) {
+  el.funde.innerHTML = '';
   for (const fund of funde) {
     const karte = document.createElement('div');
     karte.className = 'fund fund--' + fund.art;
@@ -900,6 +935,17 @@ function zeigeFunde() {
         stelle.textContent = '„' + kuerze(fund.stelle) + '“';
         beschreibung.appendChild(stelle);
       }
+    } else if (fund.art === 'vorschlag') {
+      /* Ganze Sätze: untereinander statt nebeneinander, sonst passt nichts
+         auf den Bildschirm. Durchgestrichen wäre hier falsch — der alte Satz
+         ist nicht verkehrt, nur schwerer zu lesen. */
+      const vorher = document.createElement('div');
+      vorher.className = 'fund__satz fund__satz--alt';
+      vorher.textContent = fund.alt;
+      const nachher = document.createElement('div');
+      nachher.className = 'fund__satz fund__satz--neu';
+      nachher.textContent = fund.neu;
+      beschreibung.append(vorher, nachher);
     } else {
       const zeile = document.createElement('div');
       zeile.className = 'fund__wort';
@@ -919,23 +965,38 @@ function zeigeFunde() {
     if (fund.art !== 'hinweis') {
       const knopf = document.createElement('button');
       knopf.className = 'btn btn--primary btn--small';
-      knopf.append(icon('i-check'), document.createTextNode(' Ändern'));
-      knopf.addEventListener('click', () => {
-        const jetzt = el.text.value;
-        // Sicherheitsprüfung: Steht an dieser Stelle noch dasselbe?
-        if (jetzt.slice(fund.von, fund.bis) !== fund.alt) { zeigeFunde(); return; }
-        merkeFuerZurueck(jetzt);
-        el.text.value = jetzt.slice(0, fund.von) + fund.neu + jetzt.slice(fund.bis);
-        textGeaendert();
-        zeigeFunde();   // neu suchen, damit die Positionen wieder stimmen
-      });
+      knopf.append(icon('i-check'), document.createTextNode(fund.art === 'vorschlag' ? ' Nehmen' : ' Ändern'));
+      knopf.addEventListener('click', () => uebernimm(fund));
       karte.appendChild(knopf);
     }
 
     el.funde.appendChild(karte);
   }
+}
 
-  el.status.textContent = zusammenfassung(funde);
+/* Die Vorschläge der KI suchen ihre Stellen im Text selbst: Nach jeder
+   übernommenen Änderung sitzen die übrigen woanders. Was sich nicht mehr
+   wörtlich findet — weil der Satz inzwischen von Hand geändert wurde —,
+   fällt still weg. */
+function zeigeKiVorschlaege() {
+  const text = el.text.value;
+  const liste = [];
+  for (const vorschlag of kiVorschlaege || []) {
+    const von = text.indexOf(vorschlag.alt);
+    if (von === -1) continue;
+    liste.push(Object.assign(vorschlag, { von, bis: von + vorschlag.alt.length }));
+  }
+  kiVorschlaege = liste;
+
+  if (liste.length === 0) {
+    el.funde.innerHTML = '';
+    el.status.textContent = 'Fertig — alle Vorschläge sind durch.';
+    return;
+  }
+  zeichneFunde(ohneUeberschneidung(liste));
+  el.status.textContent = liste.length === 1
+    ? '1 Vorschlag. „Nehmen“ setzt ihn ein.'
+    : liste.length + ' Vorschläge. Jeden einzeln mit „Nehmen“ einsetzen.';
 }
 
 const kuerze = (satz) => satz.length > 70 ? satz.slice(0, 70).trimEnd() + ' …' : satz;
@@ -971,6 +1032,26 @@ const kiUebersetzung = (sprache) =>
   'für Wort. Ist der Text schon auf ' + sprache + ', gib ihn unverändert zurück. ' +
   'Antworte ausschließlich mit der Übersetzung: keine Erklärung, keine ' +
   'Anführungszeichen, keine Vorrede.';
+
+/* Umformulieren ist etwas anderes als Korrigieren: Hier darf sich die Wortwahl
+   ändern. Deshalb kommt es nicht als fertiger Text zurück, sondern als Liste
+   einzelner Sätze — jeder mit Begründung, jeder einzeln anzunehmen oder
+   liegenzulassen. Der Text gehört dem Menschen, nicht der Maschine. */
+const KI_VORSCHLAEGE =
+  'Du bist eine Schreibhilfe für einen Menschen mit Legasthenie. Suche im ' +
+  'folgenden deutschen Text die Sätze, die schwer zu lesen oder umständlich ' +
+  'sind, und schlage für jeden eine klarere Fassung vor. ' +
+  'Regeln: Ändere nichts am Inhalt und erfinde nichts dazu. Behalte den ' +
+  'Tonfall — ein Brief ans Amt bleibt förmlich, eine Nachricht an einen Freund ' +
+  'bleibt locker. Benutze einfache, gebräuchliche Wörter und kurze Sätze. ' +
+  'Nimm höchstens sechs Sätze, nur die, bei denen es wirklich hilft; ist der ' +
+  'Text schon gut, nimm weniger oder keinen. ' +
+  'Antworte ausschließlich mit einer JSON-Liste, ohne Vorrede und ohne ' +
+  'Code-Zaun, in dieser Form: ' +
+  '[{"alt":"der Satz zeichengenau aus dem Text","neu":"die klarere Fassung",' +
+  '"grund":"in höchstens acht Wörtern, warum das leichter ist"}]. ' +
+  'Der Wert von "alt" muss zeichengenau so im Text vorkommen — nicht kürzen, ' +
+  'nicht glätten, nichts hinzufügen. Gibt es nichts zu verbessern: []';
 
 /* Die Sprachen, die im KI-Fenster zur Wahl stehen. Deutsch steht mit drin —
    für den umgekehrten Weg, wenn ein fremdsprachiger Text im Feld liegt. */
@@ -1177,6 +1258,57 @@ el.btnKorrigieren.addEventListener('click', () => {
     'Die KI liest deinen Text … einen Moment.',
     'Fertig korrigiert. Nicht einverstanden? „Zurückholen“ darunter.');
 });
+
+/* Der dritte Weg: Vorschläge statt fertiger Text. */
+el.btnFormulieren.addEventListener('click', async () => {
+  el.dlgKi.close();
+  const text = el.text.value.trim();
+  if (!text) { el.status.textContent = 'Es steht noch kein Text da.'; return; }
+
+  el.btnKi.disabled = true;
+  el.btnKi.classList.add('btn--laeuft');
+  el.funde.innerHTML = '';
+  el.status.textContent = 'Die KI liest deinen Text … einen Moment.';
+
+  const { ergebnis, fehler, cent } = await kiAnfrage(KI_VORSCHLAEGE, text);
+
+  el.btnKi.disabled = false;
+  el.btnKi.classList.remove('btn--laeuft');
+  if (fehler) { el.status.textContent = fehler; return; }
+  if (cent !== null && cent !== undefined) { merkeKosten(cent); zeigeKosten(); }
+
+  const roh = leseListe(ergebnis);
+  if (roh === null) { el.status.textContent = 'Die Antwort war nicht zu lesen. Bitte noch einmal versuchen.'; return; }
+
+  /* Nur was zeichengenau im Text steht, lässt sich auch sicher ersetzen. */
+  const jetzt = el.text.value;
+  kiVorschlaege = roh
+    .filter((v) => v && typeof v.alt === 'string' && typeof v.neu === 'string'
+                && v.alt !== v.neu && jetzt.includes(v.alt))
+    .map((v) => ({ alt: v.alt, neu: v.neu, art: 'vorschlag',
+                   grund: String(v.grund || 'Leichter zu lesen.') }));
+
+  if (kiVorschlaege.length === 0) {
+    kiVorschlaege = null;
+    el.status.textContent = 'Die KI hatte nichts zu verbessern.'
+      + (cent !== null && cent !== undefined ? ' · ' + alsGeld(cent) : '');
+    return;
+  }
+  zeigeKiVorschlaege();
+  el.status.textContent += (cent !== null && cent !== undefined ? ' · ' + alsGeld(cent) : '');
+});
+
+/* Die Antwort soll eine JSON-Liste sein. Falls doch ein Satz davorsteht oder
+   ein Code-Zaun drumherum, wird die Liste herausgeschnitten. */
+function leseListe(antwort) {
+  const von = antwort.indexOf('[');
+  const bis = antwort.lastIndexOf(']');
+  if (von === -1 || bis <= von) return null;
+  try {
+    const liste = JSON.parse(antwort.slice(von, bis + 1));
+    return Array.isArray(liste) ? liste : null;
+  } catch { return null; }
+}
 
 el.btnUebersetzen.addEventListener('click', () => {
   const sprache = el.zielsprache.value;

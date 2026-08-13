@@ -47,6 +47,7 @@ Die App baut **nicht** nach, was das Handy schon kann. Sie ergänzt nur, was feh
 | Zeigen, an welchem Wort man gerade schreibt | ➜ **diese App** |
 | Ganzen Text auf einmal korrigieren lassen | ➜ **diese App** (KI-Knopf) |
 | In eine andere Sprache übersetzen | ➜ **diese App** (KI-Knopf) |
+| Sätze verständlicher formulieren | ➜ **diese App** (KI-Knopf) |
 | Text aufbewahren und weiterreichen | ➜ **diese App** |
 
 Der Knopf **„Prüfen"** sucht deshalb ausdrücklich nur nach Fehlern, die ein
@@ -106,11 +107,16 @@ abtippen.
 Der **KI-Knopf** fragt dann, was er tun soll:
 
 * **Rechtschreibung und Grammatik** — den ganzen Text auf einmal korrigieren.
+* **Verständlicher formulieren** — die KI sucht die Sätze, die schwer zu lesen
+  sind, und schlägt für jeden eine klarere Fassung vor. Die Vorschläge stehen
+  einzeln in derselben Liste wie die Funde von „Prüfen": alter Satz, neuer
+  Satz, ein kurzer Grund. Jeder wird einzeln übernommen — oder eben nicht.
 * **Übersetzen** — in eine von vierzehn Sprachen. Deutsch steht mit in der
   Liste, für den umgekehrten Weg: fremdsprachigen Text ins Feld, Deutsch
   wählen, fertig.
 
-Beides ersetzt den Text im Feld; **„Zurückholen"** bringt das Original zurück.
+Korrigieren und Übersetzen ersetzen den Text im Feld; **„Zurückholen"** bringt
+das Original zurück.
 Beides schickt den Text an die Anthropic-Schnittstelle — ohne diesen Knopf
 verlässt nichts das Gerät.
 
