@@ -82,9 +82,17 @@
        sprengte es die Reihe, und die blieb dann aufgeklappt stehen. Hier taucht
        es nur auf, wenn es etwas zurückzuholen gibt — direkt unter der Meldung,
        auf die es sich bezieht. -->
-  <button class="btn" id="btn-zurueck" hidden>
-    <svg class="ic"><use href="#i-undo"></use></svg> Zurückholen
-  </button>
+  <div class="aktionen">
+    <button class="btn" id="btn-zurueck" hidden>
+      <svg class="ic"><use href="#i-undo"></use></svg> Zurückholen
+    </button>
+    <!-- Nur da, wenn der Text aus dem Markier-Menü einer anderen App kam:
+         Dann ersetzt er dort die Markierung, und die Schreibhilfe schließt
+         sich wieder. Beim Teilen gibt es diesen Rückweg nicht. -->
+    <button class="btn btn--primary" id="btn-zurueckgeben" hidden>
+      <svg class="ic"><use href="#i-check"></use></svg> Zurückgeben
+    </button>
+  </div>
 </main>
 
 <footer class="leiste">

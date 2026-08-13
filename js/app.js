@@ -16,6 +16,7 @@ const el = {
   btnPruefen:    $('btn-pruefen'),
   btnKi:         $('btn-ki'),
   btnZurueck:    $('btn-zurueck'),
+  btnZurueckgeben: $('btn-zurueckgeben'),
   status:        $('status'),
   funde:         $('funde'),
   btnTeilen:     $('btn-teilen'),
@@ -1350,6 +1351,28 @@ el.btnTeilen.addEventListener('click', async () => {
   }
   // Kein Teilen möglich: dann wenigstens kopieren, damit der Knopf etwas tut.
   kopiere(text, 'Teilen geht hier nicht — der Text ist kopiert.');
+});
+
+/* ------------------------------------------------------------
+   Zurück an die App, aus der der Text kam.
+
+   Kam er aus dem Markier-Menü (WhatsApp, Facebook, Mail — irgendein Feld, in
+   dem man Text markieren kann), nimmt diese App ihn auch wieder entgegen: Der
+   verbesserte Text ersetzt dort die Markierung, und die Schreibhilfe schließt
+   sich. Kein Kopieren, kein Teilen, kein Suchen der richtigen Stelle.
+
+   Die Android-Hülle meldet, ob dieser Rückweg offensteht — beim Teilen gibt es
+   ihn nicht, und manche Apps geben den Text ausdrücklich nur zum Lesen heraus.
+   ------------------------------------------------------------ */
+function zeigeRueckgabe() {
+  el.btnZurueckgeben.hidden = !window.KannZurueckgeben;
+}
+addEventListener('rueckgabe', zeigeRueckgabe);
+zeigeRueckgabe();
+
+el.btnZurueckgeben.addEventListener('click', () => {
+  const text = holeText(); if (!text) return;
+  if (typeof bruecke?.zurueckgeben === 'function') bruecke.zurueckgeben(text);
 });
 
 el.btnKopieren.addEventListener('click', () => {

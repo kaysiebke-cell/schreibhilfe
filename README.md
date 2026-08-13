@@ -21,10 +21,16 @@ speichern. Ausführlich, samt Stolpersteinen: **[APK-HERUNTERLADEN.md](APK-HERUN
 Du musst **nicht** in die App wechseln, um dort zu schreiben. Schreib wie immer
 in WhatsApp, Facebook oder der Mail-App:
 
-1. Text **markieren**
-2. **Teilen** → **Schreibhilfe** (oder im Markier-Menü direkt auf *Schreibhilfe*)
+1. Text im Schreibfeld **markieren**
+2. Im Markier-Menü auf **Schreibhilfe** (steht dort neben *Kopieren* und
+   *Teilen*, bei vielen Wörtern hinter dem ⋮)
 3. Der Text steht sofort da — **und ist schon geprüft**
-4. Korrigieren → **Teilen** → zurück, wo er herkam
+4. Korrigieren → **Zurückgeben** → der verbesserte Text **ersetzt die
+   Markierung**, und du bist wieder in WhatsApp
+
+Schritt 4 ist der eigentliche Trick: kein Kopieren, kein Teilen, kein Suchen
+der richtigen Stelle. Der Weg über **Teilen → Schreibhilfe** geht auch, nur
+gibt es dort keinen Rückweg — von dort führt „Teilen" wieder hinaus.
 
 ## Was die App macht — und was Android schon macht
 
