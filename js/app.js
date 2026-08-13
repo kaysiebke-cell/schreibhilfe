@@ -21,6 +21,11 @@ const el = {
   btnTeilen:     $('btn-teilen'),
   btnKopieren:   $('btn-kopieren'),
   dlg:           $('dlg-settings'),
+  dlgKi:         $('dlg-ki'),
+  btnKiZu:       $('btn-ki-zu'),
+  btnKorrigieren: $('btn-korrigieren'),
+  btnUebersetzen: $('btn-uebersetzen'),
+  zielsprache:   $('zielsprache'),
   btnSettings:   $('btn-settings'),
   btnSettingsZu: $('btn-settings-zu'),
   apiKey:        $('api-key'),
@@ -942,12 +947,29 @@ el.btnPruefen.addEventListener('click', zeigeFunde);
    4. KI-Korrektur — braucht Internet und einen API-Schlüssel
    ============================================================ */
 
-const KI_ANWEISUNG =
+const KI_KORREKTUR =
   'Du bist eine Schreibhilfe für einen Menschen mit Legasthenie. ' +
   'Korrigiere im folgenden deutschen Text die Rechtschreibung, die Grammatik ' +
   'und die Zeichensetzung. Behalte Wortwahl, Tonfall und Inhalt bei – ändere ' +
   'nichts am Sinn und erfinde nichts dazu. Antworte ausschließlich mit dem ' +
   'korrigierten Text: keine Erklärung, keine Anführungszeichen, keine Vorrede.';
+
+/* Übersetzen ist dieselbe Anfrage mit einer anderen Anweisung. */
+const kiUebersetzung = (sprache) =>
+  'Übersetze den folgenden Text nach ' + sprache + '. ' +
+  'Behalte Tonfall und Anrede bei: Ein Brief bleibt ein Brief, eine Nachricht ' +
+  'an einen Freund bleibt locker. Übersetze sinngemäß und natürlich, nicht Wort ' +
+  'für Wort. Ist der Text schon auf ' + sprache + ', gib ihn unverändert zurück. ' +
+  'Antworte ausschließlich mit der Übersetzung: keine Erklärung, keine ' +
+  'Anführungszeichen, keine Vorrede.';
+
+/* Die Sprachen, die im KI-Fenster zur Wahl stehen. Deutsch steht mit drin —
+   für den umgekehrten Weg, wenn ein fremdsprachiger Text im Feld liegt. */
+const SPRACHEN = [
+  'Englisch', 'Deutsch', 'Türkisch', 'Russisch', 'Ukrainisch', 'Polnisch',
+  'Rumänisch', 'Arabisch', 'Französisch', 'Spanisch', 'Italienisch',
+  'Griechisch', 'Niederländisch', 'Portugiesisch',
+];
 
 function kiVerfuegbar() {
   const vorhanden = !!Speicher.lies('apiKey', '');
@@ -957,21 +979,19 @@ function kiVerfuegbar() {
   return vorhanden;
 }
 
-async function kiKorrektur() {
-  const text = el.text.value.trim();
-  if (!text) { el.status.textContent = 'Es steht noch kein Text da.'; return; }
-
+/* ------------------------------------------------------------
+   Eine Anfrage, zwei Anwendungen.
+   Korrigieren und Übersetzen unterscheiden sich nur in der Anweisung — alles
+   andere (Abbruch nach 90 s, Fehlermeldungen, kein Nachdenken) ist dasselbe.
+   ------------------------------------------------------------ */
+async function kiAnfrage(anweisung, text) {
   const schluessel = Speicher.lies('apiKey', '');
   const modell = Speicher.lies('modell', 'claude-opus-5');
-
-  el.btnKi.disabled = true;
-  el.btnKi.classList.add('btn--laeuft');
-  el.status.textContent = 'Die KI liest deinen Text … einen Moment.';
 
   const anfrage = {
     model: modell,
     max_tokens: 4000,
-    system: KI_ANWEISUNG,
+    system: anweisung,
     messages: [{ role: 'user', content: text }],
   };
   if (modell !== 'claude-haiku-4-5') {
@@ -979,8 +999,8 @@ async function kiKorrektur() {
     anfrage.output_config = { effort: 'low' };
     // Opus 5 und Sonnet 5 denken von sich aus nach, und dieses Nachdenken zählt
     // gegen dieselben 4000 Tokens wie die Antwort. Bei einem langen Brief bliebe
-    // dann womöglich nur ein abgeschnittener Text übrig. Rechtschreibung
-    // korrigieren braucht kein Nachdenken – also aus.
+    // dann womöglich nur ein abgeschnittener Text übrig. Korrigieren und
+    // Übersetzen brauchen kein Nachdenken – also aus.
     anfrage.thinking = { type: 'disabled' };
   }
 
@@ -1015,43 +1035,86 @@ async function kiKorrektur() {
     }
 
     const daten = await antwort.json();
+    if (daten.stop_reason === 'refusal') return { fehler: 'Die KI wollte diesen Text nicht bearbeiten.' };
 
-    if (daten.stop_reason === 'refusal') {
-      el.status.textContent = 'Die KI wollte diesen Text nicht bearbeiten.';
-      return;
-    }
-
-    const korrigiert = (daten.content || [])
+    const ergebnis = (daten.content || [])
       .filter((block) => block.type === 'text')
       .map((block) => block.text)
       .join('')
       .trim();
 
-    if (!korrigiert) { el.status.textContent = 'Es kam keine Antwort zurück.'; return; }
-
-    merkeFuerZurueck(el.text.value);
-    el.text.value = korrigiert;
-    textGeaendert();
-    el.funde.innerHTML = '';
-    el.status.textContent = 'Fertig korrigiert. Nicht einverstanden? „Zurückholen“ darunter.';
+    return ergebnis ? { ergebnis } : { fehler: 'Es kam keine Antwort zurück.' };
 
   } catch (fehler) {
     // Reihenfolge wichtig: „navigator.onLine“ meldet auf Android auch dann noch
     // „online“, wenn die Verbindung längst hängt. Der Abbruch ist das sichere Zeichen.
-    if (fehler.name === 'AbortError') {
-      el.status.textContent = 'Die KI hat zu lange gebraucht. Bitte noch einmal versuchen.';
-    } else if (!navigator.onLine) {
-      el.status.textContent = 'Kein Internet. Die KI-Korrektur braucht eine Verbindung.';
-    } else {
-      el.status.textContent = 'Es hat nicht geklappt: ' + fehler.message;
-    }
+    if (fehler.name === 'AbortError') return { fehler: 'Die KI hat zu lange gebraucht. Bitte noch einmal versuchen.' };
+    if (!navigator.onLine)            return { fehler: 'Kein Internet. Die KI braucht eine Verbindung.' };
+    return { fehler: 'Es hat nicht geklappt: ' + fehler.message };
   } finally {
     clearTimeout(wecker);
-    el.btnKi.disabled = false;
-    el.btnKi.classList.remove('btn--laeuft');
   }
 }
-el.btnKi.addEventListener('click', kiKorrektur);
+
+/* Der gemeinsame Ablauf: Text holen, Knopf sperren, Ergebnis einsetzen. */
+async function kiLauf(anweisung, laeuft, fertig) {
+  const text = el.text.value.trim();
+  if (!text) { el.status.textContent = 'Es steht noch kein Text da.'; return; }
+
+  el.btnKi.disabled = true;
+  el.btnKi.classList.add('btn--laeuft');
+  el.status.textContent = laeuft;
+
+  const { ergebnis, fehler } = await kiAnfrage(anweisung, text);
+
+  el.btnKi.disabled = false;
+  el.btnKi.classList.remove('btn--laeuft');
+
+  if (fehler) { el.status.textContent = fehler; return; }
+
+  merkeFuerZurueck(el.text.value);
+  el.text.value = ergebnis;
+  textGeaendert();
+  el.funde.innerHTML = '';
+  el.status.textContent = fertig;
+}
+
+/* ------------------------------------------------------------
+   Das KI-Fenster: erst wählen, dann laufen lassen.
+
+   Ein eigener Knopf fürs Übersetzen wäre der sechste in der Leiste gewesen —
+   dann bräche sie auf schmalen Handys wieder auf zwei Zeilen um. Beides sind
+   ohnehin KI-Sachen: Sie brauchen denselben Schlüssel und dasselbe Internet.
+   Also stehen sie zusammen hinter einem Knopf.
+   ------------------------------------------------------------ */
+for (const sprache of SPRACHEN) {
+  const eintrag = document.createElement('option');
+  eintrag.value = sprache;
+  eintrag.textContent = sprache;
+  el.zielsprache.appendChild(eintrag);
+}
+
+el.btnKi.addEventListener('click', () => {
+  el.zielsprache.value = Speicher.lies('sprache', 'Englisch');
+  el.dlgKi.showModal();
+});
+el.btnKiZu.addEventListener('click', () => el.dlgKi.close());
+
+el.btnKorrigieren.addEventListener('click', () => {
+  el.dlgKi.close();
+  kiLauf(KI_KORREKTUR,
+    'Die KI liest deinen Text … einen Moment.',
+    'Fertig korrigiert. Nicht einverstanden? „Zurückholen“ darunter.');
+});
+
+el.btnUebersetzen.addEventListener('click', () => {
+  const sprache = el.zielsprache.value;
+  Speicher.schreib('sprache', sprache);
+  el.dlgKi.close();
+  kiLauf(kiUebersetzung(sprache),
+    'Die KI übersetzt … einen Moment.',
+    'Übersetzt nach ' + sprache + '. Das Deutsche holt „Zurückholen“ darunter wieder.');
+});
 
 /* ============================================================
    5. Weiterleiten in andere Apps
