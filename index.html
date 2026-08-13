@@ -58,10 +58,18 @@
 </header>
 
 <main id="app">
-  <textarea id="text"
-    placeholder="Hier schreiben oder diktieren."
-    spellcheck="true" lang="de" autocapitalize="sentences"
-    autocorrect="on" aria-label="Dein Text"></textarea>
+  <!-- Hinter dem Schreibfeld liegt ein Zwilling mit demselben Text — unsichtbar
+       bis auf den farbigen Streifen hinter dem Wort, an dem gerade geschrieben
+       wird. Im Feld selbst geht das nicht: ein <textarea> lässt sich innen
+       nicht einfärben. Der Text bleibt der des Feldes, deshalb unterringelt die
+       Tastatur weiterhin, und Markieren und Diktieren merken nichts davon. -->
+  <div class="feld">
+    <div id="spiegel" aria-hidden="true"></div>
+    <textarea id="text"
+      placeholder="Hier schreiben oder diktieren."
+      spellcheck="true" lang="de" autocapitalize="sentences"
+      autocorrect="on" aria-label="Dein Text"></textarea>
+  </div>
 
   <!-- Die Funde entstehen erst nach dem Prüfen. Ohne „aria-live" bekommt eine
        Vorlesefunktion gar nicht mit, dass hier etwas erschienen ist. -->
@@ -102,6 +110,13 @@
         <option value="claude-sonnet-5">Mittelweg &middot; Sonnet 5</option>
         <option value="claude-haiku-4-5">Günstig &amp; schnell &middot; Haiku 4.5</option>
       </select>
+    </label>
+
+    <label class="field field--schalter">
+      <input id="wortmarker" type="checkbox">
+      <span>Wort hervorheben
+        <em>Ein farbiger Streifen zeigt beim Schreiben, wo du gerade bist.</em>
+      </span>
     </label>
 
     <!-- Nur sichtbar, wenn das Gerät eine Systempalette liefert (Android 12+). -->

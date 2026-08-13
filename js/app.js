@@ -10,6 +10,7 @@ const $ = (id) => document.getElementById(id);
 
 const el = {
   text:          $('text'),
+  spiegel:       $('spiegel'),
   zaehler:       $('zaehler'),
   btnLeeren:     $('btn-leeren'),
   btnPruefen:    $('btn-pruefen'),
@@ -32,6 +33,7 @@ const el = {
   themeSymbol:   $('theme-symbol'),
   feldSystemfarben: $('feld-systemfarben'),
   systemfarben:  $('systemfarben'),
+  wortmarker:    $('wortmarker'),
 };
 
 /* ------------------------------------------------------------
@@ -174,6 +176,8 @@ function setzeSchrift(wert) {
   schriftgroesse = Math.min(1.75, Math.max(0.9, Math.round(wert * 100) / 100));
   document.documentElement.style.setProperty('--schrift', schriftgroesse + 'rem');
   Speicher.schreib('schrift', schriftgroesse);
+  // Andere Schriftgröße heißt anderer Zeilenfall — der Streifen muss mit.
+  if (el.spiegel) markiereWort();
 }
 setzeSchrift(schriftgroesse);
 el.btnGroesser.addEventListener('click', () => setzeSchrift(schriftgroesse + 0.1));
@@ -190,6 +194,9 @@ function textGeaendert() {
   const woerter = el.text.value.trim() ? el.text.value.trim().split(/\s+/).length : 0;
   // Bei leerem Text bleibt der Zähler leer — dann sieht man ihn gar nicht.
   el.zaehler.textContent = woerter === 0 ? '' : woerter === 1 ? '1 Wort' : woerter + ' Wörter';
+  // Auch wenn die App den Text selbst setzt (Löschen, Ändern, KI), muss der
+  // Zwilling dahinter wieder stimmen.
+  markiereWort();
 }
 /* Nur echtes Tippen löst „input“ aus. Setzt die App den Text selbst (Löschen,
    Ändern, KI), bleibt das Ereignis aus — der Pfeil überlebt also genau die
@@ -199,6 +206,62 @@ el.text.addEventListener('input', () => {
   vergissZurueck();
 });
 textGeaendert();
+
+/* ------------------------------------------------------------
+   Das Wort hervorheben, an dem gerade geschrieben wird.
+
+   Ein <textarea> lässt sich innen nicht einfärben — es kennt nur eine Farbe
+   für den ganzen Text. Deshalb liegt dahinter der Zwilling: derselbe Text,
+   durchsichtig geschrieben, und nur um das eine Wort ein <mark>. Zu sehen ist
+   davon einzig der farbige Streifen; die Buchstaben darüber sind weiterhin die
+   des Feldes. Das ist der Punkt: Tastatur, Markieren, Diktieren und die roten
+   Ringel bleiben unberührt, weil am Feld selbst nichts geändert wird.
+   ------------------------------------------------------------ */
+const WORT_ZEICHEN = /[A-Za-zÄÖÜäöüß0-9'’-]/;
+
+function hervorhebenAn() {
+  return Speicher.lies('wortmarker', true);
+}
+
+/* Vom Schreibzeiger aus nach beiden Seiten bis zum ersten Nicht-Buchstaben.
+   Steht der Zeiger zwischen zwei Leerzeichen, gibt es nichts hervorzuheben. */
+function wortGrenzen(text, stelle) {
+  let von = stelle, bis = stelle;
+  while (von > 0   && WORT_ZEICHEN.test(text[von - 1])) von--;
+  while (bis < text.length && WORT_ZEICHEN.test(text[bis])) bis++;
+  return von === bis ? null : { von, bis };
+}
+
+const alsHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function markiereWort() {
+  const zeigerImFeld = document.activeElement === el.text
+                    && el.text.selectionStart === el.text.selectionEnd;
+  const grenzen = hervorhebenAn() && zeigerImFeld
+    ? wortGrenzen(el.text.value, el.text.selectionStart)
+    : null;
+
+  if (!grenzen) { el.spiegel.textContent = ''; return; }
+
+  const t = el.text.value;
+  // Die letzte Zeile bräuchte sonst keinen Platz — der Streifen stünde zu hoch.
+  el.spiegel.innerHTML = alsHtml(t.slice(0, grenzen.von))
+    + '<mark>' + alsHtml(t.slice(grenzen.von, grenzen.bis)) + '</mark>'
+    + alsHtml(t.slice(grenzen.bis)) + '\n';
+
+  // Ein Rollbalken nimmt Breite weg. Der Zwilling hat keinen und müsste sonst
+  // anders umbrechen als das Feld — dann sitzt der Streifen unter dem Wort.
+  el.spiegel.style.width = el.text.clientWidth + 'px';
+  el.spiegel.scrollTop = el.text.scrollTop;
+}
+
+/* „selectionchange“ deckt alles ab, was den Zeiger bewegt: tippen, antippen,
+   Pfeiltasten, Vorschlag der Tastatur. */
+document.addEventListener('selectionchange', markiereWort);
+el.text.addEventListener('scroll', () => { el.spiegel.scrollTop = el.text.scrollTop; });
+el.text.addEventListener('focus', markiereWort);
+el.text.addEventListener('blur', markiereWort);
+addEventListener('resize', markiereWort);
 
 /* Kein „Wirklich löschen?“-Fenster: In der Android-App gibt es kein
    window.confirm — es liefert wortlos false, und der Knopf täte dann gar
@@ -988,7 +1051,14 @@ async function kopiere(text, meldung) {
 el.btnSettings.addEventListener('click', () => {
   el.apiKey.value = Speicher.lies('apiKey', '');
   el.modell.value = Speicher.lies('modell', 'claude-opus-5');
+  el.wortmarker.checked = hervorhebenAn();
   el.dlg.showModal();
+});
+
+/* Wirkt sofort — man sieht ja beim Zumachen gleich, ob es einem gefällt. */
+el.wortmarker.addEventListener('change', () => {
+  Speicher.schreib('wortmarker', el.wortmarker.checked);
+  markiereWort();
 });
 el.btnSettingsZu.addEventListener('click', () => el.dlg.close());
 
