@@ -44,6 +44,7 @@ const el = {
   wortmarker:    $('wortmarker'),
   schluesselStand: $('schluessel-stand'),
   kostenStand:   $('kosten-stand'),
+  fassung:       $('fassung'),
   btnKostenWeg:  $('btn-kosten-weg'),
 };
 
@@ -1380,9 +1381,11 @@ zeigeRueckgabe();
    dagegen gibt es überall und immer ganz vorn. Also: kopieren, Schreibhilfe
    öffnen, hier einfügen.
 
-   Angeboten wird der Knopf nur bei leerem Feld — steht schon Text da, würde er
-   ihn überschreiben. Und nur auf Knopfdruck: Von allein liest die App die
-   Zwischenablage nicht aus.
+   Der Knopf steht immer da, solange die App auf dem Handy läuft. Zuerst zeigte
+   er sich nur bei leerem Feld — das war ein Fehlgriff: Die App hebt den letzten
+   Text auf, das Feld ist beim Öffnen also fast nie leer, und der Knopf blieb
+   unsichtbar. Steht schon Text da, wird er ersetzt und „Zurückholen“ bringt ihn
+   wieder. Gelesen wird nur auf Knopfdruck, nie von allein.
    ------------------------------------------------------------ */
 /* Nicht über „bruecke“: Diese Konstante entsteht weiter unten in der Datei,
    und der erste Aufruf kommt schon beim Start — dann gäbe es einen Fehler,
@@ -1390,8 +1393,7 @@ zeigeRueckgabe();
    zu fragen. */
 function zeigeEinfuegen() {
   el.btnEinfuegen.hidden =
-    typeof window.AndroidBridge?.frageZwischenablage !== 'function'
-    || el.text.value.trim() !== '';
+    typeof window.AndroidBridge?.frageZwischenablage !== 'function';
 }
 
 el.btnEinfuegen.addEventListener('click', () => window.AndroidBridge.frageZwischenablage());
@@ -1399,9 +1401,16 @@ el.btnEinfuegen.addEventListener('click', () => window.AndroidBridge.frageZwisch
 addEventListener('zwischenablage', (ereignis) => {
   const text = String(ereignis.detail || '').trim();
   if (!text) { el.status.textContent = 'In der Zwischenablage steht kein Text.'; return; }
+  if (text === el.text.value) { el.status.textContent = 'Das steht schon da.'; return; }
+
+  const stand = el.text.value;
+  if (stand.trim()) merkeFuerZurueck(stand);   // der alte Text bleibt erreichbar
   el.text.value = text;
   textGeaendert();
   zeigeFunde();          // gleich prüfen, wie beim Weg über das Markier-Menü
+  if (stand.trim()) {
+    el.status.textContent += ' · Der alte Text steht hinter „Zurückholen“.';
+  }
 });
 
 el.btnZurueckgeben.addEventListener('click', () => {
@@ -1461,6 +1470,10 @@ el.btnSettings.addEventListener('click', () => {
   el.modell.value = Speicher.lies('modell', 'claude-opus-5');
   el.wortmarker.checked = hervorhebenAn();
   zeigeKosten();
+  /* Im Browser gibt es keine Fassung — dort steht immer das Neueste. */
+  el.fassung.textContent = typeof window.AndroidBridge?.fassung === 'function'
+    ? 'Schreibhilfe ' + window.AndroidBridge.fassung()
+    : '';
   el.dlg.showModal();
 });
 
