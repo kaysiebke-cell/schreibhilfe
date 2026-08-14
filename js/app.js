@@ -1058,6 +1058,8 @@ function verbergeErgebnis() {
 let kiVorschlaege = null;
 
 function zeigeFunde() {
+  verbergeErgebnis();
+  zeigeDanach(true);
   kiVorschlaege = null;
   el.funde.innerHTML = '';
   el.status.textContent = '';
@@ -1234,10 +1236,15 @@ function zeigeHinweise(hinweise) {
    Beim nächsten Tippen kommt es zurück, und die Reihe verschwindet wieder. */
 function zeigeDanach(sichtbar) {
   el.danach.hidden = !sichtbar;
-  el.btnPruefen.hidden = sichtbar;
+  // „Korrigieren" bleibt stehen: Nach dem Übernehmen einzelner Vorschläge
+  // will man meist noch einmal prüfen.
 }
 
-el.btnPruefen.addEventListener('click', korrigiereJetzt);
+/* Der Knopf zeigt die Vorschläge als Kästen, wie gewohnt. Das automatische
+   Anwenden mit grüner Anzeige war ein Umbau von mir und hat die Kästen
+   verdrängt — die sind aber das eigentliche Arbeitsmittel: Man sieht, WAS
+   geändert würde und WARUM, und entscheidet Stück für Stück. */
+el.btnPruefen.addEventListener('click', zeigeFunde);
 
 /* Ein Tipp auf das Ergebnis heißt: weiterschreiben. */
 el.ergebnis.addEventListener('click', () => {
