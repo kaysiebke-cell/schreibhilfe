@@ -44,7 +44,6 @@ const el = {
   btnMehrZu:     $('btn-mehr-zu'),
   btnKiZu:       $('btn-ki-zu'),
   btnKorrigieren: $('btn-korrigieren'),
-  kiReihe:       $('ki-reihe'),
   btnUebersetzen: $('btn-uebersetzen'),
   btnFormulieren: $('btn-formulieren'),
   zielsprache:   $('zielsprache'),
@@ -1355,7 +1354,6 @@ function kiVerfuegbar() {
   // Ein Knopf mehr in der Reihe: Passt sie noch auf eine Zeile?
   leisteAnpassen();
   return vorhanden;
-  if (typeof zeigeKiReihe === 'function') zeigeKiReihe();
 }
 
 /* ------------------------------------------------------------
@@ -1498,14 +1496,8 @@ el.btnKi.addEventListener('click', () => {
 el.btnKiZu.addEventListener('click', () => el.dlgKi.close());
 
 
-/* Die KI-Reihe erscheint nur mit hinterlegtem Schlüssel — ohne ihn wären es
-   zwei Knöpfe, die nichts tun können. */
-function zeigeKiReihe() {
-  el.kiReihe.hidden = !Speicher.lies('apiKey', '');
-}
-zeigeKiReihe();
-
 el.btnKorrigieren.addEventListener('click', () => {
+  el.dlg.close();
   kiLauf(KI_KORREKTUR,
     'Die KI liest deinen Text … einen Moment.',
     'Fertig korrigiert. Nicht einverstanden? „Zurückholen“ darunter.');
@@ -1513,7 +1505,7 @@ el.btnKorrigieren.addEventListener('click', () => {
 
 /* Der dritte Weg: Vorschläge statt fertiger Text. */
 el.btnFormulieren.addEventListener('click', async () => {
-  el.dlgKi.close();
+  el.dlg.close();
   const text = el.text.value.trim();
   if (!text) { el.status.textContent = 'Es steht noch kein Text da.'; return; }
 
