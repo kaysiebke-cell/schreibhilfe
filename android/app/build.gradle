@@ -65,6 +65,7 @@ tasks.register('copyWebApp', Copy) {
         include 'icon-*.png'
         include 'css/**'
         include 'js/**'
+        include 'daten/**'
     }
     into webDst
 }

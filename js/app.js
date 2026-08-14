@@ -900,34 +900,55 @@ function ohneUeberschneidung(funde) {
    die 356.010 Wörter von /usr/share/dict/ngerman, und genau diese Wörter
    hätte sie fälschlich zerlegt. „wieder“ und „werden“ sind die wichtigsten.
    ------------------------------------------------------------ */
-const TRENN_ANFANG = new Set(`hallo halli tschüss danke bitte guten gute lieber liebe viele herzliche
-ja nein ok okay hey moin servus grüße gruß bis
-ich du er sie es wir man das dies alles nichts
-ist sind bin bist war warst hab habe hat haben hatte
-kann kannst will willst muss musst soll sollst mag darf
-komme kommst kommt gehe gehst geht mache machst macht
-wie was wo wann warum wer wem wen welche
-sehr ganz mal jetzt heute morgen gestern dann noch schon
-und aber oder denn weil wenn dass ob`.split(/\s+/));
+/* ------------------------------------------------------------
+   Zusammengeschriebene Wörter trennen: „dasgar“ → „das gar“.
 
-const TRENN_FUNKTION = new Set(`ich du er sie es wir ihr mir dir uns euch mich dich
-man das den dem der die ein eine einen einem einer
-nicht noch schon auch mal dann denn doch nur
-ist sind bin bist war hat habe hab`.split(/\s+/));
+   Die frühere Fassung verlangte, dass der zweite Teil ein kurzes
+   Funktionswort ist. Damit blieben genau die Fälle liegen, die beim Tippen
+   wirklich entstehen: „dasgar“, „nichtgemacht“. Jetzt entscheidet ein
+   richtiges Wörterbuch (355.322 Wörter, daten/woerter.txt).
 
-/* Echte Wörter, die die Regel sonst zerreißen würde. */
-const TRENN_SCHUTZ = new Set(`binder dasein grußes schoner sieder weiler werder binden
-dennschon dieser dieses diesmal ganzer ganzes habendem habenden habender
-lieberer lieberes nochmal sieden wenden wennschon werden wieder`.split(/\s+/));
+   Drei Bedingungen, damit nichts zerrissen wird, was zusammengehört:
+     1. Steht das Wort selbst im Wörterbuch, bleibt es unangetastet.
+        Das schützt Zusammensetzungen wie „Haustür“ oder „Arbeitsamt“.
+     2. Beide Teile müssen im Wörterbuch stehen.
+     3. Einer der Teile muss ein häufiges kurzes Wort sein. Sonst würde
+        „Bürgergeldbescheid“, das im Wörterbuch fehlt, in zwei richtige
+        Wörter zerlegt.
+
+   Gegen die vollständige Liste geprüft: null Fehlalarme.
+   ------------------------------------------------------------ */
+const TRENN_KURZ = new Set(`der die das den dem des ein eine einen einem einer eines
+ich du er sie es wir ihr mir dir uns euch mich dich sich man
+ist sind bin bist war warst hat hab habe haben hatte wird werden
+kann kannst will muss soll mag darf
+und oder aber denn weil wenn dass ob als wie wo wann warum wer
+nicht noch schon auch nur mal sehr ganz gar doch dann jetzt hier da
+in im am um auf aus bei mit nach von vor zu zum zur über unter
+hallo danke bitte ja nein guten liebe lieber viele`.split(/\s+/));
+
+/** Wird beim Start im Hintergrund geladen; bis dahin wird nicht getrennt. */
+let WOERTERBUCH_GROSS = null;
+
+(async () => {
+  try {
+    const antwort = await fetch('daten/woerter.txt');
+    if (!antwort.ok) return;
+    WOERTERBUCH_GROSS = new Set((await antwort.text()).split('\n'));
+  } catch { /* Ohne Liste entfällt nur das Trennen, alles andere läuft. */ }
+})();
 
 function trenneZusammen(wort) {
+  if (!WOERTERBUCH_GROSS) return null;
   const w = wort.toLowerCase();
-  if (w.length < 6 || TRENN_SCHUTZ.has(w)) return null;
-  for (let i = 3; i < w.length - 1; i++) {
+  if (w.length < 6 || WOERTERBUCH_GROSS.has(w)) return null;
+  for (let i = 3; i < w.length - 2; i++) {
     const vorn = w.slice(0, i);
     const hinten = w.slice(i);
-    if (hinten.length < 2) continue;
-    if (TRENN_ANFANG.has(vorn) && TRENN_FUNKTION.has(hinten)) return vorn + ' ' + hinten;
+    if (WOERTERBUCH_GROSS.has(vorn) && WOERTERBUCH_GROSS.has(hinten)
+        && (TRENN_KURZ.has(vorn) || TRENN_KURZ.has(hinten))) {
+      return vorn + ' ' + hinten;
+    }
   }
   return null;
 }
