@@ -24,6 +24,9 @@ const el = {
   btnKopieren:   $('btn-kopieren'),
   dlg:           $('dlg-settings'),
   dlgKi:         $('dlg-ki'),
+  dlgMehr:       $('dlg-mehr'),
+  btnMehr:       $('btn-mehr'),
+  btnMehrZu:     $('btn-mehr-zu'),
   btnKiZu:       $('btn-ki-zu'),
   btnKorrigieren: $('btn-korrigieren'),
   btnUebersetzen: $('btn-uebersetzen'),
@@ -1507,6 +1510,25 @@ addEventListener('zwischenablage', (ereignis) => {
 el.btnZurueckgeben.addEventListener('click', () => {
   const text = holeText(); if (!text) return;
   if (typeof bruecke?.zurueckgeben === 'function') bruecke.zurueckgeben(text);
+});
+
+
+/* ------------------------------------------------------------
+   Das Menü hinter den drei Punkten.
+
+   Kopieren, Einfügen und Löschen braucht man selten, standen aber dauerhaft
+   in der Leiste. Aus vier Knöpfen wurden so sieben. Die Knöpfe selbst sind
+   dieselben geblieben — sie stehen nur woanders, ihre Verdrahtung weiter unten
+   gilt unverändert. Nach dem Antippen schließt sich das Menü von selbst.
+   ------------------------------------------------------------ */
+el.btnMehr.addEventListener('click', () => {
+  el.dlgMehr.showModal();
+});
+el.btnMehrZu.addEventListener('click', () => el.dlgMehr.close());
+el.dlgMehr.addEventListener('click', (ereignis) => {
+  if (ereignis.target.closest('.btn') && ereignis.target.id !== 'btn-mehr-zu') {
+    el.dlgMehr.close();
+  }
 });
 
 el.btnKopieren.addEventListener('click', () => {

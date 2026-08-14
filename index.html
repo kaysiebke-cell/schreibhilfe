@@ -40,6 +40,7 @@
   <symbol id="i-sun"      viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 12H2M22 12h-2.2M6.5 6.5L4.9 4.9M19.1 19.1l-1.6-1.6M17.5 6.5l1.6-1.6M4.9 19.1l1.6-1.6"/></symbol>
   <!-- Halb gefüllter Kreis: das übliche Zeichen für „richtet sich nach dem Gerät“. -->
   <symbol id="i-auto"     viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-mehr" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></symbol>
   <symbol id="i-close"    viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <!-- Erdkugel: das übliche Zeichen für Sprache und Übersetzen. -->
   <symbol id="i-globus"   viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.4 5.3 3.4 8.5s-1.2 6.2-3.4 8.5c-2.2-2.3-3.4-5.3-3.4-8.5S9.8 5.8 12 3.5z"/></symbol>
@@ -92,12 +93,6 @@
     <button class="btn btn--primary" id="btn-zurueckgeben" hidden>
       <svg class="ic"><use href="#i-check"></use></svg> Zurückgeben
     </button>
-    <!-- Nur in der Android-App: „Kopieren" gibt es in jedem Markier-Menü, auch
-         dort, wo „Schreibhilfe" nicht auftaucht. Steht schon Text im Feld,
-         wird er ersetzt — „Zurückholen" bringt ihn wieder. -->
-    <button class="btn" id="btn-einfuegen" hidden>
-      <svg class="ic"><use href="#i-copy"></use></svg> Aus der Zwischenablage
-    </button>
   </div>
 </main>
 
@@ -109,16 +104,38 @@
   <button class="btn btn--primary btn--breit" id="btn-pruefen"><svg class="ic"><use href="#i-check"></use></svg> Prüfen</button>
   <button class="btn" id="btn-ki" hidden title="KI-Korrektur" aria-label="KI-Korrektur"><svg class="ic"><use href="#i-sparkle"></use></svg><span class="btn__wort"> KI</span></button>
   <button class="btn" id="btn-teilen" title="Teilen" aria-label="Teilen"><svg class="ic"><use href="#i-share"></use></svg><span class="btn__wort"> Teilen</span></button>
-  <button class="btn" id="btn-kopieren" title="Kopieren" aria-label="Kopieren"><svg class="ic"><use href="#i-copy"></use></svg><span class="btn__wort"> Kopieren</span></button>
 
   <div class="leiste__rechts">
-    <button class="btn btn--icon" id="btn-leeren" title="Text löschen" aria-label="Text löschen"><svg class="ic"><use href="#i-trash"></use></svg></button>
+    <button class="btn btn--icon" id="btn-mehr" title="Mehr" aria-label="Mehr"><svg class="ic"><use href="#i-mehr"></use></svg></button>
   </div>
 </footer>
 
 <!-- Korrigieren und Übersetzen stehen zusammen hinter dem KI-Knopf: Beides
      braucht denselben Schlüssel und dasselbe Internet, und ein sechster Knopf
      hätte die Leiste auf schmalen Handys wieder aufgeklappt. -->
+
+<!-- Was man selten braucht, steht hinter den drei Punkten. Vorher standen
+     Kopieren, Einfügen und Löschen dauerhaft in der Leiste und machten aus
+     vier Knöpfen sieben. -->
+<dialog id="dlg-mehr">
+  <div class="dlg__head">
+    <h2>Mehr</h2>
+    <button class="btn btn--icon" id="btn-mehr-zu" aria-label="Schließen"><svg class="ic"><use href="#i-close"></use></svg></button>
+  </div>
+
+  <div class="form">
+    <button class="btn btn--breit" id="btn-kopieren">
+      <svg class="ic"><use href="#i-copy"></use></svg> Text kopieren
+    </button>
+    <button class="btn btn--breit" id="btn-einfuegen" hidden>
+      <svg class="ic"><use href="#i-copy"></use></svg> Aus der Zwischenablage einsetzen
+    </button>
+    <button class="btn btn--breit" id="btn-leeren">
+      <svg class="ic"><use href="#i-trash"></use></svg> Text löschen
+    </button>
+  </div>
+</dialog>
+
 <dialog id="dlg-ki">
   <div class="dlg__head">
     <h2>Was soll die KI tun?</h2>
