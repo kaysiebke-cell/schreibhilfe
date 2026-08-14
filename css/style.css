@@ -406,3 +406,21 @@ dialog::backdrop{background:rgba(20,25,30,.5)}
   opacity:.75;
   margin-right:.15rem;
 }
+
+/* ============================================================
+   Die Fußleiste war als Zeile gebaut (flex-direction: row). Darin schrumpft
+   jeder Knopf auf seinen Inhalt — „Teilen" endete bei rund 70 % und rechts
+   blieb ein leerer Streifen. Im Entwurf reichen die Knöpfe von Rand zu Rand.
+   Deshalb hier eine Spalte, in der die Kinder auf volle Breite gezogen werden.
+   ============================================================ */
+.leiste{
+  flex-direction:column;
+  flex-wrap:nowrap;
+  align-items:stretch;
+  gap:.5rem;
+}
+.leiste > .knopf,
+.leiste > .danach{ width:100%; }
+/* Rückgängig und Löschen teilen sich die Breite zu gleichen Teilen. */
+.danach__klein{ display:flex; gap:.5rem; }
+.danach__klein > .knopf{ flex:1 1 0; }
