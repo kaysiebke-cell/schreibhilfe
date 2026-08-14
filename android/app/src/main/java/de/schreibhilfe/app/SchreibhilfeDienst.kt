@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.PixelFormat
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.Gravity
 import android.view.MotionEvent
@@ -11,6 +12,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -46,6 +48,10 @@ class SchreibhilfeDienst : AccessibilityService() {
 
     private var laeuft = false
 
+    /** Merkt die selbst gewählte Stelle, während der Knopf der Tastatur ausweicht. */
+    private var ausgewichen = false
+    private var platzVorher = 0
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         fenster = getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -53,7 +59,14 @@ class SchreibhilfeDienst : AccessibilityService() {
         zeigeKnopf()
     }
 
-    override fun onAccessibilityEvent(ereignis: AccessibilityEvent?) { /* nichts nötig */ }
+    /**
+     * Kommt oder geht die Tastatur, muss der Knopf ausweichen — sonst liegt er
+     * mitten auf den Buchstaben. Fensterwechsel sind das Signal dafür.
+     */
+    override fun onAccessibilityEvent(ereignis: AccessibilityEvent?) {
+        weicheTastaturAus()
+    }
+
     override fun onInterrupt() { /* nichts nötig */ }
 
     override fun onDestroy() {
@@ -166,8 +179,15 @@ class SchreibhilfeDienst : AccessibilityService() {
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     sicht.alpha = 1f
-                    if (geschoben) Merker.merkeKnopf(this@SchreibhilfeDienst, meineLage.x, meineLage.y)
-                    else korrigiereFokussiertesFeld()
+                    if (geschoben) {
+                        Merker.merkeKnopf(this@SchreibhilfeDienst, meineLage.x, meineLage.y)
+                        // Wer den Knopf bei offener Tastatur umsetzt, meint diese
+                        // Stelle — nicht die, von der er vorhin ausgewichen ist.
+                        ausgewichen = false
+                        platzVorher = meineLage.y
+                    } else {
+                        korrigiereFokussiertesFeld()
+                    }
                     return true
                 }
             }
@@ -179,23 +199,23 @@ class SchreibhilfeDienst : AccessibilityService() {
 
     private fun korrigiereFokussiertesFeld() {
         if (laeuft) return
-        if (!prueferBereit) { melde(R.string.noch_nicht_bereit); return }
+        if (!prueferBereit) { blinke(R.color.knopf_fehler); melde(R.string.noch_nicht_bereit); return }
 
         val feld = fokussiertesFeld()
-        if (feld == null) { melde(R.string.kein_textfeld); return }
+        if (feld == null) { blinke(R.color.knopf_fehler); melde(R.string.kein_textfeld); return }
 
         val text = feld.text?.toString().orEmpty()
-        if (text.isBlank()) { melde(R.string.feld_leer); return }
+        if (text.isBlank()) { blinke(R.color.knopf_nichts); melde(R.string.feld_leer); return }
 
         laeuft = true
         val befehl = "JSON.stringify(korrigiereAlles(${JSONObject.quote(text)}))"
         pruefer?.evaluateJavascript(befehl) { antwort ->
             laeuft = false
             val ergebnis = leseErgebnis(antwort)
-            if (ergebnis == null) { melde(R.string.pruefung_fehlgeschlagen); return@evaluateJavascript }
+            if (ergebnis == null) { blinke(R.color.knopf_fehler); melde(R.string.pruefung_fehlgeschlagen); return@evaluateJavascript }
 
             val (neuerText, anzahl) = ergebnis
-            if (anzahl == 0 || neuerText == text) { melde(R.string.nichts_gefunden); return@evaluateJavascript }
+            if (anzahl == 0 || neuerText == text) { blinke(R.color.knopf_nichts); melde(R.string.nichts_gefunden); return@evaluateJavascript }
 
             // Den Knoten neu holen: der von vorhin kann inzwischen veraltet sein.
             val jetzigesFeld = fokussiertesFeld() ?: feld
@@ -208,10 +228,73 @@ class SchreibhilfeDienst : AccessibilityService() {
                 jetzigesFeld.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, angaben)
 
             if (hatGeklappt) {
+                blinke(R.color.knopf_gut)
                 melde(resources.getQuantityString(R.plurals.verbessert, anzahl, anzahl))
             } else {
+                blinke(R.color.knopf_fehler)
                 melde(R.string.ersetzen_ging_nicht)
             }
+        }
+    }
+
+    // ------------------------------------------------------- Sichtbare Antwort
+
+    /**
+     * Der Knopf antwortet selbst, statt sich auf einen Toast zu verlassen.
+     *
+     * Ein Toast erscheint klein, oft halb hinter der Tastatur, und ist nach
+     * einer Sekunde weg — den übersieht man. Ein kurzes Aufleuchten des
+     * Knopfes sieht man dagegen, ohne hinzuschauen oder zu lesen:
+     * grün heißt verbessert, grau heißt nichts zu tun, rot heißt ging nicht.
+     */
+    private fun blinke(farbeId: Int) {
+        val k = knopf ?: return
+        k.post {
+            k.background?.setTint(getColor(farbeId))
+            k.animate().scaleX(1.3f).scaleY(1.3f).setDuration(110)
+                .withEndAction { k.animate().scaleX(1f).scaleY(1f).setDuration(180).start() }
+                .start()
+            k.postDelayed({ k.background?.setTintList(null) }, 900)
+        }
+    }
+
+    // ------------------------------------------------- Der Tastatur ausweichen
+
+    /** Obere Kante der Bildschirmtastatur, oder -1 wenn keine da ist. */
+    private fun tastaturKante(): Int {
+        for (fensterInfo in windows) {
+            if (fensterInfo.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
+                val kasten = Rect()
+                fensterInfo.getBoundsInScreen(kasten)
+                if (kasten.height() > 0) return kasten.top
+            }
+        }
+        return -1
+    }
+
+    /**
+     * Schiebt den Knopf über die Tastatur und danach wieder an seinen Platz.
+     * Die selbst gewählte Stelle wird dabei nicht überschrieben — sie gilt
+     * weiter, sobald die Tastatur verschwindet.
+     */
+    private fun weicheTastaturAus() {
+        val meineLage = lage ?: return
+        val k = knopf ?: return
+        val hoehe = k.height.takeIf { it > 0 } ?: return
+        val luft = (8 * resources.displayMetrics.density).roundToInt()
+
+        val kante = tastaturKante()
+        if (kante > 0) {
+            val hoechstens = kante - hoehe - luft
+            if (meineLage.y > hoechstens) {
+                if (!ausgewichen) { platzVorher = meineLage.y; ausgewichen = true }
+                meineLage.y = maxOf(0, hoechstens)
+                runCatching { fenster?.updateViewLayout(k, meineLage) }
+            }
+        } else if (ausgewichen) {
+            meineLage.y = platzVorher
+            ausgewichen = false
+            runCatching { fenster?.updateViewLayout(k, meineLage) }
         }
     }
 
