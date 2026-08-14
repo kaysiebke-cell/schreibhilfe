@@ -1807,11 +1807,13 @@ async function zwischenspeicherAufraeumen() {
    beantwortet.
    ------------------------------------------------------------ */
 (() => {
-  const feld = document.getElementById('baunummer');
+  // Steht im Zahnrad, nicht in der Kopfzeile: Die Kopfzeile gehört dem
+  // Schreiben, nicht der Technik.
+  const feld = document.getElementById('fassung');
   if (!feld) return;
   let nummer = '';
   try { nummer = window.AndroidBridge?.fassung?.() || ''; } catch {}
-  feld.textContent = nummer ? '#' + nummer : '';
+  feld.textContent = nummer ? 'Fassung ' + nummer : '';
 })();
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
