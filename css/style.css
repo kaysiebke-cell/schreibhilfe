@@ -424,3 +424,7 @@ dialog::backdrop{background:rgba(20,25,30,.5)}
 /* Rückgängig und Löschen teilen sich die Breite zu gleichen Teilen. */
 .danach__klein{ display:flex; gap:.5rem; }
 .danach__klein > .knopf{ flex:1 1 0; }
+
+/* Die beiden KI-Wege stehen nebeneinander unter dem Hauptknopf. */
+.ki-reihe{display:flex;gap:.5rem}
+.ki-reihe > .knopf{flex:1 1 0}

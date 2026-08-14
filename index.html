@@ -97,6 +97,18 @@
     <svg class="ic"><use href="#i-check"></use></svg> Korrigieren
   </button>
 
+  <!-- Die KI-Wege stehen direkt unter dem Hauptknopf, nicht in einem Fenster:
+       „KI-Korrektur" macht den Text fertig, „Vorschläge" zeigt Sätze zur Wahl.
+       Beide erscheinen nur, wenn ein Schlüssel hinterlegt ist. -->
+  <div class="ki-reihe" id="ki-reihe" hidden>
+    <button class="knopf knopf--klein" id="btn-korrigieren">
+      <svg class="ic"><use href="#i-sparkle"></use></svg> KI-Korrektur
+    </button>
+    <button class="knopf knopf--klein" id="btn-formulieren">
+      <svg class="ic"><use href="#i-sparkle"></use></svg> Vorschläge
+    </button>
+  </div>
+
   <div id="danach" class="danach" hidden>
     <button class="knopf knopf--haupt" id="btn-zurueckgeben" hidden>
       <svg class="ic"><use href="#i-undo"></use></svg> <span id="wort-zurueck">Zurückgeben</span>
@@ -196,9 +208,6 @@
     </label>
 
     <label class="field">Weitere Werkzeuge <em>brauchen den Schlüssel und Internet</em>
-      <div class="reihe-klein">
-        <button class="knopf knopf--klein" id="btn-formulieren" type="button"><svg class="ic"><use href="#i-sparkle"></use></svg> Verständlicher formulieren</button>
-      </div>
       <div class="reihe-klein">
         <select id="zielsprache" aria-label="Zielsprache"><option value="Deutsch">Deutsch</option><option value="Englisch">Englisch</option><option value="Türkisch">Türkisch</option><option value="Polnisch">Polnisch</option><option value="Russisch">Russisch</option><option value="Arabisch">Arabisch</option></select>
         <button class="knopf knopf--klein" id="btn-uebersetzen" type="button"><svg class="ic"><use href="#i-globus"></use></svg> Übersetzen</button>

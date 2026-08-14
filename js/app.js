@@ -44,6 +44,7 @@ const el = {
   btnMehrZu:     $('btn-mehr-zu'),
   btnKiZu:       $('btn-ki-zu'),
   btnKorrigieren: $('btn-korrigieren'),
+  kiReihe:       $('ki-reihe'),
   btnUebersetzen: $('btn-uebersetzen'),
   btnFormulieren: $('btn-formulieren'),
   zielsprache:   $('zielsprache'),
@@ -1354,6 +1355,7 @@ function kiVerfuegbar() {
   // Ein Knopf mehr in der Reihe: Passt sie noch auf eine Zeile?
   leisteAnpassen();
   return vorhanden;
+  if (typeof zeigeKiReihe === 'function') zeigeKiReihe();
 }
 
 /* ------------------------------------------------------------
@@ -1495,8 +1497,15 @@ el.btnKi.addEventListener('click', () => {
 });
 el.btnKiZu.addEventListener('click', () => el.dlgKi.close());
 
+
+/* Die KI-Reihe erscheint nur mit hinterlegtem Schlüssel — ohne ihn wären es
+   zwei Knöpfe, die nichts tun können. */
+function zeigeKiReihe() {
+  el.kiReihe.hidden = !Speicher.lies('apiKey', '');
+}
+zeigeKiReihe();
+
 el.btnKorrigieren.addEventListener('click', () => {
-  el.dlgKi.close();
   kiLauf(KI_KORREKTUR,
     'Die KI liest deinen Text … einen Moment.',
     'Fertig korrigiert. Nicht einverstanden? „Zurückholen“ darunter.');
