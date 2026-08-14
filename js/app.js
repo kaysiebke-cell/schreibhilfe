@@ -879,6 +879,33 @@ function findeProbleme(text) {
   return ohneUeberschneidung(korrekturen).concat(hinweise);
 }
 
+/* ------------------------------------------------------------
+   Für die Bedienungshilfe: Text hinein, korrigierter Text heraus.
+
+   Die Bedienungshilfe kann keine Liste anzeigen und niemanden fragen —
+   sie ersetzt den Text im fremden Textfeld in einem Rutsch. Deshalb hier
+   nur die eindeutigen Funde: Hinweise („der Satz ist lang“) bleiben außen
+   vor, die brauchen eine Entscheidung.
+
+   Von hinten nach vorn ersetzen, sonst verschieben sich die Stellen der
+   noch nicht angewandten Funde.
+   ------------------------------------------------------------ */
+function korrigiereAlles(text) {
+  const funde = findeProbleme(text)
+    .filter((f) => f.art !== 'hinweis' && f.alt && f.neu)
+    .sort((a, b) => b.von - a.von);
+
+  let neu = text;
+  let anzahl = 0;
+  for (const fund of funde) {
+    if (neu.slice(fund.von, fund.bis) !== fund.alt) continue;   // Stelle passt nicht mehr
+    neu = neu.slice(0, fund.von) + fund.neu + neu.slice(fund.bis);
+    anzahl++;
+  }
+  return { text: neu, anzahl };
+}
+window.korrigiereAlles = korrigiereAlles;
+
 /* Woher die angezeigte Liste stammt: aus der eigenen Prüfung (null) oder von
    der KI. Beim Übernehmen eines Vorschlags muss die App wissen, was danach
    neu zu zeichnen ist — die eigenen Regeln laufen einfach noch einmal, die
@@ -1544,6 +1571,37 @@ async function zwischenspeicherAufraeumen() {
       location.reload();
     }
   } catch { /* Dann bleibt es beim zweiten Start — schlimmer wird es nicht. */ }
+}
+
+
+/* ------------------------------------------------------------
+   „Überall korrigieren“ — der Bedienungshilfe-Dienst.
+
+   Die Zeile erscheint nur in der Android-App. Ob der Dienst läuft, weiß
+   allein Android; die Freigabe selbst kann keine App setzen — sie muss in
+   den Systemeinstellungen erteilt werden. Beim Zurückkommen aus den
+   Einstellungen fragen wir den Stand neu ab.
+   ------------------------------------------------------------ */
+const kannUeberall = typeof window.AndroidBridge?.bedienungshilfeOeffnen === 'function';
+
+if (kannUeberall) {
+  const feld = document.getElementById('feld-ueberall');
+  const knopf = document.getElementById('btn-ueberall');
+  feld.hidden = false;
+
+  const standAnzeigen = () => {
+    let an = false;
+    try { an = window.AndroidBridge.bedienungshilfeAn(); } catch {}
+    knopf.textContent = an ? 'Läuft' : 'Einrichten';
+    knopf.classList.toggle('btn--primary', !an);
+    feld.classList.toggle('field--laeuft', an);
+  };
+
+  knopf.addEventListener('click', () => window.AndroidBridge.bedienungshilfeOeffnen());
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) standAnzeigen();
+  });
+  standAnzeigen();
 }
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {

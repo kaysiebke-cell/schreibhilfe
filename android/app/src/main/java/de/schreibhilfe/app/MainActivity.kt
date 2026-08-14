@@ -9,6 +9,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -356,5 +357,31 @@ class MainActivity : AppCompatActivity() {
                 ablage.setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), text))
             }
         }
+
+        /**
+         * Läuft der Bedienungshilfe-Dienst? Die Web-App zeigt danach entweder
+         * „Einrichten" oder „Läuft".
+         */
+        @JavascriptInterface
+        fun bedienungshilfeAn(): Boolean {
+            val meiner = "$packageName/$packageName.SchreibhilfeDienst"
+            val liste = Settings.Secure.getString(
+                contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            ).orEmpty()
+            return liste.split(':').any { it.equals(meiner, ignoreCase = true) }
+        }
+
+        /**
+         * Öffnet die Android-Einstellungen für Bedienungshilfen. Die Freigabe
+         * selbst kann eine App nicht setzen — das muss der Nutzer dort tun,
+         * und das ist auch gut so.
+         */
+        @JavascriptInterface
+        fun bedienungshilfeOeffnen() {
+            runOnUiThread {
+                oeffneAussen(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }
+        }
+
     }
 }

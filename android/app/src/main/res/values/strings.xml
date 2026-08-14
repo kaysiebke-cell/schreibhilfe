@@ -3,4 +3,20 @@
     <string name="app_name">Schreibhilfe</string>
     <string name="teilen_titel">Text weiterleiten an …</string>
     <string name="keine_app_dafuer">Dafür ist keine App auf dem Handy.</string>
+
+    <!-- Bedienungshilfe: Korrigieren direkt im fremden Textfeld -->
+    <string name="dienst_name">Schreibhilfe – Korrigieren überall</string>
+    <string name="dienst_kurz">Schwebender Knopf zum Korrigieren in jeder App</string>
+    <string name="dienst_beschreibung">Legt einen kleinen Knopf über alle Apps. Ein Tipp darauf prüft den Text im gerade beschriebenen Feld und schreibt ihn verbessert zurück — ohne die App zu wechseln. Dafür muss die Schreibhilfe den Inhalt des Textfelds lesen und ersetzen dürfen.</string>
+    <string name="knopf_beschreibung">Text im aktuellen Feld korrigieren</string>
+    <string name="kein_textfeld">Tippe zuerst in ein Textfeld.</string>
+    <string name="feld_leer">In dem Feld steht noch nichts.</string>
+    <string name="nichts_gefunden">Nichts gefunden — sieht gut aus.</string>
+    <string name="noch_nicht_bereit">Einen Moment, die Prüfung startet gerade.</string>
+    <string name="pruefung_fehlgeschlagen">Die Prüfung hat nicht geklappt.</string>
+    <string name="ersetzen_ging_nicht">Diese App lässt das Ersetzen nicht zu.</string>
+    <plurals name="verbessert">
+        <item quantity="one">1 Stelle verbessert</item>
+        <item quantity="other">%d Stellen verbessert</item>
+    </plurals>
 </resources>
