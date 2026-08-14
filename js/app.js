@@ -1059,7 +1059,6 @@ let kiVorschlaege = null;
 
 function zeigeFunde() {
   verbergeErgebnis();
-  zeigeDanach(true);
   kiVorschlaege = null;
   el.funde.innerHTML = '';
   el.status.textContent = '';
@@ -1094,6 +1093,10 @@ function uebernimm(fund) {
   } else {
     zeigeFunde();
   }
+
+  /* Ist nichts mehr zu ändern, tritt „Korrigieren" ab und der Weg zurück
+     erscheint — so steht immer nur ein großer Knopf da. */
+  if (!el.funde.querySelector('.fund button')) zeigeDanach(true);
 }
 
 function zeichneFunde(funde) {
@@ -1236,8 +1239,7 @@ function zeigeHinweise(hinweise) {
    Beim nächsten Tippen kommt es zurück, und die Reihe verschwindet wieder. */
 function zeigeDanach(sichtbar) {
   el.danach.hidden = !sichtbar;
-  // „Korrigieren" bleibt stehen: Nach dem Übernehmen einzelner Vorschläge
-  // will man meist noch einmal prüfen.
+  el.btnPruefen.hidden = sichtbar;   // immer nur EIN großer Knopf
 }
 
 /* Der Knopf zeigt die Vorschläge als Kästen, wie gewohnt. Das automatische
