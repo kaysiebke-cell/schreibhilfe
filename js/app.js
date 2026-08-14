@@ -1058,7 +1058,6 @@ function verbergeErgebnis() {
 let kiVorschlaege = null;
 
 function zeigeFunde() {
-  verbergeErgebnis();
   kiVorschlaege = null;
   el.funde.innerHTML = '';
   el.status.textContent = '';
@@ -1086,6 +1085,16 @@ function uebernimm(fund) {
   merkeFuerZurueck(jetzt);
   el.text.value = jetzt.slice(0, fund.von) + fund.neu + jetzt.slice(fund.bis);
   textGeaendert();
+
+  /* Was übernommen wurde, leuchtet im Text grün. Frühere grüne Stellen hinter
+     dieser Änderung verschieben sich um den Längenunterschied — sonst säße die
+     Farbe nach der zweiten Änderung neben dem Wort. */
+  const versatz = fund.neu.length - fund.alt.length;
+  gruenStellen = (gruenStellen || [])
+    .map((st) => (st.von >= fund.bis ? { von: st.von + versatz, bis: st.bis + versatz } : st))
+    .concat([{ von: fund.von, bis: fund.von + fund.neu.length }])
+    .sort((a, b) => a.von - b.von);
+  zeigeGruen();
 
   if (kiVorschlaege) {
     kiVorschlaege = kiVorschlaege.filter((v) => v !== fund);
