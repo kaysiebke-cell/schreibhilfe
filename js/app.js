@@ -6,20 +6,7 @@
 
 'use strict';
 
-/* Beim Aufräumen sind Schaltflächen weggefallen, deren Verdrahtung weiter
-   unten noch steht. Fehlt ein Element, liefert $ einen stillen Platzhalter
-   statt null — sonst risse eine einzige entfernte Schaltfläche die ganze
-   Datei mit. In der Konsole steht, welche es war. */
-function platzhalter(id) {
-  console.warn('Element fehlt (Verdrahtung läuft ins Leere):', id);
-  // Ein echtes, nur nicht eingehängtes Element: es versteht hidden,
-  // addEventListener, textContent und alles Übrige von sich aus. Ein Proxy
-  // wäre hier falsch — DOM-Eigenschaften wie „hidden" sind Zugriffsmethoden
-  // und stolpern über einen fremden Empfänger („Illegal invocation").
-  return document.createElement('span');
-}
-
-const $ = (id) => document.getElementById(id) || platzhalter(id);
+const $ = (id) => document.getElementById(id);
 
 const el = {
   text:          $('text'),
@@ -33,15 +20,10 @@ const el = {
   btnEinfuegen:  $('btn-einfuegen'),
   status:        $('status'),
   funde:         $('funde'),
-  danach:        $('danach'),
-  ergebnis:      $('ergebnis'),
   btnTeilen:     $('btn-teilen'),
   btnKopieren:   $('btn-kopieren'),
   dlg:           $('dlg-settings'),
   dlgKi:         $('dlg-ki'),
-  dlgMehr:       $('dlg-mehr'),
-  btnMehr:       $('btn-mehr'),
-  btnMehrZu:     $('btn-mehr-zu'),
   btnKiZu:       $('btn-ki-zu'),
   btnKorrigieren: $('btn-korrigieren'),
   btnUebersetzen: $('btn-uebersetzen'),
@@ -69,11 +51,6 @@ const el = {
 /* ------------------------------------------------------------
    Speicher — bleibt auf diesem Gerät
    ------------------------------------------------------------ */
-/** Stellen der letzten Korrektur; beim nächsten Tippen erlischt das Grün.
-    Steht bewusst weit oben: markiereWort() läuft schon beim Start und fragt
-    danach — eine Deklaration weiter unten wäre zu spät und bräche die Datei ab. */
-let gruenStellen = null;
-
 const Speicher = {
   lies(schluessel, ersatz) {
     try {
@@ -885,77 +862,9 @@ function ohneUeberschneidung(funde) {
 }
 
 /* Sucht alle Stellen, die auffällig sind. */
-
-/* ------------------------------------------------------------
-   Zusammengeschriebene Wörter trennen: „halloich“ → „hallo ich“.
-
-   Die Tastatur unterringelt so etwas zwar rot, weiß aber nicht, WO die
-   Lücke hingehört. Genau da hilft diese Regel.
-
-   Getrennt wird nur, wenn der zweite Teil ein kurzes Funktionswort ist —
-   Pronomen, Artikel, Hilfsverb. Deutsche Zusammensetzungen enden praktisch
-   nie darauf: „Haustür“ ja, „Hausich“ nein. Das hält die Regel eng.
-
-   Die Schutzliste ist nicht geraten, sondern gemessen: die Regel lief gegen
-   die 356.010 Wörter von /usr/share/dict/ngerman, und genau diese Wörter
-   hätte sie fälschlich zerlegt. „wieder“ und „werden“ sind die wichtigsten.
-   ------------------------------------------------------------ */
-const TRENN_ANFANG = new Set(`hallo halli tschüss danke bitte guten gute lieber liebe viele herzliche
-ja nein ok okay hey moin servus grüße gruß bis
-ich du er sie es wir man das dies alles nichts
-ist sind bin bist war warst hab habe hat haben hatte
-kann kannst will willst muss musst soll sollst mag darf
-komme kommst kommt gehe gehst geht mache machst macht
-wie was wo wann warum wer wem wen welche
-sehr ganz mal jetzt heute morgen gestern dann noch schon
-und aber oder denn weil wenn dass ob`.split(/\s+/));
-
-const TRENN_FUNKTION = new Set(`ich du er sie es wir ihr mir dir uns euch mich dich
-man das den dem der die ein eine einen einem einer
-nicht noch schon auch mal dann denn doch nur
-ist sind bin bist war hat habe hab`.split(/\s+/));
-
-/* Echte Wörter, die die Regel sonst zerreißen würde. */
-const TRENN_SCHUTZ = new Set(`binder dasein grußes schoner sieder weiler werder binden
-dennschon dieser dieses diesmal ganzer ganzes habendem habenden habender
-lieberer lieberes nochmal sieden wenden wennschon werden wieder`.split(/\s+/));
-
-function trenneZusammen(wort) {
-  const w = wort.toLowerCase();
-  if (w.length < 6 || TRENN_SCHUTZ.has(w)) return null;
-  for (let i = 3; i < w.length - 1; i++) {
-    const vorn = w.slice(0, i);
-    const hinten = w.slice(i);
-    if (hinten.length < 2) continue;
-    if (TRENN_ANFANG.has(vorn) && TRENN_FUNKTION.has(hinten)) return vorn + ' ' + hinten;
-  }
-  return null;
-}
-
-function pruefeZusammengeschrieben(text, funde) {
-  for (const treffer of text.matchAll(WORT_MUSTER)) {
-    const wort = treffer[0];
-    const getrennt = trenneZusammen(wort);
-    if (!getrennt) continue;
-    /* Großschreibung übertragen — und am Satzanfang gleich mit erledigen.
-       Sonst bliebe „halloich" → „hallo ich" klein: die Regel für den
-       Satzanfang greift auf dieselbe Stelle zu und wird als Überschneidung
-       verworfen. */
-    const davor = text.slice(0, treffer.index);
-    const satzAnfang = davor.trim() === '' || /[.!?]\s+$/.test(davor);
-    const gross = /^[A-ZÄÖÜ]/.test(wort) || satzAnfang;
-    const neu = gross ? getrennt[0].toUpperCase() + getrennt.slice(1) : getrennt;
-    funde.push(machFund(
-      treffer.index, treffer.index + wort.length, wort, neu,
-      'Zwei Wörter ohne Lücke', 'wort', false
-    ));
-  }
-}
-
 function findeProbleme(text) {
   const korrekturen = [];
   pruefeWoerter(text, korrekturen);
-  pruefeZusammengeschrieben(text, korrekturen);
   wendeRegelnAn(text, ZEICHEN_REGELN, korrekturen);
   wendeRegelnAn(text, GROSS_REGELN, korrekturen);
   wendeRegelnAn(text, GRAMMATIK_REGELN, korrekturen);
@@ -968,87 +877,6 @@ function findeProbleme(text) {
 
   // Erst das zum Ändern, danach das zum Nachdenken.
   return ohneUeberschneidung(korrekturen).concat(hinweise);
-}
-
-/* ------------------------------------------------------------
-   Für die Bedienungshilfe: Text hinein, korrigierter Text heraus.
-
-   Die Bedienungshilfe kann keine Liste anzeigen und niemanden fragen —
-   sie ersetzt den Text im fremden Textfeld in einem Rutsch. Deshalb hier
-   nur die eindeutigen Funde: Hinweise („der Satz ist lang“) bleiben außen
-   vor, die brauchen eine Entscheidung.
-
-   Von hinten nach vorn ersetzen, sonst verschieben sich die Stellen der
-   noch nicht angewandten Funde.
-   ------------------------------------------------------------ */
-function korrigiereAlles(text) {
-  const funde = findeProbleme(text)
-    .filter((f) => f.art !== 'hinweis' && f.alt && f.neu)
-    .sort((a, b) => b.von - a.von);
-
-  let neu = text;
-  let anzahl = 0;
-  for (const fund of funde) {
-    if (neu.slice(fund.von, fund.bis) !== fund.alt) continue;   // Stelle passt nicht mehr
-    neu = neu.slice(0, fund.von) + fund.neu + neu.slice(fund.bis);
-    anzahl++;
-  }
-  return { text: neu, anzahl };
-}
-window.korrigiereAlles = korrigiereAlles;
-
-
-/* ------------------------------------------------------------
-   Ein Knopf, ein Ergebnis.
-
-   Statt einer Liste zum Durchtippen wird alles Eindeutige sofort angewandt,
-   und die geänderten Stellen leuchten IM Text grün. Ein Blick genügt: passt
-   es, weitermachen; passt es nicht, „Rückgängig“.
-
-   Die grünen Stellen zeigt derselbe Zwilling, der sonst das Wort unter dem
-   Zeiger markiert — dadurch sitzt die Farbe genau unter den Buchstaben, ohne
-   dass das Schreibfeld etwas davon merkt.
-   ------------------------------------------------------------ */
-function korrigiereMitStellen(text) {
-  const funde = findeProbleme(text)
-    .filter((f) => f.art !== 'hinweis' && f.alt && f.neu)
-    .sort((a, b) => a.von - b.von);
-
-  let ergebnis = text;
-  let versatz = 0;
-  const stellen = [];
-
-  for (const fund of funde) {
-    const von = fund.von + versatz;
-    const bis = fund.bis + versatz;
-    if (ergebnis.slice(von, bis) !== fund.alt) continue;   // Stelle passt nicht mehr
-    ergebnis = ergebnis.slice(0, von) + fund.neu + ergebnis.slice(bis);
-    stellen.push({ von, bis: von + fund.neu.length });
-    versatz += fund.neu.length - fund.alt.length;
-  }
-  return { text: ergebnis, anzahl: stellen.length, stellen };
-}
-
-function zeigeGruen() {
-  const t = el.text.value;
-  let html = '';
-  let letzte = 0;
-  for (const stelle of gruenStellen) {
-    html += alsHtml(t.slice(letzte, stelle.von))
-          + '<span class="neu">' + alsHtml(t.slice(stelle.von, stelle.bis)) + '</span>';
-    letzte = stelle.bis;
-  }
-  html += alsHtml(t.slice(letzte));
-  el.ergebnis.innerHTML = html;
-  el.ergebnis.hidden = false;
-  el.ergebnis.scrollTop = 0;
-}
-
-/** Zurück ins Schreibfeld — sobald man weiterschreiben will. */
-function verbergeErgebnis() {
-  if (el.ergebnis.hidden) return;
-  el.ergebnis.hidden = true;
-  gruenStellen = null;
 }
 
 /* Woher die angezeigte Liste stammt: aus der eigenen Prüfung (null) oder von
@@ -1187,65 +1015,7 @@ function zusammenfassung(funde) {
   return teile.join(' · ') + '.';
 }
 
-
-/* Der eine Knopf: prüfen, alles Eindeutige anwenden, Ergebnis zeigen.
-   Hinweise zum Satzbau lassen sich nicht anwenden — die stehen als Sätze
-   darunter, ohne Knopf. */
-function korrigiereJetzt() {
-  const text = el.text.value;
-  if (!text.trim()) {
-    el.status.textContent = 'Es steht noch nichts da.';
-    return;
-  }
-
-  const ergebnis = korrigiereMitStellen(text);
-  const hinweise = findeProbleme(ergebnis.text).filter((f) => f.art === 'hinweis');
-
-  if (ergebnis.anzahl > 0) {
-    merkeFuerZurueck(text);
-    el.text.value = ergebnis.text;
-    textGeaendert();
-    gruenStellen = ergebnis.stellen;
-    zeigeGruen();
-  }
-
-  el.status.textContent = ergebnis.anzahl === 0
-    ? (hinweise.length ? 'Nichts zu ändern.' : 'Alles in Ordnung.')
-    : (ergebnis.anzahl === 1 ? '1 Stelle verbessert' : ergebnis.anzahl + ' Stellen verbessert');
-  el.status.classList.toggle('status--gut', ergebnis.anzahl > 0);
-
-  zeigeHinweise(hinweise);
-  zeigeDanach(ergebnis.anzahl > 0);
-}
-
-/* Hinweise sind Sätze zum Nachdenken, keine Knöpfe zum Drücken. */
-function zeigeHinweise(hinweise) {
-  el.funde.innerHTML = '';
-  for (const hinweis of hinweise) {
-    const zeile = document.createElement('p');
-    zeile.className = 'hinweis-satz';
-    zeile.textContent = hinweis.grund;
-    el.funde.appendChild(zeile);
-  }
-}
-
-/* Nach dem Korrigieren zeigt der Bildschirm nur noch EINEN großen Knopf:
-   den Weg zurück. „Korrigieren" tritt so lange ab — es ist gerade getan.
-   Beim nächsten Tippen kommt es zurück, und die Reihe verschwindet wieder. */
-function zeigeDanach(sichtbar) {
-  el.danach.hidden = !sichtbar;
-  el.btnPruefen.hidden = sichtbar;
-}
-
-el.btnPruefen.addEventListener('click', korrigiereJetzt);
-
-/* Ein Tipp auf das Ergebnis heißt: weiterschreiben. */
-el.ergebnis.addEventListener('click', () => {
-  verbergeErgebnis();
-  zeigeDanach(false);
-  el.status.textContent = '';
-  el.text.focus();
-});
+el.btnPruefen.addEventListener('click', zeigeFunde);
 
 /* ============================================================
    4. KI-Korrektur — braucht Internet und einen API-Schlüssel
@@ -1648,25 +1418,6 @@ el.btnZurueckgeben.addEventListener('click', () => {
   if (typeof bruecke?.zurueckgeben === 'function') bruecke.zurueckgeben(text);
 });
 
-
-/* ------------------------------------------------------------
-   Das Menü hinter den drei Punkten.
-
-   Kopieren, Einfügen und Löschen braucht man selten, standen aber dauerhaft
-   in der Leiste. Aus vier Knöpfen wurden so sieben. Die Knöpfe selbst sind
-   dieselben geblieben — sie stehen nur woanders, ihre Verdrahtung weiter unten
-   gilt unverändert. Nach dem Antippen schließt sich das Menü von selbst.
-   ------------------------------------------------------------ */
-el.btnMehr.addEventListener('click', () => {
-  el.dlgMehr.showModal();
-});
-el.btnMehrZu.addEventListener('click', () => el.dlgMehr.close());
-el.dlgMehr.addEventListener('click', (ereignis) => {
-  if (ereignis.target.closest('.btn') && ereignis.target.id !== 'btn-mehr-zu') {
-    el.dlgMehr.close();
-  }
-});
-
 el.btnKopieren.addEventListener('click', () => {
   const text = holeText(); if (!text) return;
   kopiere(text, 'Text kopiert.');
@@ -1794,7 +1545,6 @@ async function zwischenspeicherAufraeumen() {
     }
   } catch { /* Dann bleibt es beim zweiten Start — schlimmer wird es nicht. */ }
 }
-
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   if (inDerApp) {
