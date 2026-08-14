@@ -6,7 +6,20 @@
 
 'use strict';
 
-const $ = (id) => document.getElementById(id);
+/* Beim Aufräumen sind Schaltflächen weggefallen, deren Verdrahtung weiter
+   unten noch steht. Fehlt ein Element, liefert $ einen stillen Platzhalter
+   statt null — sonst risse eine einzige entfernte Schaltfläche die ganze
+   Datei mit. In der Konsole steht, welche es war. */
+function platzhalter(id) {
+  console.warn('Element fehlt (Verdrahtung läuft ins Leere):', id);
+  // Ein echtes, nur nicht eingehängtes Element: es versteht hidden,
+  // addEventListener, textContent und alles Übrige von sich aus. Ein Proxy
+  // wäre hier falsch — DOM-Eigenschaften wie „hidden" sind Zugriffsmethoden
+  // und stolpern über einen fremden Empfänger („Illegal invocation").
+  return document.createElement('span');
+}
+
+const $ = (id) => document.getElementById(id) || platzhalter(id);
 
 const el = {
   text:          $('text'),
@@ -20,6 +33,7 @@ const el = {
   btnEinfuegen:  $('btn-einfuegen'),
   status:        $('status'),
   funde:         $('funde'),
+  danach:        $('danach'),
   btnTeilen:     $('btn-teilen'),
   btnKopieren:   $('btn-kopieren'),
   dlg:           $('dlg-settings'),
@@ -54,6 +68,11 @@ const el = {
 /* ------------------------------------------------------------
    Speicher — bleibt auf diesem Gerät
    ------------------------------------------------------------ */
+/** Stellen der letzten Korrektur; beim nächsten Tippen erlischt das Grün.
+    Steht bewusst weit oben: markiereWort() läuft schon beim Start und fragt
+    danach — eine Deklaration weiter unten wäre zu spät und bräche die Datei ab. */
+let gruenStellen = null;
+
 const Speicher = {
   lies(schluessel, ersatz) {
     try {
@@ -286,6 +305,7 @@ function wortGrenzen(text, stelle) {
 const alsHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 function markiereWort() {
+  if (gruenStellen) { zeigeGruen(); return; }
   const zeigerImFeld = document.activeElement === el.text
                     && el.text.selectionStart === el.text.selectionEnd;
   const grenzen = hervorhebenAn() && zeigerImFeld
@@ -917,10 +937,14 @@ function pruefeZusammengeschrieben(text, funde) {
     const wort = treffer[0];
     const getrennt = trenneZusammen(wort);
     if (!getrennt) continue;
-    // Großschreibung des Originals auf den ersten Teil übertragen.
-    const neu = /^[A-ZÄÖÜ]/.test(wort)
-      ? getrennt[0].toUpperCase() + getrennt.slice(1)
-      : getrennt;
+    /* Großschreibung übertragen — und am Satzanfang gleich mit erledigen.
+       Sonst bliebe „halloich" → „hallo ich" klein: die Regel für den
+       Satzanfang greift auf dieselbe Stelle zu und wird als Überschneidung
+       verworfen. */
+    const davor = text.slice(0, treffer.index);
+    const satzAnfang = davor.trim() === '' || /[.!?]\s+$/.test(davor);
+    const gross = /^[A-ZÄÖÜ]/.test(wort) || satzAnfang;
+    const neu = gross ? getrennt[0].toUpperCase() + getrennt.slice(1) : getrennt;
     funde.push(machFund(
       treffer.index, treffer.index + wort.length, wort, neu,
       'Zwei Wörter ohne Lücke', 'wort', false
@@ -972,6 +996,53 @@ function korrigiereAlles(text) {
   return { text: neu, anzahl };
 }
 window.korrigiereAlles = korrigiereAlles;
+
+
+/* ------------------------------------------------------------
+   Ein Knopf, ein Ergebnis.
+
+   Statt einer Liste zum Durchtippen wird alles Eindeutige sofort angewandt,
+   und die geänderten Stellen leuchten IM Text grün. Ein Blick genügt: passt
+   es, weitermachen; passt es nicht, „Rückgängig“.
+
+   Die grünen Stellen zeigt derselbe Zwilling, der sonst das Wort unter dem
+   Zeiger markiert — dadurch sitzt die Farbe genau unter den Buchstaben, ohne
+   dass das Schreibfeld etwas davon merkt.
+   ------------------------------------------------------------ */
+function korrigiereMitStellen(text) {
+  const funde = findeProbleme(text)
+    .filter((f) => f.art !== 'hinweis' && f.alt && f.neu)
+    .sort((a, b) => a.von - b.von);
+
+  let ergebnis = text;
+  let versatz = 0;
+  const stellen = [];
+
+  for (const fund of funde) {
+    const von = fund.von + versatz;
+    const bis = fund.bis + versatz;
+    if (ergebnis.slice(von, bis) !== fund.alt) continue;   // Stelle passt nicht mehr
+    ergebnis = ergebnis.slice(0, von) + fund.neu + ergebnis.slice(bis);
+    stellen.push({ von, bis: von + fund.neu.length });
+    versatz += fund.neu.length - fund.alt.length;
+  }
+  return { text: ergebnis, anzahl: stellen.length, stellen };
+}
+
+function zeigeGruen() {
+  const t = el.text.value;
+  let html = '';
+  let letzte = 0;
+  for (const stelle of gruenStellen) {
+    html += alsHtml(t.slice(letzte, stelle.von))
+          + '<mark class="neu">' + alsHtml(t.slice(stelle.von, stelle.bis)) + '</mark>';
+    letzte = stelle.bis;
+  }
+  html += alsHtml(t.slice(letzte)) + '\n';
+  el.spiegel.innerHTML = html;
+  el.spiegel.style.width = el.text.clientWidth + 'px';
+  el.spiegel.scrollTop = el.text.scrollTop;
+}
 
 /* Woher die angezeigte Liste stammt: aus der eigenen Prüfung (null) oder von
    der KI. Beim Übernehmen eines Vorschlags muss die App wissen, was danach
@@ -1109,7 +1180,53 @@ function zusammenfassung(funde) {
   return teile.join(' · ') + '.';
 }
 
-el.btnPruefen.addEventListener('click', zeigeFunde);
+
+/* Der eine Knopf: prüfen, alles Eindeutige anwenden, Ergebnis zeigen.
+   Hinweise zum Satzbau lassen sich nicht anwenden — die stehen als Sätze
+   darunter, ohne Knopf. */
+function korrigiereJetzt() {
+  const text = el.text.value;
+  if (!text.trim()) {
+    el.status.textContent = 'Es steht noch nichts da.';
+    return;
+  }
+
+  const ergebnis = korrigiereMitStellen(text);
+  const hinweise = findeProbleme(ergebnis.text).filter((f) => f.art === 'hinweis');
+
+  if (ergebnis.anzahl > 0) {
+    merkeFuerZurueck(text);
+    el.text.value = ergebnis.text;
+    textGeaendert();
+    gruenStellen = ergebnis.stellen;
+    zeigeGruen();
+  }
+
+  el.status.textContent = ergebnis.anzahl === 0
+    ? (hinweise.length ? 'Nichts zu ändern.' : 'Alles in Ordnung.')
+    : (ergebnis.anzahl === 1 ? '1 Stelle verbessert' : ergebnis.anzahl + ' Stellen verbessert');
+
+  zeigeHinweise(hinweise);
+  zeigeDanach(ergebnis.anzahl > 0);
+}
+
+/* Hinweise sind Sätze zum Nachdenken, keine Knöpfe zum Drücken. */
+function zeigeHinweise(hinweise) {
+  el.funde.innerHTML = '';
+  for (const hinweis of hinweise) {
+    const zeile = document.createElement('p');
+    zeile.className = 'hinweis-satz';
+    zeile.textContent = hinweis.grund;
+    el.funde.appendChild(zeile);
+  }
+}
+
+/* Nach dem Korrigieren: der Weg zurück, plus Rückgängig und Löschen. */
+function zeigeDanach(sichtbar) {
+  el.danach.hidden = !sichtbar;
+}
+
+el.btnPruefen.addEventListener('click', korrigiereJetzt);
 
 /* ============================================================
    4. KI-Korrektur — braucht Internet und einen API-Schlüssel
@@ -1659,36 +1776,6 @@ async function zwischenspeicherAufraeumen() {
   } catch { /* Dann bleibt es beim zweiten Start — schlimmer wird es nicht. */ }
 }
 
-
-/* ------------------------------------------------------------
-   „Überall korrigieren“ — der Bedienungshilfe-Dienst.
-
-   Die Zeile erscheint nur in der Android-App. Ob der Dienst läuft, weiß
-   allein Android; die Freigabe selbst kann keine App setzen — sie muss in
-   den Systemeinstellungen erteilt werden. Beim Zurückkommen aus den
-   Einstellungen fragen wir den Stand neu ab.
-   ------------------------------------------------------------ */
-const kannUeberall = typeof window.AndroidBridge?.bedienungshilfeOeffnen === 'function';
-
-if (kannUeberall) {
-  const feld = document.getElementById('feld-ueberall');
-  const knopf = document.getElementById('btn-ueberall');
-  feld.hidden = false;
-
-  const standAnzeigen = () => {
-    let an = false;
-    try { an = window.AndroidBridge.bedienungshilfeAn(); } catch {}
-    knopf.textContent = an ? 'Läuft' : 'Einrichten';
-    knopf.classList.toggle('btn--primary', !an);
-    feld.classList.toggle('field--laeuft', an);
-  };
-
-  knopf.addEventListener('click', () => window.AndroidBridge.bedienungshilfeOeffnen());
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) standAnzeigen();
-  });
-  standAnzeigen();
-}
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   if (inDerApp) {
