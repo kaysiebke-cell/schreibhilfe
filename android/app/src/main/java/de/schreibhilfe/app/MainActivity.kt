@@ -136,13 +136,22 @@ class MainActivity : AppCompatActivity() {
      */
     private var darfZurueckgeben = false
 
+    /** Kam der Text vom Schwebeknopf? Dann geht er über den Dienst zurück
+     *  statt über ein Aktivitäts-Ergebnis. */
+    private var vomSchwebeknopf = false
+
     /** Holt den Text aus „Teilen an …“ oder aus dem Markier-Menü („Verarbeiten“). */
     private fun leseTextAus(intent: Intent?): String? {
         if (intent == null) return null
         darfZurueckgeben = false
+        vomSchwebeknopf = false
         val text = when (intent.action) {
-            Intent.ACTION_SEND ->
+            Intent.ACTION_SEND -> {
+                // Der Schwebeknopf schickt dieselbe Absicht, markiert sie aber.
+                vomSchwebeknopf = intent.getBooleanExtra(SchreibhilfeDienst.VOM_KNOPF, false)
+                darfZurueckgeben = vomSchwebeknopf
                 if (intent.type == "text/plain") intent.getStringExtra(Intent.EXTRA_TEXT) else null
+            }
             Intent.ACTION_PROCESS_TEXT -> {
                 darfZurueckgeben =
                     !intent.getBooleanExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, false)
@@ -298,7 +307,18 @@ class MainActivity : AppCompatActivity() {
         fun zurueckgeben(text: String) {
             if (text.isBlank() || !darfZurueckgeben) return
             runOnUiThread {
-                setResult(RESULT_OK, Intent().putExtra(Intent.EXTRA_PROCESS_TEXT, text))
+                if (vomSchwebeknopf) {
+                    // Vom Schwebeknopf gibt es kein Aktivitäts-Ergebnis, an dem der
+                    // Text hängen könnte. Also bekommt ihn der Dienst, und der
+                    // schreibt ihn in das Feld, sobald es wieder im Vordergrund ist.
+                    sendBroadcast(
+                        Intent(SchreibhilfeDienst.ZURUECK_INS_FELD)
+                            .setPackage(packageName)
+                            .putExtra(Intent.EXTRA_TEXT, text)
+                    )
+                } else {
+                    setResult(RESULT_OK, Intent().putExtra(Intent.EXTRA_PROCESS_TEXT, text))
+                }
                 finish()
             }
         }

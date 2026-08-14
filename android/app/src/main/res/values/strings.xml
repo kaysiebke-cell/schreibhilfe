@@ -19,4 +19,5 @@
         <item quantity="one">1 Stelle verbessert</item>
         <item quantity="other">%d Stellen verbessert</item>
     </plurals>
+    <string name="text_zurueck">Text ist zurück im Feld</string>
 </resources>
