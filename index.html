@@ -69,6 +69,12 @@
       placeholder="Hier schreiben oder diktieren."
       spellcheck="true" lang="de" autocapitalize="sentences"
       autocorrect="on" aria-label="Dein Text"></textarea>
+
+    <!-- Nach dem Korrigieren liegt hier der fertige Text mit GRÜNEN Wörtern.
+         Ein <textarea> lässt sich innen nicht einfärben — deshalb diese
+         Ansicht darüber. Ein Tipp darauf, und man schreibt wieder im Feld. -->
+    <div id="ergebnis" class="ergebnis" hidden tabindex="0"
+         role="button" aria-label="Ergebnis — antippen zum Weiterschreiben"></div>
   </div>
 
   <!-- Die Funde entstehen erst nach dem Prüfen. Ohne „aria-live" bekommt eine

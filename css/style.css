@@ -368,3 +368,31 @@ dialog::backdrop{background:rgba(20,25,30,.5)}
 }
 
 .trenner{border:none;border-top:1px solid var(--line);margin:.4rem 0}
+
+/* Die Erfolgsmeldung steht mittig und grün unter dem Text — sie gehört zum
+   Ergebnis, nicht zur Bedienung. */
+.status--gut{
+  color:var(--ok);
+  font-weight:700;
+  text-align:center;
+}
+
+/* Die Ergebnis-Ansicht liegt genau über dem Schreibfeld und sieht aus wie es —
+   nur sind die verbesserten Wörter grün und fett. Ein Tipp darauf, und man
+   schreibt wieder im Feld. */
+.ergebnis{
+  position:absolute;inset:1px;
+  overflow:auto;
+  background:var(--surface);
+  border-radius:var(--radius);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:var(--schrift);
+  line-height:1.6;
+  letter-spacing:.012em;
+  padding:.55rem .6rem;
+  white-space:pre-wrap;
+  overflow-wrap:break-word;
+  cursor:text;
+}
+.ergebnis .neu{color:var(--ok);font-weight:700}

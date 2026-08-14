@@ -34,6 +34,7 @@ const el = {
   status:        $('status'),
   funde:         $('funde'),
   danach:        $('danach'),
+  ergebnis:      $('ergebnis'),
   btnTeilen:     $('btn-teilen'),
   btnKopieren:   $('btn-kopieren'),
   dlg:           $('dlg-settings'),
@@ -305,7 +306,6 @@ function wortGrenzen(text, stelle) {
 const alsHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 function markiereWort() {
-  if (gruenStellen) { zeigeGruen(); return; }
   const zeigerImFeld = document.activeElement === el.text
                     && el.text.selectionStart === el.text.selectionEnd;
   const grenzen = hervorhebenAn() && zeigerImFeld
@@ -1035,13 +1035,20 @@ function zeigeGruen() {
   let letzte = 0;
   for (const stelle of gruenStellen) {
     html += alsHtml(t.slice(letzte, stelle.von))
-          + '<mark class="neu">' + alsHtml(t.slice(stelle.von, stelle.bis)) + '</mark>';
+          + '<span class="neu">' + alsHtml(t.slice(stelle.von, stelle.bis)) + '</span>';
     letzte = stelle.bis;
   }
-  html += alsHtml(t.slice(letzte)) + '\n';
-  el.spiegel.innerHTML = html;
-  el.spiegel.style.width = el.text.clientWidth + 'px';
-  el.spiegel.scrollTop = el.text.scrollTop;
+  html += alsHtml(t.slice(letzte));
+  el.ergebnis.innerHTML = html;
+  el.ergebnis.hidden = false;
+  el.ergebnis.scrollTop = 0;
+}
+
+/** Zurück ins Schreibfeld — sobald man weiterschreiben will. */
+function verbergeErgebnis() {
+  if (el.ergebnis.hidden) return;
+  el.ergebnis.hidden = true;
+  gruenStellen = null;
 }
 
 /* Woher die angezeigte Liste stammt: aus der eigenen Prüfung (null) oder von
@@ -1205,6 +1212,7 @@ function korrigiereJetzt() {
   el.status.textContent = ergebnis.anzahl === 0
     ? (hinweise.length ? 'Nichts zu ändern.' : 'Alles in Ordnung.')
     : (ergebnis.anzahl === 1 ? '1 Stelle verbessert' : ergebnis.anzahl + ' Stellen verbessert');
+  el.status.classList.toggle('status--gut', ergebnis.anzahl > 0);
 
   zeigeHinweise(hinweise);
   zeigeDanach(ergebnis.anzahl > 0);
@@ -1221,12 +1229,23 @@ function zeigeHinweise(hinweise) {
   }
 }
 
-/* Nach dem Korrigieren: der Weg zurück, plus Rückgängig und Löschen. */
+/* Nach dem Korrigieren zeigt der Bildschirm nur noch EINEN großen Knopf:
+   den Weg zurück. „Korrigieren" tritt so lange ab — es ist gerade getan.
+   Beim nächsten Tippen kommt es zurück, und die Reihe verschwindet wieder. */
 function zeigeDanach(sichtbar) {
   el.danach.hidden = !sichtbar;
+  el.btnPruefen.hidden = sichtbar;
 }
 
 el.btnPruefen.addEventListener('click', korrigiereJetzt);
+
+/* Ein Tipp auf das Ergebnis heißt: weiterschreiben. */
+el.ergebnis.addEventListener('click', () => {
+  verbergeErgebnis();
+  zeigeDanach(false);
+  el.status.textContent = '';
+  el.text.focus();
+});
 
 /* ============================================================
    4. KI-Korrektur — braucht Internet und einen API-Schlüssel
