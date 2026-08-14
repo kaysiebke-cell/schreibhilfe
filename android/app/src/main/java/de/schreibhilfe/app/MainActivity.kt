@@ -56,6 +56,19 @@ class MainActivity : AppCompatActivity() {
 
         richteWebViewEin()
         uebergebenerText = leseTextAus(intent)
+        /* Nach einem Update muss der Zwischenspeicher der Web-Ansicht weg.
+           Sonst liefert er weiter die alten Dateien aus der vorigen Fassung —
+           die neue APK ist installiert, und auf dem Bildschirm ändert sich
+           nichts. Genau das ist hier passiert. Geleert wird nur bei einer
+           neuen Fassung, nicht bei jedem Start; der gespeicherte Text und der
+           Schlüssel liegen ohnehin woanders und bleiben unberührt. */
+        val merker = getSharedPreferences("fassung", Context.MODE_PRIVATE)
+        val jetzige = packageManager.getPackageInfo(packageName, 0).longVersionCode
+        if (merker.getLong("zuletzt", -1L) != jetzige) {
+            webView.clearCache(true)
+            merker.edit().putLong("zuletzt", jetzige).apply()
+        }
+
         webView.loadUrl(startAdresse)
 
         // Zurück-Taste: erst im Verlauf der Seite zurück, dann die App schließen.
