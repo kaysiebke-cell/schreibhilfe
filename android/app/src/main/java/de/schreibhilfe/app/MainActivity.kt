@@ -303,6 +303,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         /**
+         * Welche Fassung hier läuft. Steht im Zahnrad — damit die Frage „ist das
+         * Update jetzt drauf?“ mit einem Blick beantwortet ist statt mit Suchen
+         * nach einem Knopf, der sich vielleicht nur versteckt.
+         * Die Baunummer zählt bei jedem Bau hoch.
+         */
+        @JavascriptInterface
+        fun fassung(): String {
+            val angaben = packageManager.getPackageInfo(packageName, 0)
+            val bau = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                angaben.longVersionCode
+            } else {
+                @Suppress("DEPRECATION") angaben.versionCode.toLong()
+            }
+            return "${angaben.versionName} (Bau $bau)"
+        }
+
+        /**
          * Holt den Text aus der Zwischenablage — nur auf Knopfdruck, nie von
          * selbst. „Kopieren“ steht in jedem Markier-Menü ganz vorn, nie hinter
          * dem ⋮; über die Zwischenablage kommt der Text also auch aus Apps
