@@ -862,9 +862,73 @@ function ohneUeberschneidung(funde) {
 }
 
 /* Sucht alle Stellen, die auffällig sind. */
+
+/* ------------------------------------------------------------
+   Zusammengeschriebene Wörter trennen: „halloich“ → „hallo ich“.
+
+   Die Tastatur unterringelt so etwas zwar rot, weiß aber nicht, WO die
+   Lücke hingehört. Genau da hilft diese Regel.
+
+   Getrennt wird nur, wenn der zweite Teil ein kurzes Funktionswort ist —
+   Pronomen, Artikel, Hilfsverb. Deutsche Zusammensetzungen enden praktisch
+   nie darauf: „Haustür“ ja, „Hausich“ nein. Das hält die Regel eng.
+
+   Die Schutzliste ist nicht geraten, sondern gemessen: die Regel lief gegen
+   die 356.010 Wörter von /usr/share/dict/ngerman, und genau diese Wörter
+   hätte sie fälschlich zerlegt. „wieder“ und „werden“ sind die wichtigsten.
+   ------------------------------------------------------------ */
+const TRENN_ANFANG = new Set(`hallo halli tschüss danke bitte guten gute lieber liebe viele herzliche
+ja nein ok okay hey moin servus grüße gruß bis
+ich du er sie es wir man das dies alles nichts
+ist sind bin bist war warst hab habe hat haben hatte
+kann kannst will willst muss musst soll sollst mag darf
+komme kommst kommt gehe gehst geht mache machst macht
+wie was wo wann warum wer wem wen welche
+sehr ganz mal jetzt heute morgen gestern dann noch schon
+und aber oder denn weil wenn dass ob`.split(/\s+/));
+
+const TRENN_FUNKTION = new Set(`ich du er sie es wir ihr mir dir uns euch mich dich
+man das den dem der die ein eine einen einem einer
+nicht noch schon auch mal dann denn doch nur
+ist sind bin bist war hat habe hab`.split(/\s+/));
+
+/* Echte Wörter, die die Regel sonst zerreißen würde. */
+const TRENN_SCHUTZ = new Set(`binder dasein grußes schoner sieder weiler werder binden
+dennschon dieser dieses diesmal ganzer ganzes habendem habenden habender
+lieberer lieberes nochmal sieden wenden wennschon werden wieder`.split(/\s+/));
+
+function trenneZusammen(wort) {
+  const w = wort.toLowerCase();
+  if (w.length < 6 || TRENN_SCHUTZ.has(w)) return null;
+  for (let i = 3; i < w.length - 1; i++) {
+    const vorn = w.slice(0, i);
+    const hinten = w.slice(i);
+    if (hinten.length < 2) continue;
+    if (TRENN_ANFANG.has(vorn) && TRENN_FUNKTION.has(hinten)) return vorn + ' ' + hinten;
+  }
+  return null;
+}
+
+function pruefeZusammengeschrieben(text, funde) {
+  for (const treffer of text.matchAll(WORT_MUSTER)) {
+    const wort = treffer[0];
+    const getrennt = trenneZusammen(wort);
+    if (!getrennt) continue;
+    // Großschreibung des Originals auf den ersten Teil übertragen.
+    const neu = /^[A-ZÄÖÜ]/.test(wort)
+      ? getrennt[0].toUpperCase() + getrennt.slice(1)
+      : getrennt;
+    funde.push(machFund(
+      treffer.index, treffer.index + wort.length, wort, neu,
+      'Zwei Wörter ohne Lücke', 'wort', false
+    ));
+  }
+}
+
 function findeProbleme(text) {
   const korrekturen = [];
   pruefeWoerter(text, korrekturen);
+  pruefeZusammengeschrieben(text, korrekturen);
   wendeRegelnAn(text, ZEICHEN_REGELN, korrekturen);
   wendeRegelnAn(text, GROSS_REGELN, korrekturen);
   wendeRegelnAn(text, GRAMMATIK_REGELN, korrekturen);
