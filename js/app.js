@@ -973,10 +973,96 @@ function pruefeZusammengeschrieben(text, funde) {
   }
 }
 
+
+/* ------------------------------------------------------------
+   Tippfehler: ein Buchstabe daneben.
+
+   „vieleicht“ → „vielleicht“, „shcon“ → „schon“. Gesucht wird nach Wörtern,
+   die sich um genau einen Handgriff unterscheiden: ein Buchstabe zu viel,
+   zu wenig, falsch, oder zwei vertauscht.
+
+   Bewusst NICHT eingebaut: Trennen und Tippfehler zusammen. „Halloch“ würde
+   damit zu „aal loch“, „ichhab“ zu „ich ab“ — die Suche wird so weit, dass
+   sie Unsinn findet. Wörter wie „Halloch“ bleiben der KI überlassen.
+
+   Vorschläge erscheinen als Hinweis-Kasten und ändern nichts von allein:
+   Bei Namen und Fremdwörtern liegt die Suche zwangsläufig manchmal daneben,
+   und dann tippt man den Kasten einfach nicht an.
+   ------------------------------------------------------------ */
+const ABC = 'abcdefghijklmnopqrstuvwxyzäöüß';
+
+function nachbarWoerter(w) {
+  const aus = new Set();
+  for (let i = 0; i <= w.length; i++) {
+    if (i < w.length) {
+      aus.add(w.slice(0, i) + w.slice(i + 1));                     // Buchstabe weg
+      for (const c of ABC) aus.add(w.slice(0, i) + c + w.slice(i + 1));  // ersetzt
+      if (i < w.length - 1) {
+        aus.add(w.slice(0, i) + w[i + 1] + w[i] + w.slice(i + 2));  // vertauscht
+      }
+    }
+    for (const c of ABC) aus.add(w.slice(0, i) + c + w.slice(i));   // eingefügt
+  }
+  return aus;
+}
+
+function tippfehlerVorschlag(wort) {
+  if (!WOERTERBUCH_GROSS) return null;
+  const w = wort.toLowerCase();
+  if (w.length < 4 || w.length > 20 || WOERTERBUCH_GROSS.has(w)) return null;
+
+  const treffer = [];
+  for (const kandidat of nachbarWoerter(w)) {
+    if (WOERTERBUCH_GROSS.has(kandidat)) treffer.push(kandidat);
+  }
+  if (!treffer.length) return null;
+
+  /* Bei mehreren Möglichkeiten gewinnt die naheliegendste.
+     Ausschlaggebend ist die Art des Fehlers, nicht die Länge:
+
+     Wer einen Buchstaben vergisst, tippt eine Teilfolge des richtigen Wortes
+     — „gemcht" steckt Buchstabe für Buchstabe in „gemacht". Das ist der
+     häufigste Vertipper und bekommt Vorrang. Danach kommt der umgekehrte
+     Fall (ein Buchstabe zu viel), erst dann vertauscht oder falsch getroffen.
+
+     Ohne diese Reihenfolge gewann „gemäht" gegen „gemacht", nur weil es
+     gleich lang ist. */
+  const istTeilfolge = (kurz, lang) => {
+    let i = 0;
+    for (const c of lang) if (i < kurz.length && kurz[i] === c) i++;
+    return i === kurz.length;
+  };
+  const rang = (k) => istTeilfolge(w, k) ? 0 : istTeilfolge(k, w) ? 1 : 2;
+
+  treffer.sort((a, b) =>
+    rang(a) - rang(b) ||
+    (TRENN_KURZ.has(b) ? 1 : 0) - (TRENN_KURZ.has(a) ? 1 : 0) ||
+    a.length - b.length ||
+    a.localeCompare(b, 'de'));
+  return treffer[0];
+}
+
+function pruefeTippfehler(text, funde) {
+  for (const treffer of text.matchAll(WORT_MUSTER)) {
+    const wort = treffer[0];
+    // Was eine andere Regel schon anfasst, bleibt hier außen vor.
+    if (WOERTERBUCH[wort.toLowerCase()] || trenneZusammen(wort)) continue;
+    const vorschlag = tippfehlerVorschlag(wort);
+    if (!vorschlag) continue;
+    const neu = /^[A-ZÄÖÜ]/.test(wort)
+      ? vorschlag[0].toUpperCase() + vorschlag.slice(1)
+      : vorschlag;
+    if (neu === wort) continue;
+    funde.push(machFund(treffer.index, treffer.index + wort.length,
+                        wort, neu, 'Tippfehler? Ein Buchstabe daneben', 'tipp', false));
+  }
+}
+
 function findeProbleme(text) {
   const korrekturen = [];
   pruefeWoerter(text, korrekturen);
   pruefeZusammengeschrieben(text, korrekturen);
+  pruefeTippfehler(text, korrekturen);
   wendeRegelnAn(text, ZEICHEN_REGELN, korrekturen);
   wendeRegelnAn(text, GROSS_REGELN, korrekturen);
   wendeRegelnAn(text, GRAMMATIK_REGELN, korrekturen);
