@@ -90,6 +90,11 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun richteWebViewEin() {
+        /* Erlaubt, die Seite in der App vom PC aus zu untersuchen. Damit lässt
+           sich nachweisen, was wirklich auf dem Bildschirm steht — statt es zu
+           vermuten. Nur im Debug-Bau von Belang. */
+        WebView.setWebContentsDebuggingEnabled(true)
+
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true      // localStorage: gespeicherter Text, Schlüssel, Schriftgröße

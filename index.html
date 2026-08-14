@@ -40,6 +40,7 @@
   <symbol id="i-sun"      viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 12H2M22 12h-2.2M6.5 6.5L4.9 4.9M19.1 19.1l-1.6-1.6M17.5 6.5l1.6-1.6M4.9 19.1l1.6-1.6"/></symbol>
   <!-- Halb gefüllter Kreis: das übliche Zeichen für „richtet sich nach dem Gerät“. -->
   <symbol id="i-auto"     viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-mehr" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></symbol>
   <symbol id="i-close"    viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <!-- Erdkugel: das übliche Zeichen für Sprache und Übersetzen. -->
   <symbol id="i-globus"   viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.4 5.3 3.4 8.5s-1.2 6.2-3.4 8.5c-2.2-2.3-3.4-5.3-3.4-8.5S9.8 5.8 12 3.5z"/></symbol>
@@ -52,9 +53,6 @@
 
   <div class="topbar__tools">
     <span class="zaehler" id="zaehler"></span>
-    <button class="topbar__icon" id="btn-kleiner"  title="Schrift kleiner" aria-label="Schrift kleiner"><span class="schriftknopf">A&minus;</span></button>
-    <button class="topbar__icon" id="btn-groesser" title="Schrift größer"  aria-label="Schrift größer"><span class="schriftknopf gross">A+</span></button>
-    <button class="topbar__icon" id="btn-theme"><svg class="ic"><use href="#i-auto" id="theme-symbol"></use></svg></button>
     <button class="topbar__icon" id="btn-settings" title="Einstellungen" aria-label="Einstellungen"><svg class="ic"><use href="#i-settings"></use></svg></button>
   </div>
 </header>
@@ -71,6 +69,12 @@
       placeholder="Hier schreiben oder diktieren."
       spellcheck="true" lang="de" autocapitalize="sentences"
       autocorrect="on" aria-label="Dein Text"></textarea>
+
+    <!-- Nach dem Korrigieren liegt hier der fertige Text mit GRÜNEN Wörtern.
+         Ein <textarea> lässt sich innen nicht einfärben — deshalb diese
+         Ansicht darüber. Ein Tipp darauf, und man schreibt wieder im Feld. -->
+    <div id="ergebnis" class="ergebnis" hidden tabindex="0"
+         role="button" aria-label="Ergebnis — antippen zum Weiterschreiben"></div>
   </div>
 
   <!-- Die Funde entstehen erst nach dem Prüfen. Ohne „aria-live" bekommt eine
@@ -82,69 +86,45 @@
        sprengte es die Reihe, und die blieb dann aufgeklappt stehen. Hier taucht
        es nur auf, wenn es etwas zurückzuholen gibt — direkt unter der Meldung,
        auf die es sich bezieht. -->
-  <div class="aktionen">
-    <button class="btn" id="btn-zurueck" hidden>
-      <svg class="ic"><use href="#i-undo"></use></svg> Zurückholen
-    </button>
-    <!-- Nur da, wenn der Text aus dem Markier-Menü einer anderen App kam:
-         Dann ersetzt er dort die Markierung, und die Schreibhilfe schließt
-         sich wieder. Beim Teilen gibt es diesen Rückweg nicht. -->
-    <button class="btn btn--primary" id="btn-zurueckgeben" hidden>
-      <svg class="ic"><use href="#i-check"></use></svg> Zurückgeben
-    </button>
-    <!-- Nur in der Android-App: „Kopieren" gibt es in jedem Markier-Menü, auch
-         dort, wo „Schreibhilfe" nicht auftaucht. Steht schon Text im Feld,
-         wird er ersetzt — „Zurückholen" bringt ihn wieder. -->
-    <button class="btn" id="btn-einfuegen" hidden>
-      <svg class="ic"><use href="#i-copy"></use></svg> Aus der Zwischenablage
-    </button>
-  </div>
+  
 </main>
 
 <footer class="leiste">
-  <!-- Reicht die Breite nicht für alle Beschriftungen, lässt die App die beiden
-       hinteren Wörter weg (.leiste--eng) — lieber ein Sinnbild ohne Wort als
-       eine Leiste, die auf zwei Zeilen aufklappt. „Prüfen" behält sein Wort
-       immer, das ist der Knopf, um den es geht. -->
-  <button class="btn btn--primary btn--breit" id="btn-pruefen"><svg class="ic"><use href="#i-check"></use></svg> Prüfen</button>
-  <button class="btn" id="btn-ki" hidden title="KI-Korrektur" aria-label="KI-Korrektur"><svg class="ic"><use href="#i-sparkle"></use></svg><span class="btn__wort"> KI</span></button>
-  <button class="btn" id="btn-teilen" title="Teilen" aria-label="Teilen"><svg class="ic"><use href="#i-share"></use></svg><span class="btn__wort"> Teilen</span></button>
-  <button class="btn" id="btn-kopieren" title="Kopieren" aria-label="Kopieren"><svg class="ic"><use href="#i-copy"></use></svg><span class="btn__wort"> Kopieren</span></button>
+  <!-- EIN Knopf. Er prüft, wendet alles Eindeutige an und zeigt das Ergebnis —
+       kein Auswählen, kein Fenster davor. Was danach zu tun ist, erscheint erst
+       danach: der Weg zurück, und falls es nicht passt, Rückgängig. -->
+  <button class="knopf knopf--haupt" id="btn-pruefen">
+    <svg class="ic"><use href="#i-check"></use></svg> Korrigieren
+  </button>
 
-  <div class="leiste__rechts">
-    <button class="btn btn--icon" id="btn-leeren" title="Text löschen" aria-label="Text löschen"><svg class="ic"><use href="#i-trash"></use></svg></button>
+  <div id="danach" class="danach" hidden>
+    <button class="knopf knopf--haupt" id="btn-zurueckgeben" hidden>
+      <svg class="ic"><use href="#i-undo"></use></svg> <span id="wort-zurueck">Zurückgeben</span>
+    </button>
+    <button class="knopf knopf--haupt" id="btn-teilen">
+      <svg class="ic"><use href="#i-share"></use></svg> Teilen
+    </button>
+    <div class="danach__klein">
+      <button class="knopf knopf--klein" id="btn-zurueck" hidden>
+        <svg class="ic"><use href="#i-undo"></use></svg> Rückgängig
+      </button>
+      <button class="knopf knopf--klein" id="btn-leeren">
+        <svg class="ic"><use href="#i-trash"></use></svg> Löschen
+      </button>
+    </div>
   </div>
 </footer>
 
 <!-- Korrigieren und Übersetzen stehen zusammen hinter dem KI-Knopf: Beides
      braucht denselben Schlüssel und dasselbe Internet, und ein sechster Knopf
      hätte die Leiste auf schmalen Handys wieder aufgeklappt. -->
-<dialog id="dlg-ki">
-  <div class="dlg__head">
-    <h2>Was soll die KI tun?</h2>
-    <button class="btn btn--icon" id="btn-ki-zu" aria-label="Schließen"><svg class="ic"><use href="#i-close"></use></svg></button>
-  </div>
 
-  <div class="form">
-    <button class="btn btn--primary btn--breit" id="btn-korrigieren">
-      <svg class="ic"><use href="#i-check"></use></svg> Rechtschreibung und Grammatik
-    </button>
+<!-- Was man selten braucht, steht hinter den drei Punkten. Vorher standen
+     Kopieren, Einfügen und Löschen dauerhaft in der Leiste und machten aus
+     vier Knöpfen sieben. -->
 
-    <button class="btn btn--breit" id="btn-formulieren">
-      <svg class="ic"><use href="#i-sparkle"></use></svg> Verständlicher formulieren
-    </button>
 
-    <label class="field">
-      Sprache <em>Wählen allein übersetzt noch nicht — danach unten tippen.</em>
-      <select id="zielsprache"></select>
-    </label>
-    <button class="btn btn--breit" id="btn-uebersetzen">
-      <svg class="ic"><use href="#i-globus"></use></svg><span class="btn__wort"> Übersetzen</span>
-    </button>
 
-    <p class="hint">Beides schickt deinen Text an die KI. „Zurückholen“ bringt danach das Original zurück.</p>
-  </div>
-</dialog>
 
 <dialog id="dlg-settings">
   <div class="dlg__head">
@@ -201,6 +181,28 @@
       <span>Farben vom System übernehmen
         <em>Android 12 und neuer. Sie richten sich nach deinem Hintergrundbild.</em>
       </span>
+    </label>
+
+
+
+    <hr class="trenner">
+
+    <label class="field">Darstellung
+      <div class="reihe-klein">
+        <button class="knopf knopf--klein" id="btn-kleiner" type="button"><span class="schriftknopf">A&minus;</span> kleiner</button>
+        <button class="knopf knopf--klein" id="btn-groesser" type="button"><span class="schriftknopf gross">A+</span> größer</button>
+        <button class="knopf knopf--klein" id="btn-theme" type="button"><svg class="ic"><use href="#i-auto" id="theme-symbol"></use></svg> Hell/Dunkel</button>
+      </div>
+    </label>
+
+    <label class="field">Weitere Werkzeuge <em>brauchen den Schlüssel und Internet</em>
+      <div class="reihe-klein">
+        <button class="knopf knopf--klein" id="btn-formulieren" type="button"><svg class="ic"><use href="#i-sparkle"></use></svg> Verständlicher formulieren</button>
+      </div>
+      <div class="reihe-klein">
+        <select id="zielsprache" aria-label="Zielsprache"><option value="Deutsch">Deutsch</option><option value="Englisch">Englisch</option><option value="Türkisch">Türkisch</option><option value="Polnisch">Polnisch</option><option value="Russisch">Russisch</option><option value="Arabisch">Arabisch</option></select>
+        <button class="knopf knopf--klein" id="btn-uebersetzen" type="button"><svg class="ic"><use href="#i-globus"></use></svg> Übersetzen</button>
+      </div>
     </label>
 
     <p class="hint" id="fassung"></p>
