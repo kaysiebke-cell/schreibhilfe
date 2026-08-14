@@ -1796,6 +1796,24 @@ async function zwischenspeicherAufraeumen() {
 }
 
 
+
+/* ------------------------------------------------------------
+   Bau-Nummer in der Kopfzeile.
+
+   Es hat einen ganzen Abend gekostet, weil niemand am Bildschirmfoto
+   erkennen konnte, welcher Stand darauf zu sehen ist — die App sah nach
+   jedem Update gleich aus, weil ein Zwischenspeicher die alten Dateien
+   auslieferte. Steht die Nummer oben, ist diese Frage mit einem Blick
+   beantwortet.
+   ------------------------------------------------------------ */
+(() => {
+  const feld = document.getElementById('baunummer');
+  if (!feld) return;
+  let nummer = '';
+  try { nummer = window.AndroidBridge?.fassung?.() || ''; } catch {}
+  feld.textContent = nummer ? '#' + nummer : '';
+})();
+
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   if (inDerApp) {
     zwischenspeicherAufraeumen();
