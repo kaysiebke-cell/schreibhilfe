@@ -7,13 +7,42 @@ plugins {
 // Ein DEBUG-Schlüssel wird auf jedem Rechner (und jedem CI-Läufer) neu erzeugt.
 // Damit hätte jede APK eine andere Signatur, und Android verweigert die Installation
 // über eine bestehende App: man müsste deinstallieren — und verlöre dabei den
-// gespeicherten Text und den API-Schlüssel. Deshalb hier ein fester Schlüssel aus
-// Umgebungsvariablen. Fehlt er (lokales Ausprobieren), baut Gradle einfach weiter.
-def signKeystore  = System.getenv("SIGNIER_KEYSTORE")
-def signStorePass = System.getenv("SIGNIER_KEYSTORE_PASSWORT")
-def signAlias     = System.getenv("SIGNIER_ALIAS")
-def signAliasPass = System.getenv("SIGNIER_ALIAS_PASSWORT")
+// gespeicherten Text und den API-Schlüssel.
+//
+// Deshalb IMMER derselbe feste Schlüssel, aus zwei möglichen Quellen:
+//
+//   1. keystore.properties neben dieser Datei — der Weg für Android Studio und
+//      ./gradlew auf dem eigenen PC. Die Datei kommt NICHT ins Repo.
+//   2. Umgebungsvariablen — der Weg für GitHub Actions, wo der Schlüssel aus
+//      den Repository-Secrets kommt.
+//
+// Fehlt beides (fremder Rechner, frisch geklont), baut Gradle einfach weiter und
+// nimmt den üblichen Debug-Schlüssel.
+def signKeystore, signStorePass, signAlias, signAliasPass
+
+def schluesselDatei = rootProject.file("keystore.properties")
+if (schluesselDatei.exists()) {
+    def angaben = new Properties()
+    schluesselDatei.withInputStream { angaben.load(it) }
+    // Der Pfad darf mit ~ beginnen; Java löst das nicht selbst auf.
+    signKeystore  = (angaben['storeFile'] ?: '').replaceFirst('^~', System.getProperty('user.home'))
+    signStorePass = angaben['storePassword']
+    signAlias     = angaben['keyAlias']
+    signAliasPass = angaben['keyPassword']
+} else {
+    signKeystore  = System.getenv("SIGNIER_KEYSTORE")
+    signStorePass = System.getenv("SIGNIER_KEYSTORE_PASSWORT")
+    signAlias     = System.getenv("SIGNIER_ALIAS")
+    signAliasPass = System.getenv("SIGNIER_ALIAS_PASSWORT")
+}
+
 def signVorhanden = signKeystore != null && !signKeystore.isEmpty() && file(signKeystore).exists()
+if (signVorhanden) {
+    logger.lifecycle("Signierung: fester Schlüssel aus " +
+                     (schluesselDatei.exists() ? "keystore.properties" : "Umgebungsvariablen"))
+} else {
+    logger.lifecycle("Signierung: kein fester Schlüssel gefunden — es wird der Debug-Schlüssel benutzt.")
+}
 
 // --- Die Web-App im Wurzelverzeichnis ist die einzige Quelle der Wahrheit ---
 // Dieselben Dateien bedienen GitHub Pages und die APK. Statt sie doppelt im Repo
@@ -88,6 +117,14 @@ android {
             // Persönliches Werkzeug: keine Verschleierung nötig, hält den Build einfach.
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (signVorhanden) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            // Auch der Debug-Build bekommt den festen Schlüssel. Sonst hätte die APK
+            // aus Android Studio eine andere Signatur als die von GitHub, und man
+            // müsste zum Wechseln jedes Mal deinstallieren — samt Textverlust.
             if (signVorhanden) {
                 signingConfig signingConfigs.release
             }
