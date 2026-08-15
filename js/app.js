@@ -1256,8 +1256,25 @@ function zeigeFunde() {
     zeigeWerkzeugKasten();
   }
 
+  zeigeDanachWennFertig();
+
   // Androids Prüfer antwortet erst später und reicht dann nach, was hier fehlt.
   ergaenzeDurchAndroid(text, funde);
+}
+
+/* ------------------------------------------------------------
+   Steht nichts mehr zum Ändern da, ist der Text fertig — dann muss der Weg
+   nach draußen sichtbar sein: Teilen, Zurückgeben, Löschen.
+
+   Zwei Wege führen dorthin, und beide waren zu: Wer einen fehlerfreien Text
+   prüfte, bekam nur „Nichts gefunden." und blieb mit „Korrigieren" sitzen.
+   Und wer alles abgearbeitet hatte, kam auch nicht weiter, sobald ein
+   Schlüssel hinterlegt war — der Werkzeug-Kasten besteht selbst aus Knöpfen
+   und sah nach ungetaner Arbeit aus. Deshalb zählen hier nur die Knöpfe, die
+   wirklich etwas am Text ändern.
+   ------------------------------------------------------------ */
+function zeigeDanachWennFertig() {
+  zeigeDanach(!el.funde.querySelector('.fund button:not(.werkzeug)'));
 }
 
 /* ------------------------------------------------------------
@@ -1308,9 +1325,9 @@ async function ergaenzeDurchAndroid(text, eigene) {
   el.status.textContent = zusammenfassung(alle);
   zeigeWerkzeugKasten();
 
-  // „Korrigieren" war vielleicht schon abgetreten, weil nichts mehr zu tun
-  // schien. Jetzt gibt es wieder etwas zu tun.
-  zeigeDanach(false);
+  // „Korrigieren" war eben abgetreten, weil nichts mehr zu tun schien.
+  // Jetzt gibt es wieder etwas zu tun.
+  zeigeDanachWennFertig();
 }
 
 /* Eine Änderung übernehmen. Danach stimmen alle Stellen dahinter nicht mehr —
@@ -1345,7 +1362,7 @@ function uebernimm(fund) {
 
   /* Ist nichts mehr zu ändern, tritt „Korrigieren" ab und der Weg zurück
      erscheint — so steht immer nur ein großer Knopf da. */
-  if (!el.funde.querySelector('.fund button')) zeigeDanach(true);
+  zeigeDanachWennFertig();
 }
 
 function zeichneFunde(funde) {
