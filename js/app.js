@@ -343,6 +343,7 @@ addEventListener('resize', markiereWort);
    heikel — hier nicht, weil man sie sieht. Sobald wieder getippt wird, steht
    dort wieder der Mülleimer. */
 el.btnLeeren.addEventListener('click', () => {
+  verbergeErgebnis();
   if (zurueckImEimer && vorherigerText !== null) { holeZurueck(); return; }
   if (!el.text.value) return;
   merkeFuerZurueck(el.text.value, true);
@@ -384,6 +385,10 @@ function zeigeEimerAls() {
 }
 
 function holeZurueck() {
+  /* Die grüne Ansicht liegt über dem Schreibfeld und zeigt den Stand von
+     vorhin. Bleibt sie stehen, ändert sich für das Auge nichts — der Knopf
+     wirkt tot, obwohl er gearbeitet hat. */
+  verbergeErgebnis();
   if (vorherigerText === null) return;
   el.text.value = vorherigerText;
   vorherigerText = null;
