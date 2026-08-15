@@ -1561,11 +1561,16 @@ const kiUebersetzung = (sprache) =>
    liegenzulassen. Der Text gehört dem Menschen, nicht der Maschine. */
 const KI_VORSCHLAEGE =
   'Du bist eine Schreibhilfe für einen Menschen mit Legasthenie. Suche im ' +
-  'folgenden deutschen Text die Sätze, die schwer zu lesen oder umständlich ' +
+  'folgenden Text die Sätze, die schwer zu lesen oder umständlich ' +
   'sind, und schlage für jeden eine klarere Fassung vor. ' +
   'Regeln: Ändere nichts am Inhalt und erfinde nichts dazu. Behalte den ' +
   'Tonfall — ein Brief ans Amt bleibt förmlich, eine Nachricht an einen Freund ' +
   'bleibt locker. Benutze einfache, gebräuchliche Wörter und kurze Sätze. ' +
+  /* Nach dem Übersetzen steht im Feld kein Deutsch mehr. Stand hier „deutscher
+     Text", antwortete die KI auf einen englischen Satz mit einer Erklärung
+     statt mit der Liste — und die Vorschläge kamen gar nicht erst an. */
+  'Der Text kann in jeder Sprache stehen. "neu" bleibt in der Sprache des ' +
+  'Textes, "grund" schreibst du immer auf Deutsch. ' +
   'Nimm höchstens sechs Sätze, nur die, bei denen es wirklich hilft; ist der ' +
   'Text schon gut, nimm weniger oder keinen. ' +
   'Antworte ausschließlich mit einer JSON-Liste, ohne Vorrede und ohne ' +
@@ -1640,7 +1645,7 @@ function kiVerfuegbar() {
    Korrigieren und Übersetzen unterscheiden sich nur in der Anweisung — alles
    andere (Abbruch nach 90 s, Fehlermeldungen, kein Nachdenken) ist dasselbe.
    ------------------------------------------------------------ */
-async function kiAnfrage(anweisung, text) {
+async function kiAnfrage(anweisung, text, vorgabe) {
   const schluessel = Speicher.lies('apiKey', '');
   const modell = Speicher.lies('modell', 'claude-opus-5');
 
@@ -1650,6 +1655,13 @@ async function kiAnfrage(anweisung, text) {
     system: anweisung,
     messages: [{ role: 'user', content: text }],
   };
+
+  /* „vorgabe“ legt der KI die ersten Zeichen ihrer Antwort in den Mund. Wer
+     eine JSON-Liste erwartet, gibt „[“ vor: Danach KANN die Antwort nicht mehr
+     mit „Der Text ist bereits gut verständlich.“ anfangen — und genau daran
+     scheiterte „Vorschläge“ mit der Meldung, die Antwort sei nicht zu lesen.
+     Zurück kommt dann nur der Rest ohne die vorgegebene Klammer. */
+  if (vorgabe) anfrage.messages.push({ role: 'assistant', content: vorgabe });
   if (modell !== 'claude-haiku-4-5') {
     // „effort“ gibt es nur bei den neueren Modellen – Haiku würde damit einen Fehler werfen.
     anfrage.output_config = { effort: 'low' };
@@ -1793,7 +1805,7 @@ el.btnFormulieren.addEventListener('click', async () => {
   el.funde.innerHTML = '';
   el.status.textContent = 'Die KI liest deinen Text … einen Moment.';
 
-  const { ergebnis, fehler, cent } = await kiAnfrage(KI_VORSCHLAEGE, text);
+  const { ergebnis, fehler, cent } = await kiAnfrage(KI_VORSCHLAEGE, text, '[');
 
   el.btnKi.disabled = false;
   el.btnKi.classList.remove('btn--laeuft');
@@ -1821,14 +1833,31 @@ el.btnFormulieren.addEventListener('click', async () => {
   el.status.textContent += (cent !== null && cent !== undefined ? ' · ' + alsGeld(cent) : '');
 });
 
-/* Die Antwort soll eine JSON-Liste sein. Falls doch ein Satz davorsteht oder
-   ein Code-Zaun drumherum, wird die Liste herausgeschnitten. */
+/* Die Antwort ist eine JSON-Liste. Zwei Anläufe, weil zwei Formen ankommen
+   können. */
 function leseListe(antwort) {
-  const von = antwort.indexOf('[');
-  const bis = antwort.lastIndexOf(']');
-  if (von === -1 || bis <= von) return null;
+  const roh = String(antwort).trim();
+
+  /* Der Regelfall: Die öffnende Klammer war der KI vorgegeben (siehe
+     kiAnfrage), zurück kam nur der Rest — sie gehört hier wieder davor. Hat
+     die KI sie trotzdem wiederholt, fällt sie weg; sonst entstünde eine Liste
+     in einer Liste, und kein einziger Vorschlag käme durch. */
+  const ausRest = alsListe('[' + roh.replace(/^\[/, ''));
+  if (ausRest) return ausRest;
+
+  /* Der Notfall: Die Vorgabe wurde übergangen und eine ganze Liste
+     geschrieben — mit einem Satz davor oder einem Code-Zaun drumherum. */
+  const von = roh.indexOf('[');
+  return von === -1 ? null : alsListe(roh.slice(von));
+}
+
+/* Schneidet hinter der letzten schließenden Klammer ab und liest, was
+   davorsteht. Was danach folgt, ist Beiwerk. */
+function alsListe(text) {
+  const bis = text.lastIndexOf(']');
+  if (bis === -1) return null;
   try {
-    const liste = JSON.parse(antwort.slice(von, bis + 1));
+    const liste = JSON.parse(text.slice(0, bis + 1));
     return Array.isArray(liste) ? liste : null;
   } catch { return null; }
 }
