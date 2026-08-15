@@ -275,6 +275,11 @@ function textGeaendert() {
 el.text.addEventListener('input', () => {
   textGeaendert();
   vergissZurueck();
+  /* Wer weiterschreibt, will danach neu prüfen. „Korrigieren" war abgetreten,
+     weil gerade nichts zu tun war — jetzt gibt es wieder etwas. Ohne diese
+     Zeile blieb nach einem fertigen Text nur „Teilen" stehen, und der neu
+     getippte Satz ließ sich nicht mehr prüfen. */
+  zeigeDanach(false);
 });
 textGeaendert();
 
@@ -1215,7 +1220,11 @@ function zeigeWerkzeugKasten() {
 
   const titel = document.createElement('div');
   titel.className = 'werkzeug__titel';
-  titel.textContent = el.funde.querySelector('.fund') ? 'Reicht das nicht?' : 'Noch nicht zufrieden?';
+  /* Steht kein Kasten da, ist nichts zu bemängeln — dann passt „Reicht das
+     nicht?" nicht, es klänge nach einem Vorwurf für sauberes Schreiben. */
+  titel.textContent = el.funde.querySelector('.fund')
+    ? 'Reicht das nicht?'
+    : 'Noch etwas damit machen?';
 
   const reihe = document.createElement('div');
   reihe.className = 'werkzeuge';
@@ -1253,8 +1262,12 @@ function zeigeFunde() {
   } else {
     zeichneFunde(funde);
     el.status.textContent = zusammenfassung(funde);
-    zeigeWerkzeugKasten();
   }
+
+  /* Auch bei fehlerfreiem Text: Ein fertiger Satz ist genau der, den man
+     übersetzen oder anders formulieren lassen will. Vorher verschwand mit den
+     Kästen auch der Werkzeug-Kasten, und beides war nicht mehr erreichbar. */
+  zeigeWerkzeugKasten();
 
   zeigeDanachWennFertig();
 
