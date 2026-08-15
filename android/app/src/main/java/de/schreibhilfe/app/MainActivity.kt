@@ -109,6 +109,10 @@ class MainActivity : AppCompatActivity() {
 
         webView.addJavascriptInterface(AndroidBruecke(), "AndroidBridge")
 
+        // Androids eigene Rechtschreibprüfung. Hängt noch nicht in der Bedienung —
+        // sie ist da, um sie gegen den eigenen Wörterbuch-Teil zu messen.
+        webView.addJavascriptInterface(SystemPruefer(this, webView), "AndroidPruefer")
+
         // Ohne WebChromeClient sind window.alert, confirm und prompt in einer
         // WebView wirkungslos: confirm liefert wortlos false, und ein Knopf,
         // der eine Rückfrage stellt, tut dann schlicht nichts. Genau daran ist

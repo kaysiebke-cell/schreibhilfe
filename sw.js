@@ -1,12 +1,13 @@
 /* Service Worker: legt die App im Handy ab, damit sie ohne Internet startet. */
 
-const LAGER = 'schreibhilfe-v19';
+const LAGER = 'schreibhilfe-v20';
 
 const DATEIEN = [
   './',
   './index.html',
   './css/style.css',
   './js/app.js',
+  './js/systempruefer.js',
   './icon.svg',
   './icon-192.png',
   './icon-512.png',
