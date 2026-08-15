@@ -876,17 +876,25 @@ function pruefeSatzbau(text, hinweise) {
    Zwei Funde an derselben Stelle gehen nicht: die erste Änderung würde die
    zweite ins Leere laufen lassen. Nach dem Ändern wird ohnehin neu gesucht,
    dann taucht der verdeckte Fund von selbst wieder auf.
+
+   Wer dabei weichen muss, ist nicht egal. Ein falsch geschriebenes Wort wiegt
+   schwerer als ein fehlendes Komma daneben — und die Komma-Regeln greifen über
+   zwei Wörter, verdecken also leicht einen Vertipper im ersten davon.
+   („geschriben aber" → Komma verdeckte „geschriben → geschrieben".)
+   Deshalb kommen die Wort-Funde zuerst dran, die Regel-Funde füllen die Lücken.
    ------------------------------------------------------------ */
 function ohneUeberschneidung(funde) {
-  funde.sort((a, b) => a.von - b.von || (b.bis - b.von) - (a.bis - a.von));
-  const behalten = [];
-  let bisher = -1;
-  for (const fund of funde) {
-    if (fund.von < bisher) continue;
-    behalten.push(fund);
-    bisher = fund.bis;
+  const belegt = [];
+  const passt = (f) => belegt.every((b) => f.bis <= b.von || f.von >= b.bis);
+  const nachStelle = (a, b) => a.von - b.von || (b.bis - b.von) - (a.bis - a.von);
+
+  for (const durchgang of [funde.filter((f) => f.wortEbene),
+                           funde.filter((f) => !f.wortEbene)]) {
+    for (const fund of durchgang.sort(nachStelle)) {
+      if (passt(fund)) belegt.push(fund);
+    }
   }
-  return behalten;
+  return belegt.sort(nachStelle);
 }
 
 /* Sucht alle Stellen, die auffällig sind. */
@@ -1039,8 +1047,18 @@ function tippfehlerVorschlag(wort) {
   };
   const rang = (k) => istTeilfolge(w, k) ? 0 : istTeilfolge(k, w) ? 1 : 2;
 
+  /* Bleiben mehrere gleich nah, gewinnt das Wort mit dem längeren gemeinsamen
+     Anfang. Vertippt wird meist in der Mitte, der Wortanfang sitzt.
+     So gewinnt „könnten" gegen „klönten" — vorher entschied das Alphabet. */
+  const gleicherAnfang = (k) => {
+    let i = 0;
+    while (i < k.length && i < w.length && k[i] === w[i]) i++;
+    return i;
+  };
+
   treffer.sort((a, b) =>
     rang(a) - rang(b) ||
+    gleicherAnfang(b) - gleicherAnfang(a) ||
     (TRENN_KURZ.has(b) ? 1 : 0) - (TRENN_KURZ.has(a) ? 1 : 0) ||
     a.length - b.length ||
     a.localeCompare(b, 'de'));
@@ -1064,10 +1082,14 @@ function pruefeTippfehler(text, funde) {
 }
 
 function findeProbleme(text) {
+  // Alles, was ein einzelnes Wort richtigstellt, bekommt bei Überschneidungen
+  // den Vorrang vor den Regeln (siehe ohneUeberschneidung).
   const korrekturen = [];
   pruefeWoerter(text, korrekturen);
   pruefeZusammengeschrieben(text, korrekturen);
   pruefeTippfehler(text, korrekturen);
+  for (const fund of korrekturen) fund.wortEbene = true;
+
   wendeRegelnAn(text, ZEICHEN_REGELN, korrekturen);
   wendeRegelnAn(text, GROSS_REGELN, korrekturen);
   wendeRegelnAn(text, GRAMMATIK_REGELN, korrekturen);
