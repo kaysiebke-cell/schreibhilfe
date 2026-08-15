@@ -198,10 +198,11 @@
     </label>
 
     <label class="field">Weitere Werkzeuge <em>brauchen den Schlüssel und Internet</em>
-      <div class="reihe-klein">
-        <button class="knopf knopf--klein" id="btn-korrigieren" type="button"><svg class="ic"><use href="#i-sparkle"></use></svg> KI-Korrektur</button>
-        <button class="knopf knopf--klein" id="btn-formulieren" type="button"><svg class="ic"><use href="#i-sparkle"></use></svg> Vorschläge</button>
-      </div>
+      <!-- KI-Korrektur und Vorschläge stehen als Kasten unter den Funden,
+           nicht mehr hier. Diese beiden bleiben versteckt, weil ihre
+           Verdrahtung dort weiterhin gebraucht wird. -->
+      <button id="btn-korrigieren" type="button" hidden></button>
+      <button id="btn-formulieren" type="button" hidden></button>
       <div class="reihe-klein">
         <select id="zielsprache" aria-label="Zielsprache"><option value="Deutsch">Deutsch</option><option value="Englisch">Englisch</option><option value="Türkisch">Türkisch</option><option value="Polnisch">Polnisch</option><option value="Russisch">Russisch</option><option value="Arabisch">Arabisch</option></select>
         <button class="knopf knopf--klein" id="btn-uebersetzen" type="button"><svg class="ic"><use href="#i-globus"></use></svg> Übersetzen</button>

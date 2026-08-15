@@ -428,3 +428,18 @@ dialog::backdrop{background:rgba(20,25,30,.5)}
 /* Die beiden KI-Wege stehen nebeneinander unter dem Hauptknopf. */
 .ki-reihe{display:flex;gap:.5rem}
 .ki-reihe > .knopf{flex:1 1 0}
+
+/* Der Werkzeug-Kasten steht als letzter unter den Vorschlägen — dort, wo der
+   Blick nach dem Prüfen ohnehin ist, und in Daumenreichweite. */
+.fund--werkzeug{border-left-color:var(--ok);align-items:flex-start}
+.werkzeug__titel{font-size:.85rem;font-weight:600;color:var(--ink-soft)}
+.werkzeuge{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.45rem}
+.werkzeug{
+  font-family:var(--sans);font-size:.82rem;font-weight:600;
+  display:inline-flex;align-items:center;gap:.3rem;
+  background:var(--paper);color:var(--petrol-deep);
+  border:1px solid var(--line);border-radius:var(--radius);
+  padding:.45rem .7rem;cursor:pointer;
+}
+.werkzeug:active{transform:scale(.97)}
+.werkzeug .ic{width:1em;height:1em;color:var(--ok)}

@@ -1169,6 +1169,53 @@ function verbergeErgebnis() {
    Vorschläge der KI dagegen müssen ihre Stellen neu suchen. */
 let kiVorschlaege = null;
 
+
+/* ------------------------------------------------------------
+   Der Werkzeug-Kasten.
+
+   Die KI-Wege lagen im Zahnrad — jedes Mal aufmachen, zielen, drücken.
+   Einhändig ist das mühsam. Jetzt stehen sie als letzter Kasten unter den
+   Vorschlägen: genau dort, wo der Blick nach dem Prüfen ohnehin ist, und in
+   Daumenreichweite. Die Sprache trägt der Knopf mit, es gibt nichts
+   voreinzustellen.
+
+   Ohne hinterlegten Schlüssel bleibt der Kasten weg — sonst stünden dort
+   drei Knöpfe, die nichts tun können.
+   ------------------------------------------------------------ */
+function zeigeWerkzeugKasten() {
+  if (!Speicher.lies('apiKey', '')) return;
+
+  const karte = document.createElement('div');
+  karte.className = 'fund fund--werkzeug';
+
+  const inhalt = document.createElement('div');
+  inhalt.className = 'fund__text';
+
+  const titel = document.createElement('div');
+  titel.className = 'werkzeug__titel';
+  titel.textContent = el.funde.querySelector('.fund') ? 'Reicht das nicht?' : 'Noch nicht zufrieden?';
+
+  const reihe = document.createElement('div');
+  reihe.className = 'werkzeuge';
+
+  const mach = (sinnbild, beschriftung, tu) => {
+    const knopf = document.createElement('button');
+    knopf.type = 'button';
+    knopf.className = 'werkzeug';
+    knopf.append(icon(sinnbild), document.createTextNode(' ' + beschriftung));
+    knopf.addEventListener('click', tu);
+    reihe.appendChild(knopf);
+  };
+
+  mach('i-sparkle', 'KI-Korrektur', () => el.btnKorrigieren.click());
+  mach('i-sparkle', 'Vorschläge',   () => el.btnFormulieren.click());
+  mach('i-globus',  Speicher.lies('sprache', 'Englisch'), () => el.btnUebersetzen.click());
+
+  inhalt.append(titel, reihe);
+  karte.appendChild(inhalt);
+  el.funde.appendChild(karte);
+}
+
 function zeigeFunde() {
   kiVorschlaege = null;
   el.funde.innerHTML = '';
@@ -1183,6 +1230,7 @@ function zeigeFunde() {
 
   zeichneFunde(funde);
   el.status.textContent = zusammenfassung(funde);
+  zeigeWerkzeugKasten();
 }
 
 /* Eine Änderung übernehmen. Danach stimmen alle Stellen dahinter nicht mehr —
@@ -1678,7 +1726,7 @@ function leseListe(antwort) {
 el.btnUebersetzen.addEventListener('click', () => {
   const sprache = el.zielsprache.value;
   Speicher.schreib('sprache', sprache);
-  el.dlgKi.close();
+  el.dlg.close();
   kiLauf(kiUebersetzung(sprache),
     'Die KI übersetzt … einen Moment.',
     'Übersetzt nach ' + sprache + '. Das Deutsche holt „Zurückholen“ darunter wieder.');
