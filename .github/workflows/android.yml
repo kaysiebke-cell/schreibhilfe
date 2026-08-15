@@ -83,7 +83,14 @@ jobs:
           SIGNIER_ALIAS: ${{ secrets.SIGNIER_ALIAS }}
           SIGNIER_ALIAS_PASSWORT: ${{ secrets.SIGNIER_ALIAS_PASSWORT }}
           # Laufnummer als versionCode: Android verlangt für ein Update eine höhere Zahl.
-          VERSION_CODE: ${{ github.run_number }}
+          #
+          # Dazu 1000 addiert, damit die APK von hier IMMER über einer selbst
+          # gebauten Testfassung liegt. Ohne den Abstand genügt ein Probelauf mit
+          # hoch gesetzter Nummer auf dem eigenen Rechner, und die nächste APK von
+          # GitHub gilt als Rückschritt — Android verweigert dann das Update, und
+          # man müsste deinstallieren, samt Textverlust.
+          # Der Bereich unter 1000 gehört also den Testfassungen.
+          VERSION_CODE: ${{ github.run_number + 1000 }}
         run: |
           chmod +x ./gradlew
           if [ "${{ steps.schluessel.outputs.vorhanden }}" = "ja" ]; then

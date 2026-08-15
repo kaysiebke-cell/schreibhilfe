@@ -1248,11 +1248,69 @@ function zeigeFunde() {
 
   const funde = findeProbleme(text);
 
-  if (funde.length === 0) { el.status.textContent = 'Nichts gefunden.'; return; }
+  if (funde.length === 0) {
+    el.status.textContent = 'Nichts gefunden.';
+  } else {
+    zeichneFunde(funde);
+    el.status.textContent = zusammenfassung(funde);
+    zeigeWerkzeugKasten();
+  }
 
-  zeichneFunde(funde);
-  el.status.textContent = zusammenfassung(funde);
+  // Androids Prüfer antwortet erst später und reicht dann nach, was hier fehlt.
+  ergaenzeDurchAndroid(text, funde);
+}
+
+/* ------------------------------------------------------------
+   Nachschlag von Androids Rechtschreibprüfung.
+
+   Der eigene Teil sucht Wörter, die EINEN Buchstaben daneben liegen. Wer zwei
+   danebenhaut — „vileicht", „Halloch" —, fällt durch. Genau dort hilft Gboards
+   Prüfer, und nur dort: Am Testtext gemessen fand er 7 von 24 Stellen, alle
+   davon kannte der eigene Teil auch, zwei davon schlechter. Kommas, Groß- und
+   Kleinschreibung, seit/seid, doppelte Wörter kennt er gar nicht.
+
+   Deshalb bekommt er das letzte Wort nicht, sondern das übriggebliebene: Er
+   wird nur dort gehört, wo sonst nichts steht.
+
+   Er antwortet über eine Brücke in den Android-Teil, also erst später. Die
+   eigenen Kästen stehen da längst; seine werden dazwischengeschoben. Hat sich
+   der Text inzwischen geändert, wandert die Antwort in den Papierkorb.
+   ------------------------------------------------------------ */
+async function ergaenzeDurchAndroid(text, eigene) {
+  if (typeof window.systemPruefung !== 'function') return;   // am PC im Browser
+
+  const antwort = await window.systemPruefung(text);
+  if (antwort.fehler || !antwort.funde || !antwort.funde.length) return;
+
+  // Steht der Text noch so da? Ist die KI-Liste dazwischengekommen?
+  if (el.text.value !== text || kiVorschlaege) return;
+
+  const ueberlappt = (a, b) => a.von < b.bis && b.von < a.bis;
+  // Hinweise zum Satzbau spannen über einen ganzen Satz — die zählen hier
+  // nicht als besetzt, sonst bliebe kein Platz mehr übrig.
+  const besetzt = eigene.filter((f) => f.art !== 'hinweis');
+
+  const dazu = [];
+  for (const stelle of antwort.funde) {
+    const vorschlag = stelle.vorschlaege[0];
+    if (!vorschlag || vorschlag === stelle.wort) continue;
+    if (besetzt.some((f) => ueberlappt(f, stelle))) continue;
+    if (dazu.some((f) => ueberlappt(f, stelle))) continue;
+    dazu.push(machFund(stelle.von, stelle.bis, stelle.wort, vorschlag,
+                       'Vorschlag von Androids Rechtschreibprüfung', 'tipp', false));
+  }
+  if (!dazu.length) return;
+
+  const hinweise = eigene.filter((f) => f.art === 'hinweis');
+  const alle = besetzt.concat(dazu).sort((a, b) => a.von - b.von).concat(hinweise);
+
+  zeichneFunde(alle);
+  el.status.textContent = zusammenfassung(alle);
   zeigeWerkzeugKasten();
+
+  // „Korrigieren" war vielleicht schon abgetreten, weil nichts mehr zu tun
+  // schien. Jetzt gibt es wieder etwas zu tun.
+  zeigeDanach(false);
 }
 
 /* Eine Änderung übernehmen. Danach stimmen alle Stellen dahinter nicht mehr —
