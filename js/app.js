@@ -1776,7 +1776,7 @@ el.btnKiZu.addEventListener('click', () => el.dlgKi.close());
 
 
 el.btnKorrigieren.addEventListener('click', () => {
-  el.dlg.close();
+  schliesseEinstellungen();
   kiLauf(KI_KORREKTUR,
     'Die KI liest deinen Text … einen Moment.',
     'Fertig korrigiert. Nicht einverstanden? „Zurückholen“ darunter.');
@@ -1784,7 +1784,7 @@ el.btnKorrigieren.addEventListener('click', () => {
 
 /* Der dritte Weg: Vorschläge statt fertiger Text. */
 el.btnFormulieren.addEventListener('click', async () => {
-  el.dlg.close();
+  schliesseEinstellungen();
   const text = el.text.value.trim();
   if (!text) { el.status.textContent = 'Es steht noch kein Text da.'; return; }
 
@@ -1836,7 +1836,7 @@ function leseListe(antwort) {
 el.btnUebersetzen.addEventListener('click', () => {
   const sprache = el.zielsprache.value;
   Speicher.schreib('sprache', sprache);
-  el.dlg.close();
+  schliesseEinstellungen();
   kiLauf(kiUebersetzung(sprache),
     'Die KI übersetzt … einen Moment.',
     'Übersetzt nach ' + sprache + '. Das Deutsche holt „Zurückholen“ darunter wieder.');
@@ -2002,6 +2002,34 @@ function zeigeSchluesselStand() {
       + ' — beginnt nicht mit „sk-ant-“. Das sieht nicht nach einem Anthropic-Schlüssel aus.';
 }
 
+/* ------------------------------------------------------------
+   Die Einstellungen als eigener Bildschirm.
+
+   Vorher lagen sie als <dialog> über der App: ein Fenster in einem Fenster,
+   zu schließen über ein Kreuz oben rechts — genau dort, wo der Daumen beim
+   einhändigen Halten nicht hinkommt. Jetzt tritt der Schreibbildschirm ab,
+   solange sie offen sind, und der Weg zurück ist der gewohnte.
+   ------------------------------------------------------------ */
+function oeffneEinstellungen() {
+  el.dlg.hidden = false;
+  document.body.classList.add('seite-offen');
+  const form = el.dlg.querySelector('.form');
+  if (form) form.scrollTop = 0;
+}
+
+function schliesseEinstellungen() {
+  el.dlg.hidden = true;
+  document.body.classList.remove('seite-offen');
+}
+
+/* Die Android-Zurück-Taste fragt hier zuerst nach (siehe MainActivity): Ist
+   dieser Bildschirm offen, gehört sie ihm — und nicht dem Beenden der App. */
+window.zurueckTaste = () => {
+  if (!document.body.classList.contains('seite-offen')) return false;
+  schliesseEinstellungen();
+  return true;
+};
+
 el.btnSettings.addEventListener('click', () => {
   el.apiKey.value = Speicher.lies('apiKey', '');
   zeigeSchluesselStand();
@@ -2012,7 +2040,7 @@ el.btnSettings.addEventListener('click', () => {
   el.fassung.textContent = typeof window.AndroidBridge?.fassung === 'function'
     ? 'Schreibhilfe ' + window.AndroidBridge.fassung()
     : '';
-  el.dlg.showModal();
+  oeffneEinstellungen();
 });
 
 /* Wirkt sofort — man sieht ja beim Zumachen gleich, ob es einem gefällt. */
@@ -2020,7 +2048,7 @@ el.wortmarker.addEventListener('change', () => {
   Speicher.schreib('wortmarker', el.wortmarker.checked);
   markiereWort();
 });
-el.btnSettingsZu.addEventListener('click', () => el.dlg.close());
+el.btnSettingsZu.addEventListener("click", schliesseEinstellungen);
 
 el.btnSpeichern.addEventListener('click', () => {
   const schluessel = el.apiKey.value.trim();
@@ -2029,7 +2057,7 @@ el.btnSpeichern.addEventListener('click', () => {
   Speicher.schreib('modell', el.modell.value);
   zeigeSchluesselStand();
   kiVerfuegbar();
-  el.dlg.close();
+  schliesseEinstellungen();
 });
 
 el.btnKostenWeg.addEventListener('click', () => {
@@ -2042,7 +2070,7 @@ el.btnSchluesselWeg.addEventListener('click', () => {
   el.apiKey.value = '';
   zeigeSchluesselStand();
   kiVerfuegbar();
-  el.dlg.close();
+  schliesseEinstellungen();
 });
 
 kiVerfuegbar();

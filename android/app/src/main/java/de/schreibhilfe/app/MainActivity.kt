@@ -72,9 +72,20 @@ class MainActivity : AppCompatActivity() {
         webView.loadUrl(startAdresse)
 
         // Zurück-Taste: erst im Verlauf der Seite zurück, dann die App schließen.
+        /* Die Web-App hat eigene Bildschirme — die Einstellungen zum Beispiel.
+           Ist einer davon offen, gehört die Zurück-Taste ihm; sonst wäre die App
+           beim ersten Druck weg, statt zum Text zurückzugehen. Deshalb erst
+           drüben nachfragen und nur bei „false" selbst handeln. Die Antwort
+           kommt später, darum ist alles Weitere in den Rückruf gewandert. */
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (webView.canGoBack()) webView.goBack() else finish()
+                webView.evaluateJavascript(
+                    "(window.zurueckTaste && window.zurueckTaste()) === true"
+                ) { antwort ->
+                    if (antwort != "true") {
+                        if (webView.canGoBack()) webView.goBack() else finish()
+                    }
+                }
             }
         })
     }
