@@ -90,8 +90,14 @@ jobs:
           # GitHub gilt als Rückschritt — Android verweigert dann das Update, und
           # man müsste deinstallieren, samt Textverlust.
           # Der Bereich unter 1000 gehört also den Testfassungen.
-          VERSION_CODE: ${{ github.run_number + 1000 }}
+          #
+          # Gerechnet wird unten in der Shell: Die Ausdrücke von GitHub Actions
+          # beherrschen Vergleiche und Und/Oder, aber kein Plus. `run_number + 1000`
+          # bricht den Lauf ab, noch bevor ein Schritt anfängt.
+          LAUF_NUMMER: ${{ github.run_number }}
         run: |
+          export VERSION_CODE=$((LAUF_NUMMER + 1000))
+          echo "versionCode dieser APK: $VERSION_CODE"
           chmod +x ./gradlew
           if [ "${{ steps.schluessel.outputs.vorhanden }}" = "ja" ]; then
             ./gradlew --no-daemon assembleRelease
