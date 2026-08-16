@@ -65,6 +65,8 @@ const el = {
   kostenStand:   $('kosten-stand'),
   fassung:       $('fassung'),
   btnKostenWeg:  $('btn-kosten-weg'),
+  gelerntStand:  $('gelernt-stand'),
+  btnGelerntWeg: $('btn-gelernt-weg'),
 };
 
 /* ------------------------------------------------------------
@@ -88,6 +90,141 @@ const Speicher = {
   loesch(schluessel) {
     try { localStorage.removeItem('sh.' + schluessel); } catch {}
   },
+};
+
+/* ============================================================
+   1b. Das Gedächtnis
+
+   Die KI selbst lernt nichts: Jede Anfrage fängt bei null an. Merken kann
+   sich nur diese App — und das ist hier der bessere Ort. Was hier steht,
+   bleibt auf dem Gerät, kostet nichts und wirkt auch ohne Internet.
+
+   Gesammelt wird an genau einer Stelle: beim Antippen von „Ändern“. Dort ist
+   zweifelsfrei bekannt, was der Mensch wollte.
+
+   Drei Dinge entstehen daraus:
+     woerter  – „Halloch → Hallo“. Beim nächsten Mal steht der Kasten sofort
+                da, ohne KI und ohne Internet.
+     inRuhe   – Wörter, deren Kasten immer wieder weggeklickt wurde. Nach dem
+                fünften Mal hört die App auf, sie anzumeckern: der Nachname,
+                ein Wort aus der Gegend, ein Fachbegriff.
+     gezeigt  – der Zähler, aus dem „inRuhe“ hervorgeht.
+   ============================================================ */
+const LERN_SCHWELLE = 5;    // so oft darf ein Kasten ungenutzt erscheinen
+
+const Gelernt = {
+  /* Gelesen wird bei jedem geprüften Wort. Ohne diesen Zwischenspeicher liefe
+     bei einem langen Brief für jedes einzelne Wort ein JSON.parse — das würde
+     man beim Tippen merken. */
+  _merker: null,
+
+  lies() {
+    if (this._merker) return this._merker;
+    const g = Speicher.lies('gelernt', null);
+    this._merker = {
+      woerter: (g && g.woerter) || {},
+      inRuhe:  (g && g.inRuhe)  || {},
+      gezeigt: (g && g.gezeigt) || {},
+    };
+    return this._merker;
+  },
+
+  schreib(g) { this._merker = g; Speicher.schreib('gelernt', g); },
+
+  /* Ein Fund taugt nur dann zum Lernen, wenn er sich auf das WORT bezieht und
+     nicht auf die Stelle. Ein fehlendes Komma oder ein großer Satzanfang gilt
+     nur genau dort, wo er gefunden wurde — als Regel für immer wäre er Unfug. */
+  wortEbene(fund) {
+    return !!fund && fund.wortEbene === true
+        && typeof fund.alt === 'string' && typeof fund.neu === 'string'
+        && /^[A-Za-zÄÖÜäöüß-]+$/.test(fund.alt)
+        && fund.neu.trim() === fund.neu && fund.neu !== '';
+  },
+
+  /* ------------------------------------------------------------
+     Beim Antippen von „Ändern“.
+
+     Gelernt wird nur, was der Mensch selbst NICHT richtig geschrieben hat:
+     Steht „alt“ so im deutschen Wörterbuch, hängt die Korrektur am Satz und
+     nicht am Wort. „wir“ → „wird“ mag hier stimmen und wäre drei Sätze später
+     falsch. Solche Fälle bleiben Sache der KI.
+     ------------------------------------------------------------ */
+  merkeAenderung(fund) {
+    if (!this.wortEbene(fund)) return;
+    const wort = fund.alt.toLowerCase();
+    if (WOERTERBUCH_GROSS && WOERTERBUCH_GROSS.has(wort)) return;
+
+    const g = this.lies();
+    g.woerter[wort] = fund.neu;
+    delete g.gezeigt[wort];      // angenommen ist das Gegenteil von ignoriert
+    delete g.inRuhe[wort];
+    this.schreib(g);
+  },
+
+  /* Beim Anzeigen der Kästen. Wer denselben Kasten wieder und wieder stehen
+     lässt, sagt damit: Das Wort ist richtig so. */
+  merkeGezeigt(funde) {
+    const g = this.lies();
+    let geaendert = false;
+    for (const fund of funde) {
+      if (!this.wortEbene(fund)) continue;
+      const wort = fund.alt.toLowerCase();
+      if (g.woerter[wort] || g.inRuhe[wort]) continue;
+      g.gezeigt[wort] = (g.gezeigt[wort] || 0) + 1;
+      if (g.gezeigt[wort] >= LERN_SCHWELLE) {
+        g.inRuhe[wort] = true;
+        delete g.gezeigt[wort];
+      }
+      geaendert = true;
+    }
+    if (geaendert) this.schreib(g);
+  },
+
+  /** Die eigene Schreibweise für ein Wort — oder nichts. */
+  wort(wort) {
+    return this.lies().woerter[String(wort).toLowerCase()] || null;
+  },
+
+  /** Soll dieses Wort in Ruhe gelassen werden? */
+  inRuhe(wort) {
+    return !!this.lies().inRuhe[String(wort).toLowerCase()];
+  },
+
+  /* ------------------------------------------------------------
+     Der Steckbrief für die KI.
+
+     Die KI erinnert sich nicht — sie bekommt die Erinnerung bei jeder Anfrage
+     frisch mitgeliefert. Von außen fühlt es sich gleich an. Genannt werden nur
+     die Wörter, die dieser Mensch wirklich oft falsch schreibt; eine lange
+     Liste würde die eigentliche Anweisung verwässern.
+     ------------------------------------------------------------ */
+  steckbrief() {
+    const g = this.lies();
+    const teile = [];
+
+    const paare = Object.entries(g.woerter).slice(-12);
+    if (paare.length) {
+      teile.push('Dieser Mensch schreibt erfahrungsgemäß diese Wörter falsch — ' +
+        'achte besonders darauf: ' +
+        paare.map(([falsch, richtig]) => falsch + ' statt ' + richtig).join(', ') + '.');
+    }
+
+    const ruhe = Object.keys(g.inRuhe).slice(0, 12);
+    if (ruhe.length) {
+      teile.push('Diese Wörter sind so gewollt und bleiben unangetastet: ' +
+        ruhe.join(', ') + '.');
+    }
+
+    return teile.length ? ' ' + teile.join(' ') : '';
+  },
+
+  /** Was steht drin — für die Einstellungen. */
+  stand() {
+    const g = this.lies();
+    return { woerter: Object.keys(g.woerter).length, inRuhe: Object.keys(g.inRuhe).length };
+  },
+
+  leeren() { this._merker = null; Speicher.loesch('gelernt'); },
 };
 
 /* Kleines Icon-Element bauen (für Meldungen, die im Code entstehen) */
@@ -520,7 +657,10 @@ function wendeRegelnAn(text, regeln, funde) {
 function pruefeWoerter(text, funde) {
   for (const treffer of text.matchAll(WORT_MUSTER)) {
     const wort = treffer[0];
-    const richtig = WOERTERBUCH[wort.toLowerCase()];
+    /* Erst die mitgelieferte Liste, dann die selbst gelernte. Was dieser
+       Mensch schon einmal richtiggestellt hat, steht beim nächsten Mal sofort
+       da — ohne KI, ohne Internet. */
+    const richtig = WOERTERBUCH[wort.toLowerCase()] || Gelernt.wort(wort);
     if (!richtig) continue;
     const ersatz = uebernimmSchreibweise(wort, richtig);
     if (ersatz === wort) continue;
@@ -1096,6 +1236,16 @@ function findeProbleme(text) {
   pruefeTippfehler(text, korrekturen);
   for (const fund of korrekturen) fund.wortEbene = true;
 
+  /* Wörter, deren Kasten immer wieder stehen geblieben ist, sind so gewollt —
+     der Nachname, ein Wort aus der Gegend, ein Fachbegriff. Die App hört auf,
+     sie anzumeckern. Was selbst gelernt wurde, bleibt davon unberührt. */
+  for (let i = korrekturen.length - 1; i >= 0; i--) {
+    const fund = korrekturen[i];
+    if (Gelernt.wortEbene(fund) && !Gelernt.wort(fund.alt) && Gelernt.inRuhe(fund.alt)) {
+      korrekturen.splice(i, 1);
+    }
+  }
+
   wendeRegelnAn(text, ZEICHEN_REGELN, korrekturen);
   wendeRegelnAn(text, GROSS_REGELN, korrekturen);
   wendeRegelnAn(text, GRAMMATIK_REGELN, korrekturen);
@@ -1263,6 +1413,7 @@ function zeigeFunde() {
   } else {
     zeichneFunde(funde);
     el.status.textContent = zusammenfassung(funde);
+    Gelernt.merkeGezeigt(funde);
   }
 
   /* Auch bei fehlerfreiem Text: Ein fertiger Satz ist genau der, den man
@@ -1325,10 +1476,15 @@ async function ergaenzeDurchAndroid(text, eigene) {
   for (const stelle of antwort.funde) {
     const vorschlag = stelle.vorschlaege[0];
     if (!vorschlag || vorschlag === stelle.wort) continue;
+    // Wörter auf der Ruhe-Liste sind so gewollt — auch Android schweigt dazu.
+    if (Gelernt.inRuhe(stelle.wort) && !Gelernt.wort(stelle.wort)) continue;
     if (besetzt.some((f) => ueberlappt(f, stelle))) continue;
     if (dazu.some((f) => ueberlappt(f, stelle))) continue;
-    dazu.push(machFund(stelle.von, stelle.bis, stelle.wort, vorschlag,
-                       'Vorschlag von Androids Rechtschreibprüfung', 'tipp', false));
+    const fund = machFund(stelle.von, stelle.bis, stelle.wort, vorschlag,
+                          'Vorschlag von Androids Rechtschreibprüfung', 'tipp', false);
+    // Auch dieser Kasten stellt ein einzelnes Wort richtig — also lernbar.
+    fund.wortEbene = true;
+    dazu.push(fund);
   }
   if (!dazu.length) return;
 
@@ -1337,6 +1493,13 @@ async function ergaenzeDurchAndroid(text, eigene) {
 
   zeichneFunde(alle);
   el.status.textContent = zusammenfassung(alle);
+
+  /* Nur die nachgereichten zählen — die eigenen hat zeigeFunde() schon gezählt.
+     Ohne diese Zeile bliebe ausgerechnet der häufigste Fall ungezählt: Ein
+     Nachname steht in keinem Wörterbuch, also meldet ihn Androids Prüfer, und
+     nur er. Die Ruhe-Liste hätte ihn nie erreicht. */
+  Gelernt.merkeGezeigt(dazu);
+
   zeigeWerkzeugKasten();
 
   // „Korrigieren" war eben abgetreten, weil nichts mehr zu tun schien.
@@ -1353,6 +1516,10 @@ function uebernimm(fund) {
     kiVorschlaege ? zeigeKiVorschlaege() : zeigeFunde();
     return;
   }
+  /* Die einzige Stelle, an der zweifelsfrei feststeht, was dieser Mensch
+     wollte. Deshalb wird hier gelernt — und nirgends sonst. */
+  Gelernt.merkeAenderung(fund);
+
   merkeFuerZurueck(jetzt);
   el.text.value = jetzt.slice(0, fund.von) + fund.neu + jetzt.slice(fund.bis);
   textGeaendert();
@@ -1593,7 +1760,10 @@ const kiKorrektur = (tonfall) =>
   'des Satzes. ' +
   'Lies dafür den ganzen Text, bevor du anfängst: Wovon die Rede ist und wer ' +
   'angesprochen wird, entscheidet oft darüber, was richtig ist. ' +
-  (TONFAELLE[tonfall] || TONFAELLE[TONFALL_STANDARD]) + ' ' +
+  (TONFAELLE[tonfall] || TONFAELLE[TONFALL_STANDARD]) +
+  /* Was die App über diesen Menschen gelernt hat. Die KI erinnert sich nicht
+     von selbst — sie bekommt die Erinnerung bei jeder Anfrage frisch mit. */
+  Gelernt.steckbrief() + ' ' +
   'Ändere nichts am Inhalt, erfinde nichts dazu und lasse nichts weg. ' +
   'Absätze und Zeilenumbrüche bleiben, wie sie sind. ' +
   'Der Text kann in jeder Sprache stehen; antworte in der Sprache des Textes. ' +
@@ -2160,6 +2330,7 @@ el.btnSettings.addEventListener('click', () => {
   el.tonfall.value = Speicher.lies('tonfall', TONFALL_STANDARD);
   el.wortmarker.checked = hervorhebenAn();
   zeigeKosten();
+  zeigeGelernt();
   /* Im Browser gibt es keine Fassung — dort steht immer das Neueste. */
   el.fassung.textContent = typeof window.AndroidBridge?.fassung === 'function'
     ? 'Schreibhilfe ' + window.AndroidBridge.fassung()
@@ -2193,6 +2364,26 @@ el.btnSpeichern.addEventListener('click', () => {
 el.btnKostenWeg.addEventListener('click', () => {
   Speicher.loesch('kosten');
   zeigeKosten();
+});
+
+/* ------------------------------------------------------------
+   Was die App über den Menschen gelernt hat — in einem Satz.
+   ------------------------------------------------------------ */
+function zeigeGelernt() {
+  const { woerter, inRuhe } = Gelernt.stand();
+  const teile = [];
+  if (woerter) teile.push(woerter === 1 ? '1 eigene Schreibweise' : woerter + ' eigene Schreibweisen');
+  if (inRuhe)  teile.push(inRuhe  === 1 ? '1 Wort in Ruhe gelassen' : inRuhe + ' Wörter in Ruhe gelassen');
+
+  el.gelerntStand.textContent = teile.length
+    ? teile.join(' · ')
+    : 'Noch nichts gelernt. Jedes „Ändern“ bringt der App etwas bei.';
+  el.btnGelerntWeg.hidden = teile.length === 0;
+}
+
+el.btnGelerntWeg.addEventListener('click', () => {
+  Gelernt.leeren();
+  zeigeGelernt();
 });
 
 el.btnSchluesselWeg.addEventListener('click', () => {
