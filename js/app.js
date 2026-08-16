@@ -1627,12 +1627,36 @@ const KI_VORSCHLAEGE =
   'Textes, "grund" schreibst du immer auf Deutsch. ' +
   'Nimm höchstens sechs Sätze, nur die, bei denen es wirklich hilft; ist der ' +
   'Text schon gut, nimm weniger oder keinen. ' +
-  'Antworte ausschließlich mit einer JSON-Liste, ohne Vorrede und ohne ' +
-  'Code-Zaun, in dieser Form: ' +
-  '[{"alt":"der Satz zeichengenau aus dem Text","neu":"die klarere Fassung",' +
-  '"grund":"in höchstens acht Wörtern, warum das leichter ist"}]. ' +
-  'Der Wert von "alt" muss zeichengenau so im Text vorkommen — nicht kürzen, ' +
-  'nicht glätten, nichts hinzufügen. Gibt es nichts zu verbessern: []';
+  '"alt" ist der Satz zeichengenau aus dem Text — nicht kürzen, nicht ' +
+  'glätten, nichts hinzufügen; er muss sich Zeichen für Zeichen im Text ' +
+  'wiederfinden. "neu" ist die klarere Fassung, "grund" sagt in höchstens ' +
+  'acht Wörtern, warum das leichter ist. ' +
+  'Gibt es nichts zu verbessern, bleibt die Liste leer.';
+
+/* Der Bauplan der Antwort. Er wird als JSON-Schema mitgeschickt, und die
+   Antwort MUSS ihm entsprechen — kein Fließtext, keine Vorrede, kein
+   Code-Zaun, keine fehlenden Felder. Was früher als Bitte in der Anweisung
+   stand, ist damit eine Zusage der Schnittstelle. */
+const VORSCHLAG_BAUPLAN = {
+  type: 'object',
+  properties: {
+    vorschlaege: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          alt:   { type: 'string' },
+          neu:   { type: 'string' },
+          grund: { type: 'string' },
+        },
+        required: ['alt', 'neu', 'grund'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['vorschlaege'],
+  additionalProperties: false,
+};
 
 /* Die Sprachen, die im KI-Fenster zur Wahl stehen. Deutsch steht mit drin —
    für den umgekehrten Weg, wenn ein fremdsprachiger Text im Feld liegt. */
@@ -1695,36 +1719,50 @@ function kiVerfuegbar() {
 }
 
 /* ------------------------------------------------------------
-   Eine Anfrage, zwei Anwendungen.
-   Korrigieren und Übersetzen unterscheiden sich nur in der Anweisung — alles
-   andere (Abbruch nach 90 s, Fehlermeldungen, kein Nachdenken) ist dasselbe.
+   Eine Anfrage, drei Anwendungen.
+   Korrigieren, Übersetzen und Vorschläge unterscheiden sich nur in der
+   Anweisung — alles andere (Abbruch nach 90 s, Fehlermeldungen, Nachdenken)
+   ist dasselbe.
    ------------------------------------------------------------ */
-async function kiAnfrage(anweisung, text, vorgabe) {
+async function kiAnfrage(anweisung, text, bauplan) {
   const schluessel = Speicher.lies('apiKey', '');
   const modell = Speicher.lies('modell', 'claude-opus-5');
 
   const anfrage = {
     model: modell,
-    max_tokens: 4000,
+    /* Reichlich Platz: Das Nachdenken zählt gegen dieselbe Grenze wie die
+       Antwort. Mit den früheren 4000 hätte ein langer Brief abgeschnitten
+       zurückkommen können. Bezahlt wird, was wirklich verbraucht wird — eine
+       hohe Grenze kostet für sich genommen nichts. */
+    max_tokens: 16000,
     system: anweisung,
     messages: [{ role: 'user', content: text }],
   };
 
-  /* „vorgabe“ legt der KI die ersten Zeichen ihrer Antwort in den Mund. Wer
-     eine JSON-Liste erwartet, gibt „[“ vor: Danach KANN die Antwort nicht mehr
-     mit „Der Text ist bereits gut verständlich.“ anfangen — und genau daran
-     scheiterte „Vorschläge“ mit der Meldung, die Antwort sei nicht zu lesen.
-     Zurück kommt dann nur der Rest ohne die vorgegebene Klammer. */
-  if (vorgabe) anfrage.messages.push({ role: 'assistant', content: vorgabe });
+  const ausgabe = {};
+
   if (modell !== 'claude-haiku-4-5') {
     // „effort“ gibt es nur bei den neueren Modellen – Haiku würde damit einen Fehler werfen.
-    anfrage.output_config = { effort: 'low' };
-    // Opus 5 und Sonnet 5 denken von sich aus nach, und dieses Nachdenken zählt
-    // gegen dieselben 4000 Tokens wie die Antwort. Bei einem langen Brief bliebe
-    // dann womöglich nur ein abgeschnittener Text übrig. Korrigieren und
-    // Übersetzen brauchen kein Nachdenken – also aus.
-    anfrage.thinking = { type: 'disabled' };
+    ausgabe.effort = 'low';
+    /* Nachdenken bleibt AN. Abgeschaltet schreibt Opus 5 gelegentlich seine
+       internen <thinking>-Klammern mit in die Antwort — und die landet hier
+       ungefiltert im Textfeld des Menschen. Nachdenken kostet ein paar
+       Sekunden und macht die Korrektur obendrein besser: „das“ oder „dass“
+       entscheidet sich am Sinn des Satzes, nicht am Wort. */
+    anfrage.thinking = { type: 'adaptive' };
   }
+
+  /* „bauplan“ ist ein JSON-Schema. Damit ist die Antwort keine Prosa mehr,
+     sondern zwingend eine Struktur in genau dieser Form — die KI KANN gar
+     nicht mit „Der Text ist bereits gut verständlich.“ antworten.
+
+     Vorher stand hier ein anderer Weg: der KI die erste Klammer in den Mund
+     legen (eine angefangene Assistenten-Nachricht). Den lehnen Opus 5 und
+     Sonnet 5 rundheraus ab — Fehler 400. Der Bauplan leistet dasselbe und ist
+     der von diesen Modellen vorgesehene Weg. */
+  if (bauplan) ausgabe.format = { type: 'json_schema', schema: bauplan };
+
+  if (Object.keys(ausgabe).length) anfrage.output_config = ausgabe;
 
   // Ohne Abbruch wartet „fetch“ notfalls ewig – etwa wenn das Handy mitten in
   // der Anfrage das Netz verliert. Dann bliebe der Knopf für immer grau.
@@ -1864,7 +1902,7 @@ el.btnFormulieren.addEventListener('click', async () => {
   el.funde.innerHTML = '';
   el.status.textContent = 'Die KI liest deinen Text … einen Moment.';
 
-  const { ergebnis, fehler, cent } = await kiAnfrage(KI_VORSCHLAEGE, text, '[');
+  const { ergebnis, fehler, cent } = await kiAnfrage(KI_VORSCHLAEGE, text, VORSCHLAG_BAUPLAN);
 
   el.btnKi.disabled = false;
   el.btnKi.classList.remove('btn--laeuft');
@@ -1892,33 +1930,30 @@ el.btnFormulieren.addEventListener('click', async () => {
   el.status.textContent += (cent !== null && cent !== undefined ? ' · ' + alsGeld(cent) : '');
 });
 
-/* Die Antwort ist eine JSON-Liste. Zwei Anläufe, weil zwei Formen ankommen
-   können. */
+/* Die Antwort folgt dem Bauplan: ein Objekt mit dem Feld „vorschlaege“.
+   Der zweite und dritte Anlauf sind Notausgänge — falls doch einmal ein Modell
+   ohne Bauplan antwortet oder die Antwort in einen Code-Zaun packt. */
 function leseListe(antwort) {
-  const roh = String(antwort).trim();
-
-  /* Der Regelfall: Die öffnende Klammer war der KI vorgegeben (siehe
-     kiAnfrage), zurück kam nur der Rest — sie gehört hier wieder davor. Hat
-     die KI sie trotzdem wiederholt, fällt sie weg; sonst entstünde eine Liste
-     in einer Liste, und kein einziger Vorschlag käme durch. */
-  const ausRest = alsListe('[' + roh.replace(/^\[/, ''));
-  if (ausRest) return ausRest;
-
-  /* Der Notfall: Die Vorgabe wurde übergangen und eine ganze Liste
-     geschrieben — mit einem Satz davor oder einem Code-Zaun drumherum. */
-  const von = roh.indexOf('[');
-  return von === -1 ? null : alsListe(roh.slice(von));
+  const daten = alsJson(antwort);
+  if (!daten) return null;
+  if (Array.isArray(daten.vorschlaege)) return daten.vorschlaege;
+  if (Array.isArray(daten)) return daten;        // nackte Liste
+  return null;
 }
 
-/* Schneidet hinter der letzten schließenden Klammer ab und liest, was
-   davorsteht. Was danach folgt, ist Beiwerk. */
-function alsListe(text) {
-  const bis = text.lastIndexOf(']');
-  if (bis === -1) return null;
-  try {
-    const liste = JSON.parse(text.slice(0, bis + 1));
-    return Array.isArray(liste) ? liste : null;
-  } catch { return null; }
+/* Erst geradeheraus lesen; klappt das nicht, das Stück zwischen der ersten
+   öffnenden und der letzten schließenden Klammer herausschneiden. */
+function alsJson(antwort) {
+  const roh = String(antwort).trim();
+  try { return JSON.parse(roh); } catch {}
+
+  for (const [auf, zu] of [['{', '}'], ['[', ']']]) {
+    const von = roh.indexOf(auf);
+    const bis = roh.lastIndexOf(zu);
+    if (von === -1 || bis <= von) continue;
+    try { return JSON.parse(roh.slice(von, bis + 1)); } catch {}
+  }
+  return null;
 }
 
 el.btnUebersetzen.addEventListener('click', () => {
