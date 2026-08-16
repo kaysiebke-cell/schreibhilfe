@@ -51,6 +51,7 @@ const el = {
   btnSettingsZu: $('btn-settings-zu'),
   apiKey:        $('api-key'),
   modell:        $('modell'),
+  tonfall:       $('tonfall'),
   btnSpeichern:  $('btn-speichern'),
   btnSchluesselWeg: $('btn-schluessel-weg'),
   btnKleiner:    $('btn-kleiner'),
@@ -1539,12 +1540,65 @@ el.ergebnis.addEventListener('click', () => {
    4. KI-Korrektur — braucht Internet und einen API-Schlüssel
    ============================================================ */
 
-const KI_KORREKTUR =
+/* ------------------------------------------------------------
+   Der Tonfall, in dem die KI-Korrektur den Text stehen lässt.
+
+   Ein Widerspruch ans Jobcenter und eine Nachricht an den Nachbarn brauchen
+   nicht dasselbe. Wer nichts einstellt, bekommt seinen eigenen Ton zurück —
+   das ist die sichere Voreinstellung, denn ein ungefragt umgestellter Tonfall
+   ist keine Korrektur mehr, sondern eine Umschreibung.
+   ------------------------------------------------------------ */
+const TONFAELLE = {
+  'Wie geschrieben':
+    'Lass den Tonfall genau so, wie er im Text steht: Förmliches bleibt ' +
+    'förmlich, Lockeres bleibt locker. Ändere die Wortwahl nur da, wo sie ' +
+    'falsch ist.',
+  'Förmlich (Amt)':
+    'Halte den Tonfall durchgehend förmlich und höflich, wie in einem ' +
+    'Schreiben an eine Behörde: Siezen, vollständige Sätze, keine ' +
+    'Umgangssprache und keine Abkürzungen mitten im Satz. Sachlich bleiben ' +
+    'auch dort, wo der Text ärgerlich klingt — der Vorwurf darf inhaltlich ' +
+    'stehen bleiben, aber im ruhigen Ton.',
+  'Freundlich':
+    'Halte den Tonfall freundlich und zugewandt, wie in einer Nachricht an ' +
+    'jemanden, den man kennt. Nicht flapsig und nicht anbiedernd.',
+  'Kurz und sachlich':
+    'Halte den Tonfall knapp und sachlich: kurze Sätze, keine Füllwörter, ' +
+    'keine Ausschmückungen. Der Inhalt bleibt dabei vollständig.',
+};
+
+const TONFALL_STANDARD = 'Wie geschrieben';
+
+/* ------------------------------------------------------------
+   Die KI-Korrektur.
+
+   Sie kann etwas, das kein Wörterbuch kann: den Satz verstehen. „das" oder
+   „dass" entscheidet sich nicht am Wort, sondern daran, wovon die Rede ist —
+   genauso seit/seid, wider/wieder oder ein fehlendes Komma vor einem
+   Relativsatz. Deshalb steht hier ausdrücklich, worauf zu achten ist und dass
+   der ganze Text zu lesen ist, nicht Satz für Satz.
+   ------------------------------------------------------------ */
+const kiKorrektur = (tonfall) =>
   'Du bist eine Schreibhilfe für einen Menschen mit Legasthenie. ' +
-  'Korrigiere im folgenden deutschen Text die Rechtschreibung, die Grammatik ' +
-  'und die Zeichensetzung. Behalte Wortwahl, Tonfall und Inhalt bei – ändere ' +
-  'nichts am Sinn und erfinde nichts dazu. Antworte ausschließlich mit dem ' +
-  'korrigierten Text: keine Erklärung, keine Anführungszeichen, keine Vorrede.';
+  'Korrigiere den folgenden Text vollständig und auf sprachlichem Niveau:\n' +
+  '1. Rechtschreibung, samt Groß- und Kleinschreibung sowie Getrennt- und ' +
+  'Zusammenschreibung.\n' +
+  '2. Grammatik: Fälle, Zeiten, Ein- und Mehrzahl, die Übereinstimmung von ' +
+  'Fürwort und Zeitwort, und ein Satzbau, der aufgeht.\n' +
+  '3. Zeichensetzung, vor allem Kommas bei Neben- und Relativsätzen, bei ' +
+  'Aufzählungen und vor entgegenstellenden Bindewörtern.\n' +
+  'Achte besonders auf Verwechslungen, die eine Rechtschreibprüfung nicht ' +
+  'finden kann, weil beide Wörter existieren: das/dass, seit/seid, ' +
+  'wider/wieder, wie/als, Ihnen/ihnen, End-/Ent-. Entscheide nach dem Sinn ' +
+  'des Satzes. ' +
+  'Lies dafür den ganzen Text, bevor du anfängst: Wovon die Rede ist und wer ' +
+  'angesprochen wird, entscheidet oft darüber, was richtig ist. ' +
+  (TONFAELLE[tonfall] || TONFAELLE[TONFALL_STANDARD]) + ' ' +
+  'Ändere nichts am Inhalt, erfinde nichts dazu und lasse nichts weg. ' +
+  'Absätze und Zeilenumbrüche bleiben, wie sie sind. ' +
+  'Der Text kann in jeder Sprache stehen; antworte in der Sprache des Textes. ' +
+  'Antworte ausschließlich mit dem korrigierten Text: keine Erklärung, keine ' +
+  'Anführungszeichen, keine Vorrede.';
 
 /* Übersetzen ist dieselbe Anfrage mit einer anderen Anweisung. */
 const kiUebersetzung = (sprache) =>
@@ -1789,9 +1843,14 @@ el.btnKiZu.addEventListener('click', () => el.dlgKi.close());
 
 el.btnKorrigieren.addEventListener('click', () => {
   schliesseEinstellungen();
-  kiLauf(KI_KORREKTUR,
+  const tonfall = Speicher.lies('tonfall', TONFALL_STANDARD);
+  kiLauf(kiKorrektur(tonfall),
     'Die KI liest deinen Text … einen Moment.',
-    'Fertig korrigiert. Nicht einverstanden? „Zurückholen“ darunter.');
+    /* Der Tonfall steht in der Meldung, weil er sonst unsichtbar wirkt: Wer
+       ihn vor Wochen eingestellt hat, wundert sich sonst über das Ergebnis. */
+    'Fertig korrigiert'
+      + (tonfall === TONFALL_STANDARD ? '' : ' · ' + tonfall.toLowerCase())
+      + '. Nicht einverstanden? „Zurückholen“ darunter.');
 });
 
 /* Der dritte Weg: Vorschläge statt fertiger Text. */
@@ -2063,6 +2122,7 @@ el.btnSettings.addEventListener('click', () => {
   el.apiKey.value = Speicher.lies('apiKey', '');
   zeigeSchluesselStand();
   el.modell.value = Speicher.lies('modell', 'claude-opus-5');
+  el.tonfall.value = Speicher.lies('tonfall', TONFALL_STANDARD);
   el.wortmarker.checked = hervorhebenAn();
   zeigeKosten();
   /* Im Browser gibt es keine Fassung — dort steht immer das Neueste. */
@@ -2070,6 +2130,12 @@ el.btnSettings.addEventListener('click', () => {
     ? 'Schreibhilfe ' + window.AndroidBridge.fassung()
     : '';
   oeffneEinstellungen();
+});
+
+/* Wirkt sofort, wie der Wortmarker: Wer den Tonfall umstellt und gleich
+   danach korrigieren lässt, soll nicht erst „Speichern" suchen müssen. */
+el.tonfall.addEventListener('change', () => {
+  Speicher.schreib('tonfall', el.tonfall.value);
 });
 
 /* Wirkt sofort — man sieht ja beim Zumachen gleich, ob es einem gefällt. */
