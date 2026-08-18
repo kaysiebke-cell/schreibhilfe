@@ -45,6 +45,16 @@ DIENSTE = ("com.sun.star.frame.ProtocolHandler",)
 EINSTELLUNGSORDNER = os.path.expanduser("~/.config/schreibhilfe")
 EINSTELLUNGSDATEI = os.path.join(EINSTELLUNGSORDNER, "einstellungen.json")
 
+# Schriftgrößen im Prüfen-Fenster. Die erste Fassung stand auf 8 und 7 —
+# lesbar für jemanden mit guten Augen, unbrauchbar für den, für den die App
+# gebaut ist.
+SCHRIFT_WORT = 11
+SCHRIFT_GRUND = 9
+# Breite eines Zeichens der Festbreitenschrift, in Dialogeinheiten. Ein Dialog
+# rechnet nicht in Pixeln, und die Breite eines Textfelds muss vorher
+# feststehen — bei fester Zeichenbreite lässt sie sich wenigstens abschätzen.
+ZEICHENBREITE = 5.2
+
 MODELLE = ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"]
 SPRACHEN = ["Englisch", "Deutsch", "Türkisch", "Russisch", "Ukrainisch",
             "Polnisch", "Rumänisch", "Arabisch", "Französisch", "Spanisch",
@@ -468,7 +478,7 @@ class Oberflaeche(object):
 
         def feld(name, art, x, w, h, **werte):
             teil = dialog.createInstance("com.sun.star.awt.UnoControl%sModel" % art)
-            teil.PositionX, teil.PositionY = x, y + (0 if h > 9 else 12)
+            teil.PositionX, teil.PositionY = x, y
             teil.Width, teil.Height = w, h
             for schluessel, wert in werte.items():
                 setattr(teil, schluessel, wert)
@@ -479,37 +489,40 @@ class Oberflaeche(object):
         # „kommt auf den Zusammenhang an“. Genau wie in der App.
         balken = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
         balken.PositionX, balken.PositionY = rand, y
-        balken.Width, balken.Height = 2, 21
+        balken.Width, balken.Height = 3, 25
         balken.Label = ""
         balken.BackgroundColor = farbe["fehler"] if fund["art"] == "fehler" else farbe["tipp"]
         dialog.insertByName("balken%d" % nr, balken)
 
         kaestchen = dialog.createInstance("com.sun.star.awt.UnoControlCheckBoxModel")
         kaestchen.PositionX, kaestchen.PositionY = rand + 6, y
-        kaestchen.Width, kaestchen.Height = 10, 11
+        kaestchen.Width, kaestchen.Height = 12, 13
         kaestchen.Label = ""
         kaestchen.State = 1 if angehakt else 0
         dialog.insertByName("haken%d" % nr, kaestchen)
 
-        spalte = breite - rand * 2 - 22        # Platz für beide Wortspalten
-        w_wort = (spalte - 10) // 2
+        # Die Wortspalte richtet sich nach dem längsten Wort der Seite, statt
+        # die Breite stur zu halbieren. Vorher klaffte zwischen „kanst“ und dem
+        # Pfeil eine halbe Fensterbreite Leere.
+        spalte = breite - rand * 2 - 22
+        w_alt = max(24, min(int(fund["breite_alt"] * ZEICHENBREITE) + 6, spalte // 2))
         x_alt = rand + 20
 
-        feld("alt", "FixedText", x_alt, w_wort, 11,
-             Label=kuerze(fund["alt_zeige"], 26), TextColor=farbe["alt"],
-             FontStrikeout=1, FontName=mono, FontHeight=8)
-        feld("pfeil", "FixedText", x_alt + w_wort, 10, 11,
-             Label="→", TextColor=farbe["blass"], FontHeight=8)
-        feld("neu", "FixedText", x_alt + w_wort + 10, w_wort, 11,
-             Label=kuerze(fund["neu_zeige"], 26), TextColor=farbe["neu"],
-             FontWeight=150, FontName=mono, FontHeight=8)
+        feld("alt", "FixedText", x_alt, w_alt, 13,
+             Label=kuerze(fund["alt_zeige"], 30), TextColor=farbe["alt"],
+             FontStrikeout=1, FontName=mono, FontHeight=SCHRIFT_WORT)
+        feld("pfeil", "FixedText", x_alt + w_alt + 2, 10, 13,
+             Label="→", TextColor=farbe["blass"], FontHeight=SCHRIFT_WORT)
+        feld("neu", "FixedText", x_alt + w_alt + 14, spalte - w_alt - 14, 13,
+             Label=kuerze(fund["neu_zeige"], 30), TextColor=farbe["neu"],
+             FontWeight=150, FontName=mono, FontHeight=SCHRIFT_WORT)
 
         grund = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
-        grund.PositionX, grund.PositionY = x_alt, y + 12
-        grund.Width, grund.Height = breite - rand * 2 - 22, 9
-        grund.Label = kuerze(fund["grund"], 74)
+        grund.PositionX, grund.PositionY = x_alt, y + 14
+        grund.Width, grund.Height = breite - rand * 2 - 22, 11
+        grund.Label = kuerze(fund["grund"], 70)
         grund.TextColor = farbe["blass"]
-        grund.FontHeight = 7
+        grund.FontHeight = SCHRIFT_GRUND
         dialog.insertByName("grund%d" % nr, grund)
 
     def frage_haken(self, titel, kopfzeile, eintraege, pro_seite=8):
@@ -533,7 +546,7 @@ class Oberflaeche(object):
             von = seite * pro_seite
             dieseSeite = eintraege[von:von + pro_seite]
 
-            breite, rand, zeile = 340, 10, 24
+            breite, rand, zeile = 360, 10, 29
             hoch = rand + 14 + len(dieseSeite) * zeile + 10
             dialog = self._dienst("com.sun.star.awt.UnoControlDialogModel")
             dialog.Width, dialog.Height = breite, hoch + 26
@@ -547,8 +560,12 @@ class Oberflaeche(object):
                                       else "   (Seite %d von %d)" % (seite + 1, seiten))
             dialog.insertByName("kopf", kopf)
 
+            # Alle Wortspalten dieser Seite gleich breit: nach dem längsten
+            # Wort. Sonst stünden die Pfeile treppenförmig versetzt.
+            laengstes = max([len(e["alt_zeige"]) for e in dieseSeite] or [0])
             y = rand + 16
             for nr, eintrag in enumerate(dieseSeite):
+                eintrag["breite_alt"] = laengstes
                 self._zeichne_fund(dialog, nr, eintrag, rand, y, breite,
                                    angehakt[von + nr])
                 y += zeile
