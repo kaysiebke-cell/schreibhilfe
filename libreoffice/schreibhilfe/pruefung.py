@@ -1,0 +1,580 @@
+# -*- coding: utf-8 -*-
+"""
+Die Prüfung ohne Internet — Wort für Wort dieselbe wie in js/app.js.
+
+Das ist eine Übersetzung, keine Neuerfindung: dieselben Listen, dieselben
+Muster, dieselbe Reihenfolge, dieselben Begründungen. Beide Fassungen werden
+gegeneinander geprüft (siehe libreoffice/vergleiche.py); was hier anders
+herauskäme, wäre ein Fehler.
+
+Wo JavaScript und Python auseinandergehen, steht es im Kommentar dabei.
+"""
+
+import os
+import re
+
+# --------------------------------------------------------------------------
+# a) Wörter, die ein Rechtschreibprüfer NICHT finden kann
+#    — weil beide Schreibweisen für sich genommen richtig sind.
+# --------------------------------------------------------------------------
+
+WOERTERBUCH = {
+    'wiederspiegeln': 'widerspiegeln', 'wiederspiegelt': 'widerspiegelt',
+    'wiedersprechen': 'widersprechen', 'wiederspricht': 'widerspricht',
+    'wiederspruch': 'Widerspruch', 'wiederstand': 'Widerstand',
+    'widerholen': 'wiederholen', 'widerholt': 'wiederholt',
+    'widersehen': 'Wiedersehen',
+    'weiss': 'weiß', 'gross': 'groß',
+    'garnicht': 'gar nicht', 'garnichts': 'gar nichts',
+    'garkein': 'gar kein', 'garkeine': 'gar keine',
+    'aufjedenfall': 'auf jeden Fall', 'aufeinmal': 'auf einmal',
+    'ausversehen': 'aus Versehen', 'zumbeispiel': 'zum Beispiel',
+    'immoment': 'im Moment', 'inordnung': 'in Ordnung', 'imgrunde': 'im Grunde',
+    'vorallem': 'vor allem', 'desweiteren': 'des Weiteren',
+    'nachwievor': 'nach wie vor', 'zumindestens': 'zumindest',
+    'zumteil': 'zum Teil', 'jedesmal': 'jedes Mal', 'garkeinen': 'gar keinen',
+    'tip': 'Tipp', 'tips': 'Tipps', 'email': 'E-Mail', 'emails': 'E-Mails',
+}
+
+WORT_MUSTER = re.compile(r'[A-Za-zÄÖÜäöüß]+(?:-[A-Za-zÄÖÜäöüß]+)*')
+GROSS_ANFANG = re.compile(r'^[A-ZÄÖÜ]')
+
+
+def uebernimm_schreibweise(original, verbesserung):
+    if GROSS_ANFANG.match(verbesserung):
+        return verbesserung                                   # Hauptwort
+    if original == original.upper() and len(original) > 1:
+        return verbesserung.upper()
+    if GROSS_ANFANG.match(original):
+        return verbesserung[0].upper() + verbesserung[1:]
+    return verbesserung
+
+
+def mach_fund(von, bis, alt, neu, grund, art, wort_ebene=False):
+    return {'von': von, 'bis': bis, 'alt': alt, 'neu': neu,
+            'grund': grund, 'art': art, 'wortEbene': wort_ebene}
+
+
+# --------------------------------------------------------------------------
+# b) Wortgruppen für die Regeln
+# --------------------------------------------------------------------------
+
+FUERWOERTER = 'ich|du|er|sie|es|wir|ihr|man'
+
+DENK_ZEITWOERTER = (
+    'denke|denkst|denkt|dachte|dachtest|dachten|glaube|glaubst|glaubt|glaubte|glaubten|'
+    'hoffe|hoffst|hofft|hoffte|meine|meinst|meint|meinte|finde|findest|findet|fand|'
+    'weiß|weißt|wissen|wusste|wusstest|wussten|sage|sagst|sagt|sagte|sagten|'
+    'erzähle|erzählst|erzählt|erzählte|verstehe|verstehst|versteht|vermute|vermutest|vermutet|'
+    'fürchte|fürchtest|fürchtet|bedeutet|heißt|hieß|merke|merkst|merkt|merkte|'
+    'sehe|siehst|sieht|höre|hörst|hört|schreibe|schreibst|schreibt|schrieb|'
+    'verspreche|versprichst|verspricht|bemerke|bemerkt|entschuldige')
+
+DENK_ZEITWOERTER_ENG = (
+    'glaube|glaubst|glaubt|glaubte|denke|denkst|denkt|dachte|meine|meinst|meint|meinte|'
+    'hoffe|hoffst|hofft|hoffte|weiß|weißt|wusste|vermute|vermutet|fürchte|fürchtet|'
+    'verstehe|versteht|bedeutet|heißt')
+
+DASS_EIGENSCHAFTEN = (
+    'wichtig|wichtiger|gut|schön|schade|klar|froh|sicher|möglich|schlimm|toll|'
+    'blöd|traurig|nett|richtig|falsch|schlecht|logisch|normal|selten')
+
+ZEITANGABEN = (
+    'einem|einer|dem|der|den|ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|'
+    'vielen|mehreren|einigen|kurzem|langem|längerem|geraumer|damals|gestern|heute|'
+    'neuestem|jeher|wann|Jahren?|Monaten?|Wochen?|Tagen?|Stunden?|Minuten?|'
+    'Jahrzehnten?|Ewigkeiten|Anfang|Beginn|Montag|Dienstag|Mittwoch|Donnerstag|'
+    'Freitag|Samstag|Sonntag')
+
+STEIGERUNGEN = (
+    'größer|kleiner|besser|schlechter|schneller|langsamer|älter|jünger|höher|tiefer|'
+    'länger|kürzer|stärker|schwächer|lieber|teurer|billiger|schöner|hässlicher|'
+    'einfacher|leichter|schwerer|öfter|näher|dicker|dünner|wärmer|kälter|klüger|'
+    'dümmer|lauter|leiser|glücklicher|müder|wichtiger|schlimmer|ruhiger|netter|'
+    'freundlicher|klarer|heller|dunkler|weicher|härter|süßer|gesünder|reicher|'
+    'ärmer|sicherer|genauer|deutlicher|häufiger|seltener|breiter|schmaler|'
+    'hübscher|mehr|weniger|anders')
+
+FOLGT_NEBENSATZ = (FUERWOERTER +
+                   '|die|der|den|dem|kein|keine|keinen|mein|meine|dein|deine|'
+                   'sein|seine|unser|unsere|alle|alles|viele|manche|jemand|niemand')
+
+NEBENSATZ_WOERTER = [
+    ('dass', False), ('weil', False), ('obwohl', False), ('sodass', False),
+    ('sobald', False), ('solange', False), ('bevor', False), ('nachdem', False),
+    ('falls', False), ('sofern', False), ('indem', False), ('wenn', False),
+    ('ob', False), ('damit', True), ('während', True),
+]
+
+KEIN_KOMMA_DAVOR = {
+    'und', 'oder', 'aber', 'sondern', 'denn', 'so', 'als', 'auch', 'selbst',
+    'sogar', 'außer', 'nur', 'immer', 'je', 'erst', 'schon', 'gerade', 'eben',
+    'besonders', 'allem', 'dann', 'noch', 'kaum', 'wie', 'egal', 'ganz', 'vor',
+    'doch', 'geschweige',
+}
+
+KEIN_HAUPTWORT = {
+    'einen', 'anderen', 'ersten', 'zweiten', 'dritten', 'vierten', 'letzten',
+    'meisten', 'wenigsten', 'besten', 'ganzen', 'großen', 'kleinen', 'neuen',
+    'alten', 'guten', 'schönen', 'gleichen', 'selben', 'vergangenen', 'nächsten',
+    'kommenden', 'langen', 'kurzen', 'jungen', 'hohen', 'tiefen', 'warmen',
+    'kalten', 'richtigen', 'falschen', 'eigenen', 'beiden', 'vielen', 'wenigen',
+    'allen', 'keinen', 'solchen', 'diesen', 'jenen', 'meinen', 'deinen',
+    'seinen', 'ihren', 'unseren', 'euren', 'teuren',
+}
+
+ABKUERZUNG = re.compile(
+    r'(?:^|[\s(„"])(?:[A-Za-zÄÖÜäöüß]|ca|bzw|usw|evtl|ggf|inkl|exkl|vgl|bspw|'
+    r'Nr|Dr|Prof|Abs|Mio|Mrd|Tel|Str)\.$')
+ADRESSE = re.compile(r'[@]|https?:|www\.|\.(de|com|org|net|eu)\b', re.I)
+
+
+def ist_abkuerzung(text, punkt):
+    return bool(ABKUERZUNG.search(text[max(0, punkt - 9):punkt + 1]))
+
+
+def ist_adresse(text, stelle):
+    return bool(ADRESSE.search(text[max(0, stelle - 25):stelle + 25]))
+
+
+def gross_dahinter(m, text):
+    return bool(re.match(r'^[ \t]+[A-ZÄÖÜ]', text[m.end():]))
+
+
+# --------------------------------------------------------------------------
+# c) Der Regelmotor
+#
+#    Eine Regel: Muster, Bauplan für den Ersatz, Begründung. Dazu drei
+#    Schalter — pruefe (verwirft einen Treffer nachträglich), gruppe (grenzt
+#    den Fund auf eine Klammer ein), art.
+# --------------------------------------------------------------------------
+
+def regel(muster, bau, grund, art='fehler', gruppe=None, pruefe=None, flags=0):
+    return {'muster': re.compile(muster, flags), 'bau': bau, 'grund': grund,
+            'art': art, 'gruppe': gruppe, 'pruefe': pruefe}
+
+
+def wende_regeln_an(text, regeln, funde):
+    for r in regeln:
+        for m in r['muster'].finditer(text):
+            if r['pruefe'] and not r['pruefe'](m, text):
+                continue
+            gruppe = r['gruppe']
+            # „gruppe“ heißt: Das Muster darf die Umgebung mitlesen, gemeint ist
+            # nur diese Klammer. Der Versatz ist die Länge alles Vorherigen.
+            versatz = sum(len(m.group(i) or '') for i in range(1, gruppe)) if gruppe else 0
+            alt = m.group(gruppe) if gruppe else m.group(0)
+            neu = r['bau'](m)
+            if neu == alt:
+                continue
+            von = m.start() + versatz
+            funde.append(mach_fund(von, von + len(alt), alt, neu, r['grund'], r['art']))
+
+
+ZEICHEN_REGELN = [
+    regel(r' {2,}', lambda m: ' ', 'Mehrere Leerzeichen hintereinander'),
+    regel(r'[ \t]+([,.;:!?])', lambda m: m.group(1),
+          'Vor dem Satzzeichen gehört kein Leerzeichen'),
+    regel(r'([,;:])([A-Za-zÄÖÜäöüß])', lambda m: m.group(1) + ' ' + m.group(2),
+          'Nach dem Satzzeichen fehlt ein Leerzeichen'),
+    regel(r'([A-Za-zÄÖÜäöüß]{2}[.!?])([A-Za-zÄÖÜäöüß])',
+          lambda m: m.group(1) + ' ' + m.group(2),
+          'Nach dem Satzzeichen fehlt ein Leerzeichen',
+          pruefe=lambda m, t: not ist_adresse(t, m.start())
+                              and not ist_abkuerzung(t, m.start() + 2)),
+    regel(r',{2,}', lambda m: ',', 'Das Komma steht doppelt da'),
+    regel(r'([;:!?])\1+', lambda m: m.group(1), 'Das Satzzeichen steht doppelt da'),
+    regel(r'\b([A-Za-zÄÖÜäöüß]+)([ \t]+)\1\b', lambda m: m.group(1),
+          'Das Wort steht doppelt da', flags=re.I),
+    regel(r'\b([A-ZÄÖÜ][A-Za-zÄÖÜäöüß]{1,})[\'’´`]s\b', lambda m: m.group(1) + 's',
+          'Vor dem Genitiv-s steht im Deutschen kein Apostroph.', art='tipp'),
+]
+
+GROSS_REGELN = [
+    regel(r'(^[ \t]*)([a-zäöüß])', lambda m: m.group(2).upper(),
+          'Satzanfang großschreiben', gruppe=2),
+    regel(r'([.!?]+["»›)]?\s+)([a-zäöüß])', lambda m: m.group(2).upper(),
+          'Satzanfang großschreiben', gruppe=2,
+          pruefe=lambda m, t: not re.match(r'^\.{2,}', m.group(1))
+                              and not ist_abkuerzung(t, m.start())
+                              and not ist_adresse(t, m.start())),
+    regel(r'\b(beim|zum|vom|ans|aufs)([ \t]+)([a-zäöüß]{3,}en)\b',
+          lambda m: m.group(3)[0].upper() + m.group(3)[1:],
+          'Nach „beim/zum/vom“ wird aus dem Tunwort ein Hauptwort.',
+          art='tipp', gruppe=3, flags=re.I,
+          pruefe=lambda m, t: m.group(3).lower() not in KEIN_HAUPTWORT
+                              and not re.search(r'sten$', m.group(3), re.I)
+                              and not gross_dahinter(m, t)),
+]
+
+GRAMMATIK_REGELN = [
+    regel(r'\b(' + DENK_ZEITWOERTER + r')(,?)([ \t]+)das\b'
+          r'(?=[ \t]+(?:' + FUERWOERTER + r')\b)',
+          lambda m: m.group(1) + ',' + m.group(3) + 'dass',
+          'Hier leitet „dass“ den Nebensatz ein – mit Komma davor.',
+          art='tipp', flags=re.I),
+    regel(r'\b(' + DENK_ZEITWOERTER_ENG + r')(,?)([ \t]+)das\b'
+          r'(?=[ \t]+(?:' + FOLGT_NEBENSATZ + r')\b)',
+          lambda m: m.group(1) + ',' + m.group(3) + 'dass',
+          'Hier leitet „dass“ den Nebensatz ein – mit Komma davor.',
+          art='tipp', flags=re.I),
+    regel(r'\b(' + DASS_EIGENSCHAFTEN + r')(,?)([ \t]+)das\b'
+          r'(?=[ \t]+(?:' + FOLGT_NEBENSATZ + r')\b)',
+          lambda m: m.group(1) + ',' + m.group(3) + 'dass',
+          'Hier leitet „dass“ den Nebensatz ein – mit Komma davor.',
+          art='tipp', flags=re.I),
+    regel(r'\bseid([ \t]+)(?=(?:' + ZEITANGABEN + r')\b)',
+          lambda m: 'seit' + m.group(1),
+          'Bei Zeitangaben heißt es „seit“ – „seid“ nur bei „ihr seid“.',
+          flags=re.I),
+    regel(r'\bseit([ \t]+)ihr\b', lambda m: 'seid' + m.group(1) + 'ihr',
+          '„ihr seid“ – hier gehört ein d ans Ende.', flags=re.I,
+          pruefe=lambda m, t: not gross_dahinter(m, t)),
+    regel(r'\bihr([ \t]+)seit\b(?![ \t]+(?:' + ZEITANGABEN + r')\b)',
+          lambda m: 'ihr' + m.group(1) + 'seid',
+          '„ihr seid“ – hier gehört ein d ans Ende.', flags=re.I),
+    regel(r'\bseit([ \t]+)(ruhig|still|nett|lieb|vorsichtig|ehrlich|froh|'
+          r'gegrüßt|willkommen|gespannt|unbesorgt|bereit)\b',
+          lambda m: 'seid' + m.group(1) + m.group(2),
+          'Aufforderung an mehrere: „seid ruhig“ mit d.', flags=re.I),
+    regel(r'\b(' + STEIGERUNGEN + r')([ \t]+)wie\b',
+          lambda m: m.group(1) + m.group(2) + 'als',
+          'Nach der Steigerung heißt es „als“: größer als, lieber als.',
+          flags=re.I),
+    regel(r'\bals([ \t]+)wie\b', lambda m: 'als',
+          '„als wie“ ist doppelt gemoppelt – „als“ reicht.', flags=re.I),
+]
+
+KOMMA_REGELN = [
+    regel(r'\b([A-Za-zÄÖÜäöüß]{2,})([ \t]+)(' + wort + r')\b'
+          + (r'(?=[ \t]+(?:' + FUERWOERTER + r')\b)' if nur_vor_fuerwort else ''),
+          lambda m: m.group(1) + ',' + m.group(2) + m.group(3),
+          'Vor „' + wort + '“ beginnt ein Nebensatz – da gehört ein Komma hin.',
+          art='tipp', flags=re.I,
+          pruefe=lambda m, t: m.group(1).lower() not in KEIN_KOMMA_DAVOR)
+    for wort, nur_vor_fuerwort in NEBENSATZ_WOERTER
+] + [
+    regel(r'\b([A-Za-zÄÖÜäöüß]{2,})([ \t]+)(aber|sondern|denn)\b'
+          r'(?=[ \t]+(?:' + FUERWOERTER + r')\b)',
+          lambda m: m.group(1) + ',' + m.group(2) + m.group(3),
+          'Hier stoßen zwei Sätze aneinander – davor gehört ein Komma.',
+          art='tipp', flags=re.I,
+          pruefe=lambda m, t: m.group(1).lower() not in KEIN_KOMMA_DAVOR),
+]
+
+
+# --------------------------------------------------------------------------
+# d) Zeitwort und Fürwort müssen zueinander passen
+# --------------------------------------------------------------------------
+
+ZEITWOERTER = [
+    {'ich': 'bin',   'du': 'bist',   'er': 'ist',  'wir': 'sind'},
+    {'ich': 'habe',  'du': 'hast',   'er': 'hat',  'wir': 'haben'},
+    {'ich': 'werde', 'du': 'wirst',  'er': 'wird', 'wir': 'werden'},
+    {'ich': 'kann',  'du': 'kannst', 'er': 'kann', 'wir': 'können'},
+    {'ich': 'muss',  'du': 'musst',  'er': 'muss', 'wir': 'müssen'},
+    {'ich': 'will',  'du': 'willst', 'er': 'will', 'wir': 'wollen'},
+    {'ich': 'soll',  'du': 'sollst', 'er': 'soll', 'wir': 'sollen'},
+    {'ich': 'darf',  'du': 'darfst', 'er': 'darf', 'wir': 'dürfen'},
+]
+SPALTE = {'ich': 'ich', 'du': 'du', 'er': 'er', 'man': 'er', 'wir': 'wir'}
+FORM_ZU_ZEITWORT = {}
+for _zeile in ZEITWOERTER:
+    for _form in _zeile.values():
+        FORM_ZU_ZEITWORT[_form] = _zeile
+
+KONGRUENZ_MUSTER = [
+    (re.compile(r'\b(ich|du|er|man|wir)([ \t]+)([a-zäöüß]+)\b', re.I), 1, 3),
+    (re.compile(r'\b([a-zäöüß]+)([ \t]+)(ich|du|er|man|wir)\b', re.I), 3, 1),
+]
+
+
+def pruefe_kongruenz(text, funde):
+    for muster, nr_fuerwort, nr_form in KONGRUENZ_MUSTER:
+        for m in muster.finditer(text):
+            fuerwort = m.group(nr_fuerwort)
+            form = m.group(nr_form)
+            zeile = FORM_ZU_ZEITWORT.get(form.lower())
+            if not zeile:
+                continue
+            richtig = zeile.get(SPALTE.get(fuerwort.lower(), ''))
+            if not richtig or richtig == form.lower():
+                continue
+            alt = m.group(0)
+            if nr_form == 1:
+                neu = uebernimm_schreibweise(form, richtig) + m.group(2) + fuerwort
+            else:
+                neu = fuerwort + m.group(2) + uebernimm_schreibweise(form, richtig)
+            funde.append(mach_fund(
+                m.start(), m.start() + len(alt), alt, neu,
+                'So passt das Zeitwort zum Fürwort: „%s %s“.'
+                % (fuerwort.lower(), richtig), 'fehler'))
+
+
+# --------------------------------------------------------------------------
+# e) Die große Wörterliste — für Trennen und Tippfehler
+# --------------------------------------------------------------------------
+
+TRENN_KURZ = set("""der die das den dem des ein eine einen einem einer eines
+ich du er sie es wir ihr mir dir uns euch mich dich sich man
+ist sind bin bist war warst hat hab habe haben hatte wird werden
+kann kannst will muss soll mag darf
+und oder aber denn weil wenn dass ob als wie wo wann warum wer
+nicht noch schon auch nur mal sehr ganz gar doch dann jetzt hier da
+in im am um auf aus bei mit nach von vor zu zum zur über unter
+hallo danke bitte ja nein guten liebe lieber viele""".split())
+
+ABC = 'abcdefghijklmnopqrstuvwxyzäöüß'
+
+_WOERTER = None
+
+
+def lade_woerter(pfad=None):
+    """Liest die deutsche Wörterliste. Sie liegt neben dieser Datei; fehlt sie,
+    wird die des Systems genommen. Ohne Liste arbeiten Trennen und
+    Tippfehler-Vorschläge einfach nicht — der Rest läuft weiter."""
+    global _WOERTER
+    if _WOERTER is not None:
+        return _WOERTER
+    kandidaten = [pfad] if pfad else []
+    kandidaten += [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'woerter.txt'),
+                   '/usr/share/dict/ngerman', '/usr/share/dict/german']
+    for k in kandidaten:
+        if not k or not os.path.exists(k):
+            continue
+        try:
+            with open(k, 'r', encoding='utf-8', errors='ignore') as datei:
+                _WOERTER = {z.strip().lower() for z in datei if z.strip()}
+            return _WOERTER
+        except OSError:
+            continue
+    _WOERTER = set()
+    return _WOERTER
+
+
+def trenne_zusammen(wort):
+    woerter = lade_woerter()
+    if not woerter:
+        return None
+    w = wort.lower()
+    if len(w) < 6 or w in woerter:
+        return None
+    for i in range(3, len(w) - 2):
+        vorn, hinten = w[:i], w[i:]
+        if vorn in woerter and hinten in woerter \
+                and (vorn in TRENN_KURZ or hinten in TRENN_KURZ):
+            return vorn + ' ' + hinten
+    return None
+
+
+def pruefe_zusammengeschrieben(text, funde):
+    for m in WORT_MUSTER.finditer(text):
+        wort = m.group(0)
+        getrennt = trenne_zusammen(wort)
+        if not getrennt:
+            continue
+        davor = text[:m.start()]
+        satz_anfang = davor.strip() == '' or bool(re.search(r'[.!?]\s+$', davor))
+        gross = bool(GROSS_ANFANG.match(wort)) or satz_anfang
+        neu = (getrennt[0].upper() + getrennt[1:]) if gross else getrennt
+        funde.append(mach_fund(m.start(), m.start() + len(wort), wort, neu,
+                               'Zwei Wörter ohne Lücke', 'wort'))
+
+
+def nachbar_woerter(w):
+    """Alle Wörter, die genau einen Handgriff entfernt sind."""
+    aus = set()
+    for i in range(len(w) + 1):
+        if i < len(w):
+            aus.add(w[:i] + w[i + 1:])                          # Buchstabe weg
+            for c in ABC:
+                aus.add(w[:i] + c + w[i + 1:])                  # ersetzt
+            if i < len(w) - 1:
+                aus.add(w[:i] + w[i + 1] + w[i] + w[i + 2:])    # vertauscht
+        for c in ABC:
+            aus.add(w[:i] + c + w[i:])                          # eingefügt
+    return aus
+
+
+# JavaScript sortiert mit localeCompare('de'): ä zählt wie a, ö wie o,
+# ü wie u, ß wie ss. Pythons eigener Vergleich sortiert nach Zahlenwert und
+# stellte alle Umlaute ans Ende — bei gleichrangigen Vorschlägen käme dann ein
+# anderer heraus als am Handy.
+_DE_ERSATZ = {'ä': 'a', 'ö': 'o', 'ü': 'u', 'ß': 'ss'}
+
+
+def _de_schluessel(wort):
+    grob = ''.join(_DE_ERSATZ.get(c, c) for c in wort)
+    return (grob, wort)
+
+
+def tippfehler_vorschlag(wort):
+    woerter = lade_woerter()
+    if not woerter:
+        return None
+    w = wort.lower()
+    if len(w) < 4 or len(w) > 20 or w in woerter:
+        return None
+
+    treffer = [k for k in nachbar_woerter(w) if k in woerter]
+    if not treffer:
+        return None
+
+    def ist_teilfolge(kurz, lang):
+        i = 0
+        for c in lang:
+            if i < len(kurz) and kurz[i] == c:
+                i += 1
+        return i == len(kurz)
+
+    def rang(k):
+        return 0 if ist_teilfolge(w, k) else (1 if ist_teilfolge(k, w) else 2)
+
+    def gleicher_anfang(k):
+        i = 0
+        while i < len(k) and i < len(w) and k[i] == w[i]:
+            i += 1
+        return i
+
+    treffer.sort(key=lambda k: (rang(k), -gleicher_anfang(k),
+                                0 if k in TRENN_KURZ else 1,
+                                len(k), _de_schluessel(k)))
+    return treffer[0]
+
+
+def pruefe_tippfehler(text, funde, gelernt=None):
+    for m in WORT_MUSTER.finditer(text):
+        wort = m.group(0)
+        # Was eine andere Regel schon anfasst, bleibt hier außen vor.
+        if WOERTERBUCH.get(wort.lower()) or trenne_zusammen(wort):
+            continue
+        vorschlag = tippfehler_vorschlag(wort)
+        if not vorschlag:
+            continue
+        neu = (vorschlag[0].upper() + vorschlag[1:]) if GROSS_ANFANG.match(wort) else vorschlag
+        if neu == wort:
+            continue
+        funde.append(mach_fund(m.start(), m.start() + len(wort), wort, neu,
+                               'Tippfehler? Ein Buchstabe daneben', 'tipp'))
+
+
+def pruefe_woerter(text, funde, gelernt=None):
+    eigene = (gelernt or {}).get('woerter', {})
+    for m in WORT_MUSTER.finditer(text):
+        wort = m.group(0)
+        richtig = WOERTERBUCH.get(wort.lower()) or eigene.get(wort.lower())
+        if not richtig:
+            continue
+        ersatz = uebernimm_schreibweise(wort, richtig)
+        if ersatz == wort:
+            continue
+        funde.append(mach_fund(m.start(), m.start() + len(wort), wort, ersatz,
+                               'Schreibweise', 'fehler'))
+
+
+def pruefe_satzende(text, funde):
+    bis_ende = re.sub(r'\s+$', '', text)
+    if not bis_ende or re.search(r'[.!?:…»"\'\)\]]$', bis_ende):
+        return
+    woerter = bis_ende[bis_ende.rfind('\n') + 1:].strip().split()
+    if len(woerter) < 5:
+        return
+    letztes = woerter[-1]
+    if not re.search(r'[A-Za-zÄÖÜäöüß0-9]$', letztes):
+        return
+    von = len(bis_ende) - len(letztes)
+    funde.append(mach_fund(von, len(bis_ende), letztes, letztes + '.',
+                           'Am Ende fehlt der Punkt.', 'tipp'))
+
+
+def mach_hinweis(von, bis, grund, stelle):
+    return {'von': von, 'bis': bis, 'alt': '', 'neu': '', 'grund': grund,
+            'stelle': stelle, 'art': 'hinweis', 'wortEbene': False}
+
+
+def pruefe_satzbau(text, hinweise):
+    for m in re.finditer(r'[^.!?\n]+', text):
+        roh = m.group(0)
+        satz = roh.strip()
+        if not satz:
+            continue
+        anfang = m.start() + roh.index(satz[0])
+        anzahl = len(satz.split())
+        binder = len(re.findall(r'\b(und|oder|aber|dann|weil)\b', satz, re.I))
+        if anzahl > 25:
+            hinweise.append(mach_hinweis(
+                anfang, anfang + len(satz),
+                'Langer Satz: %d Wörter. Zwei kürzere Sätze liest man leichter.' % anzahl,
+                satz))
+        elif anzahl >= 12 and binder >= 3:
+            hinweise.append(mach_hinweis(
+                anfang, anfang + len(satz),
+                'Der Satz hängt an vielen Bindewörtern. Ein Punkt dazwischen tut ihm gut.',
+                satz))
+
+    for auf, zu, name in (('(', ')', 'Klammern'), ('„', '“', 'Anführungszeichen')):
+        offen, geschlossen = text.count(auf), text.count(zu)
+        if offen != geschlossen:
+            hinweise.append(mach_hinweis(
+                len(text), len(text),
+                '%s: %d-mal geöffnet, %d-mal geschlossen.' % (name, offen, geschlossen), ''))
+
+    if text.count('"') % 2 == 1:
+        hinweise.append(mach_hinweis(len(text), len(text),
+                                     'Ein Anführungszeichen steht allein da.', ''))
+
+
+# --------------------------------------------------------------------------
+# f) Überschneidungen auflösen und alles zusammenführen
+# --------------------------------------------------------------------------
+
+def ohne_ueberschneidung(funde):
+    """Zwei Funde an derselben Stelle gehen nicht — die erste Änderung ließe
+    die zweite ins Leere laufen. Wort-Funde haben Vorrang: Ein falsch
+    geschriebenes Wort wiegt schwerer als ein fehlendes Komma daneben."""
+    belegt = []
+
+    def passt(f):
+        return all(f['bis'] <= b['von'] or f['von'] >= b['bis'] for b in belegt)
+
+    def nach_stelle(f):
+        return (f['von'], -(f['bis'] - f['von']))
+
+    for durchgang in ([f for f in funde if f.get('wortEbene')],
+                      [f for f in funde if not f.get('wortEbene')]):
+        for fund in sorted(durchgang, key=nach_stelle):
+            if passt(fund):
+                belegt.append(fund)
+    return sorted(belegt, key=nach_stelle)
+
+
+def finde_probleme(text, gelernt=None):
+    """Alle Stellen, die auffällig sind — in derselben Reihenfolge wie am Handy."""
+    gelernt = gelernt or {'woerter': {}, 'inRuhe': {}}
+
+    korrekturen = []
+    pruefe_woerter(text, korrekturen, gelernt)
+    pruefe_zusammengeschrieben(text, korrekturen)
+    pruefe_tippfehler(text, korrekturen, gelernt)
+    for fund in korrekturen:
+        fund['wortEbene'] = True
+
+    # Wörter auf der Ruhe-Liste sind so gewollt.
+    in_ruhe = gelernt.get('inRuhe', {})
+    eigene = gelernt.get('woerter', {})
+    korrekturen = [f for f in korrekturen
+                   if not (in_ruhe.get(f['alt'].lower())
+                           and not eigene.get(f['alt'].lower()))]
+
+    wende_regeln_an(text, ZEICHEN_REGELN, korrekturen)
+    wende_regeln_an(text, GROSS_REGELN, korrekturen)
+    wende_regeln_an(text, GRAMMATIK_REGELN, korrekturen)
+    wende_regeln_an(text, KOMMA_REGELN, korrekturen)
+    pruefe_kongruenz(text, korrekturen)
+    pruefe_satzende(text, korrekturen)
+
+    hinweise = []
+    pruefe_satzbau(text, hinweise)
+
+    # Erst das zum Ändern, danach das zum Nachdenken.
+    return ohne_ueberschneidung(korrekturen) + hinweise

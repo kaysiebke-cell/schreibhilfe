@@ -19,3 +19,4 @@ android/keystore.properties
 
 # Die gepackte LibreOffice-Erweiterung entsteht beim Bauen neu.
 libreoffice/*.oxt
+libreoffice/schreibhilfe/woerter.txt

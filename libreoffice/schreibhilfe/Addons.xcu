@@ -22,6 +22,25 @@
 
         <node oor:name="Submenu">
 
+          <node oor:name="m00" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string">
+              <value>de.schreibhilfe.befehl:pruefen</value>
+            </prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="de">Prüfen (ohne Internet)</value>
+              <value xml:lang="en-US">Check (offline)</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+            <prop oor:name="Context" oor:type="xs:string">
+              <value>com.sun.star.text.TextDocument</value>
+            </prop>
+          </node>
+
+          <node oor:name="m00b" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>private:separator</value></prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
+
           <node oor:name="m01" oor:op="replace">
             <prop oor:name="URL" oor:type="xs:string">
               <value>de.schreibhilfe.befehl:korrigieren</value>

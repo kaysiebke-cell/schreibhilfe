@@ -18,8 +18,9 @@ verschickt wird.
 
 import json
 import os
+import re
 import ssl
-import threading
+import sys
 import traceback
 import urllib.error
 import urllib.request
@@ -28,6 +29,14 @@ import unohelper
 from com.sun.star.frame import XDispatchProvider, XDispatch
 from com.sun.star.lang import XServiceInfo, XInitialization
 from com.sun.star.awt import XActionListener
+
+# Die Prüfung ohne Internet liegt daneben. Fehlt sie, bleibt die Erweiterung
+# arbeitsfähig — dann eben nur mit den KI-Wegen.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import pruefung
+except ImportError:                                              # pragma: no cover
+    pruefung = None
 
 BEFEHLSRAUM = "de.schreibhilfe.befehl:"
 UMSETZUNG = "de.schreibhilfe.Handler"
@@ -186,8 +195,28 @@ def schreib_einstellungen(werte):
         pass
 
 
-GELERNTES_WORT = __import__("re").compile(r"^[a-zäöüß-]{1,40}$")
+GELERNTES_WORT = re.compile(r"^[a-zäöüß-]{1,40}$")
 SICHERUNG_GRENZE = 2000
+
+
+def merke_aenderung(fund, werte):
+    """Lernt aus einer angenommenen Änderung — dieselbe Regel wie am Handy.
+
+    Gelernt wird nur, was der Mensch selbst NICHT richtig geschrieben hat:
+    Steht „alt“ im deutschen Wörterbuch, hängt die Korrektur am Satz und nicht
+    am Wort. „wir“ → „wird“ mag hier stimmen und wäre drei Sätze später falsch.
+    """
+    if not fund.get("wortEbene"):
+        return False
+    alt, neu = fund.get("alt", ""), fund.get("neu", "")
+    if not re.match(r"^[A-Za-zÄÖÜäöüß-]+$", alt) or not neu.strip() or neu != neu.strip():
+        return False
+    wort = alt.lower()
+    if pruefung and wort in pruefung.lade_woerter():
+        return False
+    werte["gelernt"]["woerter"][wort] = neu
+    werte["gelernt"]["inRuhe"].pop(wort, None)
+    return True
 
 
 def spiele_sicherung_ein(roh, werte):
@@ -378,6 +407,48 @@ class Oberflaeche(object):
         ergebnis = self.frage_mehreres(titel, felder, mehrzeilig=mehrzeilig)
         return None if ergebnis is None else ergebnis[0]
 
+    def frage_liste(self, titel, beschriftung, zeilen):
+        """Eine Mehrfachauswahl. Rückgabe: Liste der angekreuzten Nummern,
+        oder None bei Abbruch."""
+        dialog = self._dienst("com.sun.star.awt.UnoControlDialogModel")
+        breite = 420
+        hoch = min(max(len(zeilen) * 10 + 4, 60), 260)
+        dialog.Width, dialog.Height = breite, hoch + 46
+        dialog.Title = titel
+        dialog.PositionX, dialog.PositionY = 60, 60
+
+        marke = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
+        marke.PositionX, marke.PositionY = 8, 6
+        marke.Width, marke.Height = breite - 16, 10
+        marke.Label = beschriftung
+        dialog.insertByName("marke", marke)
+
+        liste = dialog.createInstance("com.sun.star.awt.UnoControlListBoxModel")
+        liste.PositionX, liste.PositionY = 8, 18
+        liste.Width, liste.Height = breite - 16, hoch
+        liste.MultiSelection = True
+        liste.StringItemList = tuple(zeilen)
+        liste.SelectedItems = tuple(range(len(zeilen)))     # alles vorausgewählt
+        dialog.insertByName("liste", liste)
+
+        for name, text, x, art in (("ok", "Ändern", breite - 8 - 116, 1),
+                                   ("abbruch", "Abbrechen", breite - 8 - 56, 2)):
+            knopf = dialog.createInstance("com.sun.star.awt.UnoControlButtonModel")
+            knopf.PositionX, knopf.PositionY = x, hoch + 24
+            knopf.Width, knopf.Height = 56, 14
+            knopf.Label = text
+            knopf.PushButtonType = art
+            dialog.insertByName(name, knopf)
+
+        fenster = self._dienst("com.sun.star.awt.UnoControlDialog")
+        fenster.setModel(dialog)
+        fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"), None)
+        genommen = fenster.execute()
+        gewaehlt = list(fenster.getControl("liste").getSelectedItemsPos()) \
+            if genommen == 1 else None
+        fenster.dispose()
+        return gewaehlt
+
     def frage_mehreres(self, titel, felder, mehrzeilig=False):
         """felder: Liste aus (Beschriftung, Vorgabe, Art) — Art ist „text“,
         „passwort“ oder eine Liste zur Auswahl."""
@@ -454,6 +525,55 @@ class Oberflaeche(object):
 # Die Arbeit am Dokument
 # --------------------------------------------------------------------------
 
+def waehle_funde(gui, funde):
+    """Legt alle Funde in einer Liste vor — alles vorausgewählt, abwählbar.
+
+    Ein Fenster mit einer Liste statt zwanzig Rückfragen hintereinander: Man
+    sieht auf einen Blick, was geändert würde, und entscheidet in einem Zug.
+    Rückgabe: die angekreuzten Funde, oder None bei Abbruch.
+    """
+    zeilen = []
+    for fund in funde:
+        alt = fund["alt"].replace("\n", "⏎") or "(nichts)"
+        neu = fund["neu"].replace("\n", "⏎") or "(nichts)"
+        zeilen.append("%s  →  %s      · %s" % (alt, neu, fund["grund"]))
+
+    gewaehlt = gui.frage_liste(
+        "Prüfen — %d Stellen gefunden" % len(funde),
+        "Abgehakt wird geändert. Mit Strg oder Umschalt einzelne abwählen:",
+        zeilen)
+    if gewaehlt is None:
+        return None
+    return [funde[i] for i in gewaehlt]
+
+
+def wende_funde_an(ziel, funde):
+    """Trägt die Änderungen ins Dokument ein.
+
+    Von hinten nach vorn: Jede Änderung verschiebt alles dahinter, aber nichts
+    davor. Andersherum wären nach dem ersten Eintrag alle weiteren Stellen um
+    den Längenunterschied verrutscht.
+
+    Gearbeitet wird mit einem Textzeiger statt mit Suchen-und-Ersetzen — so
+    trifft es genau die gemeinte Stelle und die Formatierung drumherum bleibt.
+    """
+    text = ziel.getText() if hasattr(ziel, "getText") else ziel
+    getan = 0
+    for fund in sorted(funde, key=lambda f: f["von"], reverse=True):
+        zeiger = text.createTextCursorByRange(ziel.getStart())
+        if fund["von"] and not zeiger.goRight(fund["von"], False):
+            continue
+        laenge = fund["bis"] - fund["von"]
+        if laenge and not zeiger.goRight(laenge, True):
+            continue
+        # Sicherheitsprüfung: Steht dort wirklich noch, was wir erwarten?
+        if zeiger.getString() != fund["alt"]:
+            continue
+        zeiger.setString(fund["neu"])
+        getan += 1
+    return getan
+
+
 def hole_text(dokument):
     """Liefert (text, ziel). „ziel“ ist der markierte Bereich oder das ganze
     Dokument — dorthin wird später zurückgeschrieben."""
@@ -507,7 +627,9 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
         gui = Oberflaeche(self.ctx, self.rahmen)
         try:
             befehl = url.Path
-            if befehl == "einstellungen":
+            if befehl == "pruefen":
+                self.pruefen(gui)
+            elif befehl == "einstellungen":
                 self.einstellungen(gui)
             elif befehl == "gedaechtnis":
                 self.gedaechtnis(gui)
@@ -561,6 +683,53 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
                   "Eingespielt: %d Schreibweisen, %d Wörter in Ruhe.\n\n"
                   "Insgesamt bekannt: %d Schreibweisen."
                   % (ergebnis[0], ergebnis[1], len(stand["woerter"])))
+
+    def pruefen(self, gui):
+        """Die Prüfung ohne Internet: Wörterbuch, Kommas, Groß- und
+        Kleinschreibung, das/dass, seit/seid, Tippfehler, Zusammengeklebtes."""
+        if pruefung is None:
+            gui.melde("Schreibhilfe", "Die Prüfung fehlt in dieser Fassung.",
+                      "errorbox")
+            return
+
+        werte = lies_einstellungen()
+        text, ziel = hole_text(self._dokument())
+        if not text.strip():
+            gui.melde("Schreibhilfe", "Es steht noch kein Text da.")
+            return
+
+        alle = pruefung.finde_probleme(text, werte["gelernt"])
+        aenderbar = [f for f in alle if f["art"] != "hinweis"]
+        hinweise = [f for f in alle if f["art"] == "hinweis"]
+
+        if not aenderbar:
+            nachsatz = ("\n\nZum Nachdenken:\n· " + "\n· ".join(h["grund"] for h in hinweise)) \
+                if hinweise else ""
+            gui.melde("Schreibhilfe", "Nichts gefunden." + nachsatz)
+            return
+
+        gewaehlt = waehle_funde(gui, aenderbar)
+        if gewaehlt is None:
+            return
+        if not gewaehlt:
+            gui.melde("Schreibhilfe", "Nichts geändert.")
+            return
+
+        getan = wende_funde_an(ziel, gewaehlt)
+
+        # Aus jeder angenommenen Änderung lernen — wie am Handy.
+        gelernt = sum(1 for f in gewaehlt if merke_aenderung(f, werte))
+        if gelernt:
+            schreib_einstellungen(werte)
+
+        meldung = "%d von %d Stellen geändert." % (getan, len(gewaehlt))
+        if gelernt:
+            meldung += "\n%d neue Schreibweise%s gemerkt." % (
+                gelernt, "n" if gelernt > 1 else "")
+        if hinweise:
+            meldung += "\n\nZum Nachdenken:\n· " + "\n· ".join(h["grund"] for h in hinweise)
+        meldung += "\n\nStrg+Z nimmt alles zurück."
+        gui.melde("Schreibhilfe", meldung)
 
     def korrigieren(self, gui):
         werte = lies_einstellungen()
