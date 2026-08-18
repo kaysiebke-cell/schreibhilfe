@@ -17,19 +17,7 @@
       manifest:media-type="application/vnd.sun.star.configuration-data"
       manifest:full-path="Addons.xcu"/>
 
-  <!-- Die Tafel baut ihre Oberfläche selbst — auch sie ist eine Komponente. -->
-  <manifest:file-entry
-      manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
-      manifest:full-path="tafel.py"/>
-
-  <!-- Wer die Tafel baut. -->
-  <manifest:file-entry
-      manifest:media-type="application/vnd.sun.star.configuration-data"
-      manifest:full-path="Factories.xcu"/>
-
-  <!-- Die Tafel in der Seitenleiste. -->
-  <manifest:file-entry
-      manifest:media-type="application/vnd.sun.star.configuration-data"
-      manifest:full-path="Sidebar.xcu"/>
+  <!-- Die Tafel unten am Fenster. Sie wird aus schreibhilfe.py geladen und
+       braucht deshalb keine eigene Anmeldung als Komponente. -->
 
 </manifest:manifest>

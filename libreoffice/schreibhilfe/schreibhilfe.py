@@ -849,13 +849,7 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
         die Tafel arbeiten; die alten Fenster gibt es nur noch als Rückfall,
         falls sich die Leiste nicht öffnen lässt.
         """
-        self.zeige_leiste()
-        tafel = None
-        try:
-            import tafel as T
-            tafel = T.tafel_von(self.rahmen)
-        except ImportError:
-            pass
+        tafel = self.zeige_leiste()
 
         if tafel is None:
             # Rückfall: die Leiste war nicht zu haben, dann eben wie früher.
@@ -879,15 +873,28 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
             tafel.ki_lauf("uebersetzen")
 
     def zeige_leiste(self):
-        """Klappt die Seitenleiste auf und holt unseren Bereich nach vorn."""
-        hilfe = self.ctx.ServiceManager.createInstanceWithContext(
-            "com.sun.star.frame.DispatchHelper", self.ctx)
-        for befehl in (".uno:Sidebar",
-                       ".uno:SidebarDeck?PanelId:string=SchreibhilfeDeck"):
+        """Holt die Tafel unten am Writer-Fenster hervor — oder baut sie.
+
+        Pro Writer-Fenster gibt es genau eine. Ruft man das Menü zweimal auf,
+        soll keine zweite Tafel aufgehen, sondern dieselbe weiterarbeiten.
+        """
+        try:
+            import tafel as T
+        except ImportError:
+            return None
+        tafel = T.tafel_von(self.rahmen)
+        if tafel is None:
             try:
-                hilfe.executeDispatch(self.rahmen, befehl, "", 0, ())
+                tafel = T.Tafel(self.ctx, self.rahmen)
             except Exception:                               # noqa: BLE001
-                pass
+                return None
+        else:
+            try:
+                tafel.fenster.setVisible(True)
+                tafel.ans_untere_ende()
+            except Exception:                               # noqa: BLE001
+                return None
+        return tafel
 
     # --- die einzelnen Befehle ---
 

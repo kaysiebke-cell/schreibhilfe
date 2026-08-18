@@ -19,10 +19,6 @@ import sys
 
 import unohelper
 from com.sun.star.awt import XActionListener, XWindowListener
-from com.sun.star.lang import XServiceInfo
-from com.sun.star.ui import XUIElement, XUIElementFactory, XSidebarPanel
-from com.sun.star.ui import LayoutSize
-from com.sun.star.ui.UIElementType import TOOLPANEL
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import schreibhilfe as SH                                        # noqa: E402
@@ -68,8 +64,6 @@ def tafel_von(rahmen):
     return None
 
 
-FABRIK = "de.schreibhilfe.Fabrik"
-ADRESSE = "private:resource/toolpanel/de.schreibhilfe.Fabrik/Tafel"
 
 
 class Tafel(unohelper.Base, XWindowListener):
@@ -78,28 +72,66 @@ class Tafel(unohelper.Base, XWindowListener):
     RAND = 6
     ZEILE = 30
 
-    def __init__(self, ctx, elternfenster, rahmen):
+    def __init__(self, ctx, rahmen):
         self.ctx = ctx
         self.rahmen = rahmen
         self.gui = SH.Oberflaeche(ctx, rahmen)
         self.funde = None      # None = noch nicht geprüft
         self.ziel = None
+        self.breite_px = 900
 
         self.modell = self._dienst("com.sun.star.awt.UnoControlDialogModel")
         self.modell.PositionX, self.modell.PositionY = 0, 0
-        self.modell.Width, self.modell.Height = 200, 400
+        self.modell.Width, self.modell.Height = 500, 120
+        self.modell.Title = "Schreibhilfe"
+        self.modell.Closeable = True
+        self.modell.Moveable = True
+        self.modell.Sizeable = True
 
         self.fenster = self._dienst("com.sun.star.awt.UnoControlDialog")
         self.fenster.setModel(self.modell)
-        self.fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"),
-                                elternfenster)
-        self.fenster.addWindowListener(self)
-        elternfenster.addWindowListener(self)
+        self.fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"), None)
 
         merke_tafel(rahmen, self)
 
+        # Der Tafel folgen, wenn Writer verschoben oder verkleinert wird.
+        # NUR auf das Writer-Fenster horchen: Horcht die Tafel auch auf sich
+        # selbst, verschiebt sie sich endlos weiter und LibreOffice stürzt ab.
+        try:
+            self.writer = rahmen.getContainerWindow()
+            self.writer.addWindowListener(self)
+        except Exception:                                    # noqa: BLE001
+            self.writer = None
+
         self.zeichne()
+        self.ans_untere_ende()
         self.fenster.setVisible(True)
+
+    def ans_untere_ende(self):
+        """Legt die Tafel bündig an die Unterkante des Writer-Fensters.
+
+        Sie ist damit kein frei schwebendes Fenster mehr, das man sich
+        zurechtschieben muss, sondern sitzt fest unten — wie die Leiste in
+        der Handy-App. Verschiebt man Writer, geht sie mit.
+        """
+        from com.sun.star.awt.PosSize import POSSIZE
+        try:
+            w = self.writer.getPosSize()
+        except Exception:                                    # noqa: BLE001
+            return
+        hoehe = min(max(self._hoehe_px(), 120), max(200, w.Height // 2))
+        # Nicht breiter als nötig: Auf einem breiten Bildschirm stünde der
+        # Knopf „Ändern“ sonst eine halbe Armlänge neben seinem Wort.
+        self.breite_px = max(420, min(w.Width, 1000))
+        self.fenster.setPosSize(w.X, w.Y + w.Height - hoehe,
+                                self.breite_px, hoehe, POSSIZE)
+
+    def _hoehe_px(self):
+        """Die gezeichnete Höhe in Bildpunkten — plus Platz für den Rahmen."""
+        # Die Maße im Modell sind Dialogeinheiten, keine Bildpunkte. Der
+        # Faktor 1.9 trifft es bei üblicher Schriftgröße gut genug; die 34
+        # sind Titelleiste und Rahmen.
+        return int(self.modell.Height * 1.9) + 34
 
     # --- Hilfen -------------------------------------------------------
     def _dienst(self, name):
@@ -127,11 +159,29 @@ class Tafel(unohelper.Base, XWindowListener):
         teil.Label = label
         teil.PushButtonType = 0
         self.modell.insertByName(name, teil)
-        self.fenster.getControl(name).addActionListener(_Druck(self, name))
+        # getControl liefert erst etwas, wenn das Bedienteil wirklich gebaut
+        # wurde. Ohne diese Prüfung stirbt das Zeichnen mitten im Aufbau, und
+        # die Tafel bleibt leer — ohne jede Meldung.
+        steuer = self.fenster.getControl(name)
+        if steuer is not None:
+            steuer.addActionListener(_Druck(self, name))
         return teil
 
     # --- Aufbau -------------------------------------------------------
     def zeichne(self):
+        """Zeichnet die Tafel neu und meldet Fehler, statt sie zu verschlucken.
+
+        Bricht das Zeichnen ab, bleibt die Tafel sonst wortlos leer.
+        """
+        try:
+            self._zeichne()
+        except Exception:                                    # noqa: BLE001
+            import traceback
+            self.gui.melde("Schreibhilfe",
+                           "Die Tafel ließ sich nicht aufbauen:\n\n"
+                           + traceback.format_exc(), "errorbox")
+
+    def _zeichne(self):
         """Baut die Tafel neu auf — nach dem Vorbild der App.
 
         Von oben nach unten: der große Knopf, die Fundkästen, der
@@ -205,8 +255,12 @@ class Tafel(unohelper.Base, XWindowListener):
                    SH.kuerze(fund["neu_zeige"], 22), TextColor=farbe["neu"],
                    FontWeight=150, FontName="DejaVu Sans Mono",
                    FontHeight=SH.SCHRIFT_WORT)
+        # Wie viel von der Begründung passt, hängt an der Breite der Tafel.
+        # Feste 44 Zeichen schnitten auf einem breiten Fenster mitten im Satz
+        # ab, obwohl daneben noch handbreit Platz frei war.
+        platz = max(30, int(w_text / (SH.ZEICHENBREITE * 0.62)))
         self._text("grund%d" % nr, x_text, y + 13, w_text, 11,
-                   SH.kuerze(fund["grund"], 44), TextColor=farbe["blass"],
+                   SH.kuerze(fund["grund"], platz), TextColor=farbe["blass"],
                    FontHeight=SH.SCHRIFT_GRUND)
 
         self._knopf("nimm%d" % nr, breite - rand - w_knopf, y + 3, w_knopf, 16,
@@ -300,11 +354,39 @@ class Tafel(unohelper.Base, XWindowListener):
         self.zeichne()
 
     # --- XWindowListener: mitwachsen ----------------------------------
-    def windowResized(self, ereignis):
-        self.modell.Width = ereignis.Width
-        self.zeichne()
+    # Merkt sich die zuletzt gezeichnete Breite. Ohne diesen Vergleich löst
+    # jedes Zeichnen den nächsten Größenwechsel aus und der nächste wieder ein
+    # Zeichnen — die Tafel malt sich endlos neu.
+    letzte_breite = 0
+    _beschaeftigt = False
 
-    def windowMoved(self, ereignis): pass
+    def windowResized(self, ereignis):
+        if self._beschaeftigt:
+            return
+        self._beschaeftigt = True
+        try:
+            self._auf_groesse(ereignis)
+        finally:
+            self._beschaeftigt = False
+
+    def _auf_groesse(self, ereignis):
+        """Writer wurde verschoben oder in der Größe verändert."""
+        breite = max(220, int(min(ereignis.Width, 1000) / 1.9))
+        if abs(breite - self.letzte_breite) >= 4:
+            self.letzte_breite = breite
+            self.modell.Width = breite
+            self.zeichne()
+        self.ans_untere_ende()
+
+    def windowMoved(self, ereignis):
+        if self._beschaeftigt:
+            return
+        self._beschaeftigt = True
+        try:
+            self.ans_untere_ende()
+        finally:
+            self._beschaeftigt = False
+
     def windowShown(self, ereignis): pass
     def windowHidden(self, ereignis): pass
     def disposing(self, ereignis): pass
@@ -327,54 +409,3 @@ class _Druck(unohelper.Base, XActionListener):
 
     def disposing(self, ereignis):
         pass
-
-
-class TafelElement(unohelper.Base, XUIElement, XSidebarPanel):
-    """Die Hülle, die LibreOffice von der Fabrik erwartet."""
-
-    def __init__(self, ctx, rahmen, elternfenster):
-        self.ctx = ctx
-        self.Frame = rahmen
-        self.ResourceURL = ADRESSE
-        self.Type = TOOLPANEL
-        self.tafel = Tafel(ctx, elternfenster, rahmen)
-
-    def getRealInterface(self):
-        return self.tafel.fenster
-
-    def getMinimalWidth(self):
-        return 180
-
-    def getHeightForWidth(self, breite):
-        hoehe = self.tafel.modell.Height
-        return LayoutSize(hoehe, hoehe, hoehe)
-
-
-class TafelFabrik(unohelper.Base, XUIElementFactory, XServiceInfo):
-    """Meldet sich für die Ressourcen-Adresse der Tafel zuständig."""
-
-    def __init__(self, ctx):
-        self.ctx = ctx
-
-    def createUIElement(self, adresse, angaben):
-        rahmen = elternfenster = None
-        for angabe in angaben:
-            if angabe.Name == "Frame":
-                rahmen = angabe.Value
-            elif angabe.Name == "ParentWindow":
-                elternfenster = angabe.Value
-        return TafelElement(self.ctx, rahmen, elternfenster)
-
-    def getImplementationName(self):
-        return FABRIK
-
-    def supportsService(self, name):
-        return name == "com.sun.star.ui.UIElementFactory"
-
-    def getSupportedServiceNames(self):
-        return ("com.sun.star.ui.UIElementFactory",)
-
-
-g_ImplementationHelper = unohelper.ImplementationHelper()
-g_ImplementationHelper.addImplementation(
-    TafelFabrik, FABRIK, ("com.sun.star.ui.UIElementFactory",))
