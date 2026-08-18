@@ -1,6 +1,6 @@
 /* Service Worker: legt die App im Handy ab, damit sie ohne Internet startet. */
 
-const LAGER = 'schreibhilfe-v34';
+const LAGER = 'schreibhilfe-v35';
 
 const DATEIEN = [
   './',

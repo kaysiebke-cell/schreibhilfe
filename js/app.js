@@ -2281,14 +2281,30 @@ async function kopiere(text, meldung, ziel = el.status) {
     await navigator.clipboard.writeText(text);
     ziel.textContent = meldung;
   } catch {
-    // Ohne Zwischenablage-Recht: markieren und über den alten Weg kopieren.
-    el.text.focus();
-    el.text.select();
-    const geklappt = document.execCommand('copy');
-    ziel.textContent = geklappt
+    ziel.textContent = ueberHilfsfeld(text)
       ? meldung
-      : 'Kopieren hat nicht geklappt. Der Text ist markiert — lange tippen und „Kopieren“ wählen.';
+      : 'Kopieren hat nicht geklappt. Bitte von Hand markieren und kopieren.';
   }
+}
+
+/* Der alte Weg, wenn die Zwischenablage sich sperrt.
+
+   Vorher wurde dafür das Schreibfeld markiert und kopiert. Das ging gut,
+   solange nur der eigene Brief kopiert wurde — beim Sicherungs-Text wäre
+   dabei der Brief in der Zwischenablage gelandet statt des Gedächtnisses.
+   Deshalb ein eigenes, unsichtbares Feld: Es trägt genau den Text, um den es
+   geht, und verschwindet sofort wieder. */
+function ueberHilfsfeld(text) {
+  const feld = document.createElement('textarea');
+  feld.value = text;
+  feld.setAttribute('readonly', '');
+  feld.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(feld);
+  feld.select();
+  let geklappt = false;
+  try { geklappt = document.execCommand('copy'); } catch {}
+  feld.remove();
+  return geklappt;
 }
 
 /* ============================================================
