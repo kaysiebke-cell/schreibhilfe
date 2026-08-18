@@ -69,6 +69,9 @@ const el = {
   btnGelerntWeg: $('btn-gelernt-weg'),
   btnSichern:    $('btn-sichern'),
   btnEinspielen: $('btn-einspielen'),
+  btnSchluesselZeigen:   $('btn-schluessel-zeigen'),
+  btnSchluesselKopieren: $('btn-schluessel-kopieren'),
+  wortZeigen:    $('wort-zeigen'),
 };
 
 /* ------------------------------------------------------------
@@ -2314,6 +2317,53 @@ function ueberHilfsfeld(text) {
 /* Was liegt gespeichert? Genug, um es wiederzuerkennen, nicht genug, um es
    abzuschreiben. Ein Schlüssel von Anthropic fängt mit „sk-ant-“ an und ist
    rund hundert Zeichen lang — passt das nicht, steht es hier. */
+/* ------------------------------------------------------------
+   Den Schlüssel kurz sichtbar machen.
+
+   Wer ihn auf ein zweites Gerät bringen will, muss ihn sehen oder kopieren
+   können — abtippen kann man 100 Zeichen aus lauter Punkten nicht.
+
+   Sichtbar bleibt er nur eine halbe Minute und verbirgt sich dann von selbst;
+   ebenso beim Verlassen der Einstellungen. Ein Feld, das offen stehen bleibt,
+   vergisst man genau dann, wenn man das Handy weiterreicht.
+   ------------------------------------------------------------ */
+const SCHLUESSEL_SICHTBAR_MS = 30000;
+let schluesselWecker = null;
+
+function verbergeSchluessel() {
+  clearTimeout(schluesselWecker);
+  schluesselWecker = null;
+  el.apiKey.type = 'password';
+  el.wortZeigen.textContent = 'Anzeigen';
+}
+
+function zeigeSchluessel() {
+  if (!el.apiKey.value) {
+    el.schluesselStand.textContent = 'Es ist kein Schlüssel gespeichert.';
+    return;
+  }
+  el.apiKey.type = 'text';
+  el.wortZeigen.textContent = 'Verbergen';
+  clearTimeout(schluesselWecker);
+  schluesselWecker = setTimeout(verbergeSchluessel, SCHLUESSEL_SICHTBAR_MS);
+}
+
+el.btnSchluesselZeigen.addEventListener('click', () => {
+  if (el.apiKey.type === 'password') zeigeSchluessel(); else verbergeSchluessel();
+});
+
+el.btnSchluesselKopieren.addEventListener('click', () => {
+  const schluessel = el.apiKey.value.trim();
+  if (!schluessel) {
+    el.schluesselStand.textContent = 'Es ist kein Schlüssel gespeichert.';
+    return;
+  }
+  kopiere(schluessel,
+          'Schlüssel kopiert. Auf dem anderen Gerät einfügen — und die '
+          + 'Zwischenablage danach mit etwas anderem überschreiben.',
+          el.schluesselStand);
+});
+
 function zeigeSchluesselStand() {
   const schluessel = Speicher.lies('apiKey', '');
   if (!schluessel) {
@@ -2344,6 +2394,8 @@ function oeffneEinstellungen() {
 }
 
 function schliesseEinstellungen() {
+  // Ein sichtbarer Schlüssel darf nicht offen zurückbleiben.
+  verbergeSchluessel();
   el.dlg.hidden = true;
   document.body.classList.remove('seite-offen');
 }
