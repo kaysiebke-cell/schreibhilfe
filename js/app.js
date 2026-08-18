@@ -2154,6 +2154,17 @@ function holeText() {
 const bruecke = window.AndroidBridge;
 const kannBrueckeTeilen   = typeof bruecke?.teilen   === 'function';
 const kannBrueckeKopieren = typeof bruecke?.kopieren === 'function';
+const kannTeilen = kannBrueckeTeilen || typeof navigator.share === 'function';
+
+/* Am PC gibt es kein Teilen-Menü. Der Knopf kopiert dort — und schreibt das
+   jetzt auch drauf, statt es erst beim Drücken zu verraten. Dieselbe App,
+   dieselbe Stelle, nur ehrlich beschriftet. */
+if (!kannTeilen) {
+  const sinnbild = el.btnTeilen.querySelector('use');
+  if (sinnbild) sinnbild.setAttribute('href', '#i-copy');
+  const wort = [...el.btnTeilen.childNodes].find((k) => k.nodeType === 3 && k.textContent.trim());
+  if (wort) wort.textContent = ' Kopieren';
+}
 
 el.btnTeilen.addEventListener('click', async () => {
   const text = holeText(); if (!text) return;
@@ -2164,8 +2175,8 @@ el.btnTeilen.addEventListener('click', async () => {
     try { await navigator.share({ text }); return; }
     catch (fehler) { if (fehler.name === 'AbortError') return; }
   }
-  // Kein Teilen möglich: dann wenigstens kopieren, damit der Knopf etwas tut.
-  kopiere(text, 'Teilen geht hier nicht — der Text ist kopiert.');
+  // Kein Teilen möglich — dafür heißt der Knopf oben schon „Kopieren“.
+  kopiere(text, 'Text kopiert. Jetzt in WhatsApp, Mail oder Word einfügen.');
 });
 
 /* ------------------------------------------------------------
