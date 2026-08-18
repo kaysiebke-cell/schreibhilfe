@@ -370,6 +370,25 @@ def _ausschneiden(text, auf, zu):
 # Kleine Helfer für die Oberfläche
 # --------------------------------------------------------------------------
 
+class _Knopfdruck(unohelper.Base, XActionListener):
+    """Merkt sich, welcher Knopf gedrückt wurde, und schließt das Fenster.
+
+    Nötig, weil sechs Knöpfe unterschieden werden müssen — die eingebauten
+    Sorten OK und Abbrechen liefern nur ein Ja oder Nein zurück.
+    """
+
+    def __init__(self, fenster):
+        self.fenster = fenster
+        self.name = None
+
+    def actionPerformed(self, ereignis):
+        self.name = ereignis.Source.getModel().Name
+        self.fenster.endExecute()
+
+    def disposing(self, ereignis):
+        pass
+
+
 class Oberflaeche(object):
     def __init__(self, ctx, rahmen):
         self.ctx = ctx
@@ -407,47 +426,175 @@ class Oberflaeche(object):
         ergebnis = self.frage_mehreres(titel, felder, mehrzeilig=mehrzeilig)
         return None if ergebnis is None else ergebnis[0]
 
-    def frage_liste(self, titel, beschriftung, zeilen):
-        """Eine Mehrfachauswahl. Rückgabe: Liste der angekreuzten Nummern,
-        oder None bei Abbruch."""
-        dialog = self._dienst("com.sun.star.awt.UnoControlDialogModel")
-        breite = 420
-        hoch = min(max(len(zeilen) * 10 + 4, 60), 260)
-        dialog.Width, dialog.Height = breite, hoch + 46
-        dialog.Title = titel
-        dialog.PositionX, dialog.PositionY = 60, 60
+    # ----------------------------------------------------------------
+    # Die Farben der App — so weit LibreOffice sie hergibt.
+    #
+    # Genau wird es nicht: Ein Dialog ist kein Browser, es gibt kein CSS und
+    # keine abgerundeten Kästen. Wiedererkennbar schon: farbiger Balken links,
+    # das Alte rot und durchgestrichen, das Neue grün, die Begründung klein
+    # und blass darunter.
+    # ----------------------------------------------------------------
+    # Zwei Paletten wie in der App. Beide sind aber bewusst so gewählt, dass
+    # sie auch auf dem jeweils anderen Grund noch lesbar bleiben: Die Erkennung
+    # unten stützt sich auf das Fenster, und wenn LibreOffice sein Aussehen vom
+    # Systemthema bezieht, kann sie danebenliegen. Ein zu dunkles Blau auf
+    # dunklem Grund wäre unlesbar — deshalb sind „tipp“ und „blass“ in der
+    # hellen Palette etwas aufgehellt gegenüber der App.
+    FARBEN_HELL = {"fehler": 0xC08A2E, "tipp": 0x3D6C82, "alt": 0xB04A3D,
+                   "neu": 0x4B7B5D, "blass": 0x6B7480}
+    FARBEN_DUNKEL = {"fehler": 0xD7A24E, "tipp": 0x6AA3BD, "alt": 0xE0837A,
+                     "neu": 0x74B98D, "blass": 0x9AA2AC}
 
-        marke = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
-        marke.PositionX, marke.PositionY = 8, 6
-        marke.Width, marke.Height = breite - 16, 10
-        marke.Label = beschriftung
-        dialog.insertByName("marke", marke)
+    def farben(self):
+        """Hell oder dunkel — richtet sich nach dem Fenster, nicht nach Glück.
 
-        liste = dialog.createInstance("com.sun.star.awt.UnoControlListBoxModel")
-        liste.PositionX, liste.PositionY = 8, 18
-        liste.Width, liste.Height = breite - 16, hoch
-        liste.MultiSelection = True
-        liste.StringItemList = tuple(zeilen)
-        liste.SelectedItems = tuple(range(len(zeilen)))     # alles vorausgewählt
-        dialog.insertByName("liste", liste)
+        Die App hat dafür eine Umschaltung; hier entscheidet die Helligkeit des
+        Dialoghintergrunds. Lässt sie sich nicht auslesen, wird die dunkle
+        Palette genommen: Ihre Farben sind heller und stehen auch auf hellem
+        Grund noch lesbar da — umgekehrt gilt das nicht.
+        """
+        try:
+            grund = self._fenster().StyleSettings.DialogColor
+            rot, gruen, blau = (grund >> 16) & 255, (grund >> 8) & 255, grund & 255
+            hell = (rot * 299 + gruen * 587 + blau * 114) / 1000 > 128
+            return self.FARBEN_HELL if hell else self.FARBEN_DUNKEL
+        except Exception:                                        # noqa: BLE001
+            return self.FARBEN_DUNKEL
 
-        for name, text, x, art in (("ok", "Ändern", breite - 8 - 116, 1),
-                                   ("abbruch", "Abbrechen", breite - 8 - 56, 2)):
-            knopf = dialog.createInstance("com.sun.star.awt.UnoControlButtonModel")
-            knopf.PositionX, knopf.PositionY = x, hoch + 24
-            knopf.Width, knopf.Height = 56, 14
-            knopf.Label = text
-            knopf.PushButtonType = art
-            dialog.insertByName(name, knopf)
+    def _zeichne_fund(self, dialog, nr, fund, rand, y, breite, angehakt):
+        """Eine Zeile: Balken, Kästchen, alt → neu, Begründung."""
+        farbe = self.farben()
+        mono = "DejaVu Sans Mono"
 
-        fenster = self._dienst("com.sun.star.awt.UnoControlDialog")
-        fenster.setModel(dialog)
-        fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"), None)
-        genommen = fenster.execute()
-        gewaehlt = list(fenster.getControl("liste").getSelectedItemsPos()) \
-            if genommen == 1 else None
-        fenster.dispose()
-        return gewaehlt
+        def feld(name, art, x, w, h, **werte):
+            teil = dialog.createInstance("com.sun.star.awt.UnoControl%sModel" % art)
+            teil.PositionX, teil.PositionY = x, y + (0 if h > 9 else 12)
+            teil.Width, teil.Height = w, h
+            for schluessel, wert in werte.items():
+                setattr(teil, schluessel, wert)
+            dialog.insertByName("%s%d" % (name, nr), teil)
+            return teil
+
+        # Der farbige Balken links — orange heißt sicher falsch, blau heißt
+        # „kommt auf den Zusammenhang an“. Genau wie in der App.
+        balken = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
+        balken.PositionX, balken.PositionY = rand, y
+        balken.Width, balken.Height = 2, 21
+        balken.Label = ""
+        balken.BackgroundColor = farbe["fehler"] if fund["art"] == "fehler" else farbe["tipp"]
+        dialog.insertByName("balken%d" % nr, balken)
+
+        kaestchen = dialog.createInstance("com.sun.star.awt.UnoControlCheckBoxModel")
+        kaestchen.PositionX, kaestchen.PositionY = rand + 6, y
+        kaestchen.Width, kaestchen.Height = 10, 11
+        kaestchen.Label = ""
+        kaestchen.State = 1 if angehakt else 0
+        dialog.insertByName("haken%d" % nr, kaestchen)
+
+        spalte = breite - rand * 2 - 22        # Platz für beide Wortspalten
+        w_wort = (spalte - 10) // 2
+        x_alt = rand + 20
+
+        feld("alt", "FixedText", x_alt, w_wort, 11,
+             Label=kuerze(fund["alt_zeige"], 26), TextColor=farbe["alt"],
+             FontStrikeout=1, FontName=mono, FontHeight=8)
+        feld("pfeil", "FixedText", x_alt + w_wort, 10, 11,
+             Label="→", TextColor=farbe["blass"], FontHeight=8)
+        feld("neu", "FixedText", x_alt + w_wort + 10, w_wort, 11,
+             Label=kuerze(fund["neu_zeige"], 26), TextColor=farbe["neu"],
+             FontWeight=150, FontName=mono, FontHeight=8)
+
+        grund = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
+        grund.PositionX, grund.PositionY = x_alt, y + 12
+        grund.Width, grund.Height = breite - rand * 2 - 22, 9
+        grund.Label = kuerze(fund["grund"], 74)
+        grund.TextColor = farbe["blass"]
+        grund.FontHeight = 7
+        dialog.insertByName("grund%d" % nr, grund)
+
+    def frage_haken(self, titel, kopfzeile, eintraege, pro_seite=8):
+        """Legt die Funde als Liste mit echten Häkchen vor.
+
+        Vorher war das eine Mehrfachauswahl: alles blau markiert, kein Häkchen
+        weit und breit — man sah der Fläche nicht an, dass man etwas abwählen
+        kann. Jetzt steht vor jeder Zeile ein Kästchen, das man anklickt.
+
+        „eintraege“ ist eine Liste von Funden mit den Feldern
+        alt_zeige, neu_zeige, grund und art.
+        Passt nicht alles auf eine Seite, wird geblättert; die Haken bleiben
+        dabei erhalten. Rückgabe: Liste der angehakten Nummern, oder None bei
+        Abbruch.
+        """
+        angehakt = [True] * len(eintraege)
+        seiten = max(1, (len(eintraege) + pro_seite - 1) // pro_seite)
+        seite = 0
+
+        while True:
+            von = seite * pro_seite
+            dieseSeite = eintraege[von:von + pro_seite]
+
+            breite, rand, zeile = 340, 10, 24
+            hoch = rand + 14 + len(dieseSeite) * zeile + 10
+            dialog = self._dienst("com.sun.star.awt.UnoControlDialogModel")
+            dialog.Width, dialog.Height = breite, hoch + 26
+            dialog.Title = titel
+            dialog.PositionX, dialog.PositionY = 60, 40
+
+            kopf = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
+            kopf.PositionX, kopf.PositionY = rand, rand
+            kopf.Width, kopf.Height = breite - rand * 2, 10
+            kopf.Label = kopfzeile + ("" if seiten == 1
+                                      else "   (Seite %d von %d)" % (seite + 1, seiten))
+            dialog.insertByName("kopf", kopf)
+
+            y = rand + 16
+            for nr, eintrag in enumerate(dieseSeite):
+                self._zeichne_fund(dialog, nr, eintrag, rand, y, breite,
+                                   angehakt[von + nr])
+                y += zeile
+
+            knoepfe = [("alle", "Alle", rand), ("keine", "Keine", rand + 42)]
+            if seiten > 1:
+                knoepfe += [("zurueck", "‹", breite - rand - 172),
+                            ("weiter", "›", breite - rand - 148)]
+            knoepfe += [("ok", "Ändern", breite - rand - 124),
+                        ("abbruch", "Abbrechen", breite - rand - 60)]
+
+            for name, text, x in knoepfe:
+                knopf = dialog.createInstance("com.sun.star.awt.UnoControlButtonModel")
+                knopf.PositionX, knopf.PositionY = x, hoch + 4
+                knopf.Width, knopf.Height = (20 if text in ("‹", "›") else
+                                             (38 if text in ("Alle", "Keine") else 60)), 14
+                knopf.Label = text
+                knopf.PushButtonType = 0          # selbst auswerten, nicht OK/Abbruch
+                dialog.insertByName(name, knopf)
+
+            fenster = self._dienst("com.sun.star.awt.UnoControlDialog")
+            fenster.setModel(dialog)
+            fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"), None)
+
+            horcher = _Knopfdruck(fenster)
+            for name, _t, _x in knoepfe:
+                fenster.getControl(name).addActionListener(horcher)
+            fenster.execute()
+
+            # Haken dieser Seite sichern, bevor das Fenster verschwindet
+            for nr in range(len(dieseSeite)):
+                angehakt[von + nr] = fenster.getControl("haken%d" % nr).getState() == 1
+            gedrueckt = horcher.name
+            fenster.dispose()
+
+            if gedrueckt == "abbruch" or gedrueckt is None:
+                return None
+            if gedrueckt == "ok":
+                return [i for i, an in enumerate(angehakt) if an]
+            if gedrueckt in ("alle", "keine"):
+                for nr in range(len(dieseSeite)):
+                    angehakt[von + nr] = (gedrueckt == "alle")
+            elif gedrueckt == "weiter":
+                seite = (seite + 1) % seiten
+            elif gedrueckt == "zurueck":
+                seite = (seite - 1) % seiten
 
     def frage_mehreres(self, titel, felder, mehrzeilig=False):
         """felder: Liste aus (Beschriftung, Vorgabe, Art) — Art ist „text“,
@@ -525,23 +672,61 @@ class Oberflaeche(object):
 # Die Arbeit am Dokument
 # --------------------------------------------------------------------------
 
-def waehle_funde(gui, funde):
-    """Legt alle Funde in einer Liste vor — alles vorausgewählt, abwählbar.
+def kuerze(text, hoechstens):
+    """Schneidet lange Stellen ab. Ein Dialogfeld hat feste Breite; was nicht
+    hineinpasst, würde sonst stumm abgeschnitten und sähe aus wie ein Fehler."""
+    text = (text or "").replace("\n", "⏎")
+    return text if len(text) <= hoechstens else text[:hoechstens - 1] + "…"
 
-    Ein Fenster mit einer Liste statt zwanzig Rückfragen hintereinander: Man
-    sieht auf einen Blick, was geändert würde, und entscheidet in einem Zug.
-    Rückgabe: die angekreuzten Funde, oder None bei Abbruch.
+
+def zeige_stelle(stueck):
+    """Macht eine Textstelle lesbar — auch wenn sie nur aus Leerraum besteht.
+
+    Ein Fund wie „zwei Leerzeichen werden eins“ sähe sonst aus wie „ wird zu “:
+    Man sieht nichts und versteht nichts. Darum werden unsichtbare Zeichen
+    sichtbar gemacht, aber nur dort, wo es sonst leer aussähe.
     """
-    zeilen = []
-    for fund in funde:
-        alt = fund["alt"].replace("\n", "⏎") or "(nichts)"
-        neu = fund["neu"].replace("\n", "⏎") or "(nichts)"
-        zeilen.append("%s  →  %s      · %s" % (alt, neu, fund["grund"]))
+    def sichtbar(s):
+        return s.replace(" ", "␣").replace("\t", "⇥").replace("\n", "⏎")
 
-    gewaehlt = gui.frage_liste(
-        "Prüfen — %d Stellen gefunden" % len(funde),
-        "Abgehakt wird geändert. Mit Strg oder Umschalt einzelne abwählen:",
-        zeilen)
+    if stueck == "":
+        return "nichts"
+    if stueck.strip() == "":
+        return sichtbar(stueck)
+
+    # Leerraum am Rand zeigen, innen nicht: „seid “ und „ ,“ sähen sonst aus
+    # wie „seid“ und „,“ — man sähe dem Fund seinen Sinn nicht an. Innerhalb
+    # des Wortes stören die Zeichen dagegen nur beim Lesen.
+    kopf = len(stueck) - len(stueck.lstrip())
+    fuss = len(stueck) - len(stueck.rstrip())
+    mitte = stueck[kopf:len(stueck) - fuss]
+    # Ohne Anführungszeichen: In der App trennt die Farbe das Alte vom
+    # Neuen, nicht die Zeichensetzung. Hier ist es genauso.
+    return (sichtbar(stueck[:kopf]) + mitte.replace("\n", "⏎")
+            + sichtbar(stueck[len(stueck) - fuss:]))
+
+
+def waehle_funde(gui, funde):
+    """Legt alle Funde als Kästen vor — angehakt wird geändert.
+
+    Nachgebaut nach den Kästen der App: farbiger Balken links, das Alte rot
+    und durchgestrichen, das Neue grün, die Begründung klein darunter. Ein
+    Fenster statt zwanzig Rückfragen.
+
+    Rückgabe: die angehakten Funde, oder None bei Abbruch.
+    """
+    eintraege = [{
+        "alt_zeige": zeige_stelle(fund["alt"]),
+        "neu_zeige": zeige_stelle(fund["neu"]),
+        "grund": fund["grund"],
+        "art": fund["art"],
+    } for fund in funde]
+
+    gewaehlt = gui.frage_haken(
+        "Schreibhilfe — Prüfen",
+        "%d Stelle%s gefunden. Angehakt wird geändert." % (
+            len(funde), "" if len(funde) == 1 else "n"),
+        eintraege)
     if gewaehlt is None:
         return None
     return [funde[i] for i in gewaehlt]
