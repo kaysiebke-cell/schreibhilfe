@@ -1,0 +1,12 @@
+Rechtschreibhilfe für Menschen mit Legasthenie — dieselbe Hilfe wie die
+Handy-App, nur direkt in Writer.
+
+Text markieren, Menü „Schreibhilfe“:
+  · Mit KI korrigieren — Rechtschreibung, Grammatik, Zeichensetzung und die
+    Verwechslungen, die kein Rechtschreibprüfer findet (das/dass, seit/seid)
+  · Vorschläge zum Umformulieren — Satz für Satz, jeder einzeln annehmbar
+  · Übersetzen
+  · Gedächtnis vom Handy einspielen
+
+Der API-Schlüssel liegt in ~/.config/schreibhilfe/einstellungen.json und geht
+nie mit dem Dokument mit.

@@ -16,3 +16,6 @@ android/app/src/main/assets/
 *.jks
 *.keystore
 android/keystore.properties
+
+# Die gepackte LibreOffice-Erweiterung entsteht beim Bauen neu.
+libreoffice/*.oxt

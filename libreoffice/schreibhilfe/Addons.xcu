@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Das Menü „Schreibhilfe“ in der Menüleiste von Writer.
+
+  Jeder Eintrag schickt beim Anklicken seinen Befehl los; entgegengenommen
+  werden sie von der Python-Komponente (siehe ProtocolHandler.xcu).
+-->
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry"
+                    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                    oor:name="Addons"
+                    oor:package="org.openoffice.Office">
+  <node oor:name="AddonUI">
+
+    <node oor:name="OfficeMenuBar">
+      <node oor:name="de.schreibhilfe.writer" oor:op="replace">
+        <prop oor:name="Title" oor:type="xs:string">
+          <value xml:lang="de">Schreibhilfe</value>
+          <value xml:lang="en-US">Schreibhilfe</value>
+        </prop>
+        <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+        <prop oor:name="ImageIdentifier" oor:type="xs:string"><value></value></prop>
+
+        <node oor:name="Submenu">
+
+          <node oor:name="m01" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string">
+              <value>de.schreibhilfe.befehl:korrigieren</value>
+            </prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="de">Mit KI korrigieren</value>
+              <value xml:lang="en-US">Correct with AI</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+            <prop oor:name="Context" oor:type="xs:string">
+              <value>com.sun.star.text.TextDocument</value>
+            </prop>
+          </node>
+
+          <node oor:name="m02" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string">
+              <value>de.schreibhilfe.befehl:vorschlaege</value>
+            </prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="de">Vorschläge zum Umformulieren</value>
+              <value xml:lang="en-US">Rephrasing suggestions</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+            <prop oor:name="Context" oor:type="xs:string">
+              <value>com.sun.star.text.TextDocument</value>
+            </prop>
+          </node>
+
+          <node oor:name="m03" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string">
+              <value>de.schreibhilfe.befehl:uebersetzen</value>
+            </prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="de">Übersetzen</value>
+              <value xml:lang="en-US">Translate</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+            <prop oor:name="Context" oor:type="xs:string">
+              <value>com.sun.star.text.TextDocument</value>
+            </prop>
+          </node>
+
+          <node oor:name="m04" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>private:separator</value></prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
+
+          <node oor:name="m05" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string">
+              <value>de.schreibhilfe.befehl:gedaechtnis</value>
+            </prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="de">Gedächtnis vom Handy einspielen</value>
+              <value xml:lang="en-US">Import memory from phone</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+            <prop oor:name="Context" oor:type="xs:string">
+              <value>com.sun.star.text.TextDocument</value>
+            </prop>
+          </node>
+
+          <node oor:name="m06" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string">
+              <value>de.schreibhilfe.befehl:einstellungen</value>
+            </prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="de">Einstellungen …</value>
+              <value xml:lang="en-US">Settings …</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+            <prop oor:name="Context" oor:type="xs:string">
+              <value>com.sun.star.text.TextDocument</value>
+            </prop>
+          </node>
+
+        </node>
+      </node>
+    </node>
+
+  </node>
+</oor:component-data>

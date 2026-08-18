@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest:manifest xmlns:manifest="http://openoffice.org/2001/manifest">
+
+  <!-- Der Python-Teil: eine UNO-Komponente, die die Menübefehle entgegennimmt. -->
+  <manifest:file-entry
+      manifest:media-type="application/vnd.sun.star.uno-component;type=Python"
+      manifest:full-path="schreibhilfe.py"/>
+
+  <!-- Meldet den Befehlsraum „de.schreibhilfe.befehl:…“ an. Ohne das kommt
+       ein Menüklick nirgendwo an. -->
+  <manifest:file-entry
+      manifest:media-type="application/vnd.sun.star.configuration-data"
+      manifest:full-path="ProtocolHandler.xcu"/>
+
+  <!-- Das Menü selbst. -->
+  <manifest:file-entry
+      manifest:media-type="application/vnd.sun.star.configuration-data"
+      manifest:full-path="Addons.xcu"/>
+
+</manifest:manifest>
