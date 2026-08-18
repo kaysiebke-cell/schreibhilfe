@@ -1,6 +1,6 @@
 /* Service Worker: legt die App im Handy ab, damit sie ohne Internet startet. */
 
-const LAGER = 'schreibhilfe-v32';
+const LAGER = 'schreibhilfe-v33';
 
 const DATEIEN = [
   './',
@@ -15,9 +15,20 @@ const DATEIEN = [
   './manifest.webmanifest',
 ];
 
+/* Beim Einrichten wird das neue Lager gefüllt — und zwar AUS DEM NETZ.
+
+   Ohne „cache: 'reload'“ darf der Browser die Dateien aus seinem eigenen alten
+   Zwischenspeicher nehmen. Dann trägt das frische Lager die alten Dateien, und
+   weil unten zuerst im Lager nachgesehen wird, bleibt die alte Fassung für
+   immer kleben. Genau das ist am PC passiert: Die neue Datei lag längst auf
+   dem Server, im Browser kam sie nie an. */
 self.addEventListener('install', (ereignis) => {
   ereignis.waitUntil(
-    caches.open(LAGER).then((lager) => lager.addAll(DATEIEN)).then(() => self.skipWaiting())
+    caches.open(LAGER)
+      .then((lager) => lager.addAll(
+        DATEIEN.map((datei) => new Request(datei, { cache: 'reload' }))
+      ))
+      .then(() => self.skipWaiting())
   );
 });
 
