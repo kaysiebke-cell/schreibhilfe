@@ -31,6 +31,43 @@ try:
 except ImportError:                                              # pragma: no cover
     pruefung = None
 
+# Welche Tafel gehört zu welchem Fenster? Das Menü braucht diesen Weg: Es
+# schickt einen Befehl los und muss danach die Tafel finden, die gerade in
+# diesem Writer-Fenster offen ist.
+#
+# Eine Zuordnung über id() geht NICHT: Dasselbe Writer-Fenster kommt über die
+# UNO-Brücke je nach Aufruf als verschiedenes Python-Objekt an, mit
+# verschiedener Kennnummer. Verglichen werden muss deshalb mit ==, das die
+# Brücke auf das dahinterliegende Fenster durchreicht — also eine Liste statt
+# einer Zuordnungstabelle.
+OFFENE_TAFELN = []
+
+
+def merke_tafel(rahmen, tafel):
+    entferne_tafel(rahmen)
+    OFFENE_TAFELN.append((rahmen, tafel))
+
+
+def entferne_tafel(rahmen):
+    for eintrag in list(OFFENE_TAFELN):
+        try:
+            if eintrag[0] == rahmen:
+                OFFENE_TAFELN.remove(eintrag)
+        except Exception:                                    # noqa: BLE001
+            OFFENE_TAFELN.remove(eintrag)          # abgeräumtes Fenster
+
+
+def tafel_von(rahmen):
+    """Die offene Tafel dieses Fensters — oder None."""
+    for gemerkt, tafel in list(OFFENE_TAFELN):
+        try:
+            if gemerkt == rahmen:
+                return tafel
+        except Exception:                                    # noqa: BLE001
+            continue
+    return None
+
+
 FABRIK = "de.schreibhilfe.Fabrik"
 ADRESSE = "private:resource/toolpanel/de.schreibhilfe.Fabrik/Tafel"
 
@@ -58,6 +95,8 @@ class Tafel(unohelper.Base, XWindowListener):
                                 elternfenster)
         self.fenster.addWindowListener(self)
         elternfenster.addWindowListener(self)
+
+        merke_tafel(rahmen, self)
 
         self.zeichne()
         self.fenster.setVisible(True)

@@ -829,21 +829,65 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
         gui = Oberflaeche(self.ctx, self.rahmen)
         try:
             befehl = url.Path
-            if befehl == "pruefen":
-                self.pruefen(gui)
-            elif befehl == "einstellungen":
+            if befehl == "einstellungen":
                 self.einstellungen(gui)
             elif befehl == "gedaechtnis":
                 self.gedaechtnis(gui)
+            else:
+                self.in_der_leiste(gui, befehl)
+        except Exception:                                   # noqa: BLE001
+            gui.melde("Schreibhilfe", "Da ist etwas schiefgegangen:\n\n"
+                      + traceback.format_exc(), "errorbox")
+
+    def in_der_leiste(self, gui, befehl):
+        """Alle Arbeitsbefehle führen in die angedockte Tafel.
+
+        Vorher öffnete jeder Menüpunkt sein eigenes Fenster — und die Tafel in
+        der Seitenleiste war ein zweiter, unabhängiger Weg zur selben Sache.
+        Wer das Menü benutzte, bekam weiterhin die alten Fenster und merkte
+        nichts von der Tafel. Jetzt klappt das Menü die Leiste auf und lässt
+        die Tafel arbeiten; die alten Fenster gibt es nur noch als Rückfall,
+        falls sich die Leiste nicht öffnen lässt.
+        """
+        self.zeige_leiste()
+        tafel = None
+        try:
+            import tafel as T
+            tafel = T.tafel_von(self.rahmen)
+        except ImportError:
+            pass
+
+        if tafel is None:
+            # Rückfall: die Leiste war nicht zu haben, dann eben wie früher.
+            if befehl == "pruefen":
+                self.pruefen(gui)
             elif befehl == "korrigieren":
                 self.korrigieren(gui)
             elif befehl == "vorschlaege":
                 self.vorschlaege(gui)
             elif befehl == "uebersetzen":
                 self.uebersetzen(gui)
-        except Exception:                                   # noqa: BLE001
-            gui.melde("Schreibhilfe", "Da ist etwas schiefgegangen:\n\n"
-                      + traceback.format_exc(), "errorbox")
+            return
+
+        if befehl == "pruefen":
+            tafel.pruefen()
+        elif befehl == "korrigieren":
+            tafel.ki_lauf("korrigieren")
+        elif befehl == "vorschlaege":
+            tafel.ki_lauf("vorschlaege")
+        elif befehl == "uebersetzen":
+            tafel.ki_lauf("uebersetzen")
+
+    def zeige_leiste(self):
+        """Klappt die Seitenleiste auf und holt unseren Bereich nach vorn."""
+        hilfe = self.ctx.ServiceManager.createInstanceWithContext(
+            "com.sun.star.frame.DispatchHelper", self.ctx)
+        for befehl in (".uno:Sidebar",
+                       ".uno:SidebarDeck?PanelId:string=SchreibhilfeDeck"):
+            try:
+                hilfe.executeDispatch(self.rahmen, befehl, "", 0, ())
+            except Exception:                               # noqa: BLE001
+                pass
 
     # --- die einzelnen Befehle ---
 
