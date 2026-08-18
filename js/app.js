@@ -67,6 +67,8 @@ const el = {
   btnKostenWeg:  $('btn-kosten-weg'),
   gelerntStand:  $('gelernt-stand'),
   btnGelerntWeg: $('btn-gelernt-weg'),
+  btnSichern:    $('btn-sichern'),
+  btnEinspielen: $('btn-einspielen'),
 };
 
 /* ------------------------------------------------------------
@@ -2265,21 +2267,25 @@ el.btnKopieren.addEventListener('click', () => {
   kopiere(text, 'Text kopiert.');
 });
 
-async function kopiere(text, meldung) {
+/* „ziel“ ist die Zeile, in der die Rückmeldung erscheint. Voreingestellt ist
+   die Statuszeile im Schreibbildschirm — wer aus den Einstellungen heraus
+   kopiert, sieht die dortige Zeile, weil der Schreibbildschirm gerade
+   abgetreten ist. */
+async function kopiere(text, meldung, ziel = el.status) {
   if (kannBrueckeKopieren) {
     bruecke.kopieren(text);
-    el.status.textContent = meldung;
+    ziel.textContent = meldung;
     return;
   }
   try {
     await navigator.clipboard.writeText(text);
-    el.status.textContent = meldung;
+    ziel.textContent = meldung;
   } catch {
     // Ohne Zwischenablage-Recht: markieren und über den alten Weg kopieren.
     el.text.focus();
     el.text.select();
     const geklappt = document.execCommand('copy');
-    el.status.textContent = geklappt
+    ziel.textContent = geklappt
       ? meldung
       : 'Kopieren hat nicht geklappt. Der Text ist markiert — lange tippen und „Kopieren“ wählen.';
   }
@@ -2395,6 +2401,115 @@ function zeigeGelernt() {
 el.btnGelerntWeg.addEventListener('click', () => {
   Gelernt.leeren();
   zeigeGelernt();
+});
+
+/* ------------------------------------------------------------
+   Der Sicherungs-Text — die Brücke zwischen Handy und PC.
+
+   Beide Geräte lernen für sich; was hier gelernt wird, bleibt hier. „Sichern“
+   legt alles Gelernte als Text in die Zwischenablage, „Einspielen“ nimmt ihn
+   auf dem anderen Gerät wieder auf. Der Weg dazwischen ist deiner: eine
+   Nachricht an dich selbst, eine Notiz, eine Mail.
+
+   Zwei Dinge bleiben bewusst draußen:
+     · Der API-Schlüssel. Ein Schlüssel gehört nicht in einen Text, den man
+       durch die Gegend schickt — auf dem zweiten Gerät ist er in einer Minute
+       neu eingetragen.
+     · Der Zähler „gezeigt“. Er zählt Prüfungen auf DIESEM Gerät; auf einem
+       anderen ergäbe er keinen Sinn.
+
+   Eingespielt wird ZUSAMMENGEFÜHRT, nicht ersetzt: Was auf diesem Gerät schon
+   gelernt war, bleibt. Sonst würde die Reise vom Handy zum PC das Gelernte des
+   PCs auslöschen.
+   ------------------------------------------------------------ */
+const SICHERUNG_FASSUNG = 1;
+const SICHERBAR = ['tonfall', 'modell', 'sprache', 'wortmarker'];
+const SICHERUNG_GRENZE = 2000;              // so viele Wörter höchstens
+const GELERNTES_WORT = /^[a-zäöüß-]{1,40}$/;
+
+function sicherungBauen() {
+  const g = Gelernt.lies();
+  const einstellungen = {};
+  for (const name of SICHERBAR) {
+    const wert = Speicher.lies(name, undefined);
+    if (wert !== undefined) einstellungen[name] = wert;
+  }
+  return JSON.stringify({
+    schreibhilfe: SICHERUNG_FASSUNG,
+    woerter: g.woerter,
+    inRuhe: g.inRuhe,
+    einstellungen,
+  });
+}
+
+/* Alles hier Ankommende ist ungeprüft — es kann aus jeder Quelle stammen und
+   landet dauerhaft im Speicher. Deshalb wird jeder Eintrag einzeln geprüft
+   und alles Unpassende stillschweigend übergangen. */
+function sicherungEinspielen(roh) {
+  let daten;
+  try { daten = JSON.parse(String(roh).trim()); }
+  catch { return { fehler: 'Das war kein Sicherungs-Text.' }; }
+
+  if (!daten || daten.schreibhilfe !== SICHERUNG_FASSUNG) {
+    return { fehler: 'Das ist kein Sicherungs-Text der Schreibhilfe.' };
+  }
+
+  const g = Gelernt.lies();
+  let neueWoerter = 0, neueRuhe = 0;
+
+  for (const [falsch, richtig] of Object.entries(daten.woerter || {})) {
+    if (Object.keys(g.woerter).length >= SICHERUNG_GRENZE) break;
+    if (!GELERNTES_WORT.test(falsch)) continue;
+    if (typeof richtig !== 'string' || !richtig.trim() || richtig.length > 60) continue;
+    if (g.woerter[falsch] !== richtig) neueWoerter++;
+    g.woerter[falsch] = richtig;
+  }
+
+  for (const wort of Object.keys(daten.inRuhe || {})) {
+    if (Object.keys(g.inRuhe).length >= SICHERUNG_GRENZE) break;
+    if (!GELERNTES_WORT.test(wort)) continue;
+    if (!g.inRuhe[wort]) neueRuhe++;
+    g.inRuhe[wort] = true;
+  }
+
+  Gelernt.schreib(g);
+
+  for (const [name, wert] of Object.entries(daten.einstellungen || {})) {
+    if (SICHERBAR.includes(name)) Speicher.schreib(name, wert);
+  }
+
+  return { neueWoerter, neueRuhe };
+}
+
+el.btnSichern.addEventListener('click', () => {
+  const { woerter, inRuhe } = Gelernt.stand();
+  if (!woerter && !inRuhe) {
+    el.gelerntStand.textContent = 'Noch nichts gelernt — es gibt nichts zu sichern.';
+    return;
+  }
+  kopiere(sicherungBauen(),
+          'Gedächtnis kopiert. Auf dem anderen Gerät „Einspielen“ drücken.',
+          el.gelerntStand);
+});
+
+el.btnEinspielen.addEventListener('click', () => {
+  const roh = window.prompt('Sicherungs-Text vom anderen Gerät hier einfügen:');
+  if (roh === null || !roh.trim()) return;
+
+  const ergebnis = sicherungEinspielen(roh);
+  if (ergebnis.fehler) { el.gelerntStand.textContent = ergebnis.fehler; return; }
+
+  // Die Einstellungen können sich geändert haben — die Felder nachziehen.
+  el.tonfall.value = Speicher.lies('tonfall', TONFALL_STANDARD);
+  el.modell.value = Speicher.lies('modell', 'claude-opus-5');
+  el.zielsprache.value = Speicher.lies('sprache', 'Englisch');
+  el.wortmarker.checked = hervorhebenAn();
+  markiereWort();
+  zeigeGelernt();
+
+  el.gelerntStand.textContent = 'Eingespielt: ' +
+    ergebnis.neueWoerter + ' Schreibweisen, ' + ergebnis.neueRuhe + ' Wörter in Ruhe. ' +
+    'Was hier schon stand, blieb erhalten.';
 });
 
 el.btnSchluesselWeg.addEventListener('click', () => {
