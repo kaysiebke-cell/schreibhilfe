@@ -175,12 +175,57 @@ STANDARD = {
     "tonfall": TONFALL_STANDARD,
     "sprache": "Englisch",
     "gelernt": {"woerter": {}, "inRuhe": {}},
+    "kosten": {"anzahl": 0, "cent": 0.0},
 }
+
+# Dollar je Million Token. Gleichlautend mit der App — steht dort ein anderer
+# Preis, zählen Handy und PC verschieden, und keiner der beiden Werte stimmt.
+PREISE = {
+    "claude-opus-5":    {"hinein": 5, "heraus": 25},
+    "claude-sonnet-5":  {"hinein": 3, "heraus": 15},
+    "claude-haiku-4-5": {"hinein": 1, "heraus": 5},
+}
+
+
+def cent_fuer(modell, verbrauch):
+    """Was die Anfrage gekostet hat, in US-Cent — oder None."""
+    if not verbrauch:
+        return None
+    name = next((k for k in PREISE if str(modell or "").startswith(k)), None)
+    if not name:
+        return None
+    preis = PREISE[name]
+    dollar = ((verbrauch.get("input_tokens") or 0) / 1e6 * preis["hinein"]
+              + (verbrauch.get("output_tokens") or 0) / 1e6 * preis["heraus"])
+    return dollar * 100
+
+
+def als_geld(cent):
+    """Kleine Beträge brauchen Nachkommastellen, große nicht."""
+    if cent >= 100:
+        return ("%.2f" % (cent / 100)).replace(".", ",") + " $"
+    if cent >= 1:
+        return ("%.1f" % cent).replace(".", ",") + " Cent"
+    return ("%.2f" % cent).replace(".", ",") + " Cent"
+
+
+def kostenstand(werte):
+    stand = werte.get("kosten") or {}
+    anzahl = int(stand.get("anzahl") or 0)
+    if not anzahl:
+        return "Noch nichts verbraucht."
+    return "Bisher: %d %s · %s (US)" % (
+        anzahl, "Anfrage" if anzahl == 1 else "Anfragen",
+        als_geld(float(stand.get("cent") or 0)))
 
 
 def lies_einstellungen():
     werte = dict(STANDARD)
     werte["gelernt"] = {"woerter": {}, "inRuhe": {}}
+    # Eigene Kopie: „dict(STANDARD)“ reicht nur eine Ebene tief, sonst
+    # schriebe der Zähler in die Vorgabe und stünde beim nächsten Start
+    # schon voll da.
+    werte["kosten"] = {"anzahl": 0, "cent": 0.0}
     try:
         with open(EINSTELLUNGSDATEI, "r", encoding="utf-8") as datei:
             gespeichert = json.load(datei)
@@ -192,6 +237,11 @@ def lies_einstellungen():
             werte["gelernt"]["woerter"] = gelernt["woerter"]
         if isinstance(gelernt.get("inRuhe"), dict):
             werte["gelernt"]["inRuhe"] = gelernt["inRuhe"]
+        kosten = gespeichert.get("kosten") or {}
+        if isinstance(kosten.get("anzahl"), (int, float)):
+            werte["kosten"]["anzahl"] = int(kosten["anzahl"])
+        if isinstance(kosten.get("cent"), (int, float)):
+            werte["kosten"]["cent"] = float(kosten["cent"])
     except (OSError, ValueError):
         pass
     return werte
@@ -365,6 +415,18 @@ def frage_ki(anweisung, text, werte, bauplan=None):
 
     if daten.get("stop_reason") == "refusal":
         return None, "Die KI wollte diesen Text nicht bearbeiten."
+
+    # Mitzählen, was die Anfrage gekostet hat. Ohne diesen Zähler merkt man
+    # erst an der Abrechnung, dass man den ganzen Tag Opus 5 befragt hat.
+    cent = cent_fuer(modell, daten.get("usage"))
+    if cent is not None:
+        stand = werte.setdefault("kosten", {"anzahl": 0, "cent": 0.0})
+        stand["anzahl"] = int(stand.get("anzahl") or 0) + 1
+        stand["cent"] = float(stand.get("cent") or 0) + cent
+        try:
+            schreib_einstellungen(werte)
+        except OSError:
+            pass
 
     stuecke = [b.get("text", "") for b in daten.get("content", [])
                if b.get("type") == "text"]
@@ -776,6 +838,20 @@ class Oberflaeche(object):
                              if werte["tonfall"] in toene else 0,)
         dialog.insertByName("tonfall", ton)
         y += 17
+
+        # Der Kostenzähler steht wie in der App direkt unter dem Tonfall —
+        # dort, wo man ihn sieht, bevor man die nächste Anfrage losschickt.
+        geld = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
+        geld.PositionX, geld.PositionY = rand, y
+        geld.Width, geld.Height = w - 60, 10
+        geld.Label = kostenstand(werte)
+        geld.TextColor = farbe["blass"]
+        geld.FontHeight = SCHRIFT_GRUND
+        dialog.insertByName("kostenstand", geld)
+        if (werte.get("kosten") or {}).get("anzahl"):
+            self._e_knopf(dialog, "zuruecksetzen", rand + w - 58, y - 3, 58,
+                          "zurücksetzen")
+        y += 14
         self._e_verweis(dialog, "v_geld", rand, y, w, "Guthaben aufladen ↗",
                         "https://console.anthropic.com/settings/billing")
         y += 18
@@ -831,8 +907,10 @@ class Oberflaeche(object):
 
         horcher = _Knopfdruck(fenster)
         for name in ("anzeigen", "kopieren", "sichern", "einspielen",
-                     "loeschen", "abbrechen", "speichern"):
-            fenster.getControl(name).addActionListener(horcher)
+                     "loeschen", "abbrechen", "speichern", "zuruecksetzen"):
+            steuer = fenster.getControl(name)
+            if steuer is not None:          # „zurücksetzen“ gibt es nur,
+                steuer.addActionListener(horcher)   # wenn schon etwas zählt
 
         while True:
             fenster.execute()
@@ -1257,6 +1335,9 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
                                      "brauchen ihn."):
                     werte["apiKey"] = ""
                     schreib_einstellungen(werte)
+            elif was == "zuruecksetzen":
+                werte["kosten"] = {"anzahl": 0, "cent": 0.0}
+                schreib_einstellungen(werte)
             elif was == "sichern":
                 in_zwischenablage(self.ctx, baue_sicherung(werte))
                 gui.melde("Gedächtnis",
