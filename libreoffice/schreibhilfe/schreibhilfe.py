@@ -726,7 +726,10 @@ class Oberflaeche(object):
 
     # Maße in Dialogeinheiten. Die App reiht Abschnitte untereinander:
     # fette Überschrift, blasser Untertitel, darunter das Feld.
-    E_BREITE = 300
+    # Schmaler als ein Textfenster: Die Einstellungen sind eine Spalte, keine
+    # Fläche. In die Breite gezogen stehen die Knöpfe weit weg von dem, wozu
+    # sie gehören.
+    E_BREITE = 235
     E_RAND = 10
 
     def _e_titel(self, dialog, name, y, text, unter=""):
@@ -797,12 +800,12 @@ class Oberflaeche(object):
 
         stand = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
         stand.PositionX, stand.PositionY = rand, y
-        stand.Width, stand.Height = w - 90, 10
+        stand.Width, stand.Height = w - 84, 10
         stand.Label = self._schluessel_stand(werte["apiKey"])
         stand.TextColor = farbe["blass"]
         stand.FontHeight = SCHRIFT_GRUND
         dialog.insertByName("keystand", stand)
-        self._e_verweis(dialog, "v_key", rand + w - 88, y, 88,
+        self._e_verweis(dialog, "v_key", rand + w - 82, y, 82,
                         "Schlüssel erstellen ↗",
                         "https://console.anthropic.com/settings/keys")
         y += 14
@@ -843,13 +846,13 @@ class Oberflaeche(object):
         # dort, wo man ihn sieht, bevor man die nächste Anfrage losschickt.
         geld = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
         geld.PositionX, geld.PositionY = rand, y
-        geld.Width, geld.Height = w - 60, 10
+        geld.Width, geld.Height = w - 56, 10
         geld.Label = kostenstand(werte)
         geld.TextColor = farbe["blass"]
         geld.FontHeight = SCHRIFT_GRUND
         dialog.insertByName("kostenstand", geld)
         if (werte.get("kosten") or {}).get("anzahl"):
-            self._e_knopf(dialog, "zuruecksetzen", rand + w - 58, y - 3, 58,
+            self._e_knopf(dialog, "zuruecksetzen", rand + w - 54, y - 3, 54,
                           "zurücksetzen")
         y += 14
         self._e_verweis(dialog, "v_geld", rand, y, w, "Guthaben aufladen ↗",
@@ -895,9 +898,9 @@ class Oberflaeche(object):
         dialog.insertByName("fassung", fuss)
         y += 16
 
-        self._e_knopf(dialog, "loeschen", rand, y, 76, "Schlüssel löschen")
-        self._e_knopf(dialog, "abbrechen", breite - rand - 122, y, 58, "Abbrechen")
-        self._e_knopf(dialog, "speichern", breite - rand - 58, y, 58, "Speichern")
+        self._e_knopf(dialog, "loeschen", rand, y, 68, "Schlüssel löschen")
+        self._e_knopf(dialog, "abbrechen", breite - rand - 112, y, 54, "Abbrechen")
+        self._e_knopf(dialog, "speichern", breite - rand - 54, y, 54, "Speichern")
         y += 20
         dialog.Height = y
 
