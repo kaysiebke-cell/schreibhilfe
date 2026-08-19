@@ -78,6 +78,7 @@ class Tafel(unohelper.Base, XWindowListener):
         self.gui = SH.Oberflaeche(ctx, rahmen)
         self.funde = None      # None = noch nicht geprüft
         self.ziel = None
+        self.eingeklappt = False
         self.breite_px = 900
 
         self.modell = self._dienst("com.sun.star.awt.UnoControlDialogModel")
@@ -195,6 +196,21 @@ class Tafel(unohelper.Base, XWindowListener):
         w = breite - rand * 2
         y = rand
 
+        # Kopfzeile mit eigenen Knöpfen. Das Fenster hat keinen Rahmen vom
+        # System — ohne diese Zeile ließe sich die Tafel weder zuklappen noch
+        # schließen, und sie stünde für immer unten im Weg.
+        self._text("kopf", rand, y + 3, w - 150, 12, "Schreibhilfe",
+                   TextColor=self.gui.farben()["blass"],
+                   FontWeight=150, FontHeight=SH.SCHRIFT_WORT)
+        self._knopf("klappen", breite - rand - 130, y, 62, 16,
+                    "Aufklappen" if self.eingeklappt else "Zuklappen")
+        self._knopf("schliessen", breite - rand - 64, y, 64, 16, "Schließen")
+        y += 22
+
+        if self.eingeklappt:
+            self.modell.Height = y + self.RAND
+            return
+
         self._knopf("pruefen", rand, y, w, 20, "✓  Prüfen")
         y += 26
 
@@ -279,6 +295,25 @@ class Tafel(unohelper.Base, XWindowListener):
             self.ki_lauf("uebersetzen")
         elif name.startswith("nimm"):
             self.nimm(int(name[4:]))
+        elif name == "schliessen":
+            self.schliessen()
+        elif name == "klappen":
+            self.klappen()
+
+    def schliessen(self):
+        """Tafel weglegen. Der Menüpunkt holt sie mitsamt Funden zurück."""
+        self.fenster.setVisible(False)
+
+    def klappen(self):
+        """Zwischen ganzer Tafel und schmaler Kopfzeile umschalten.
+
+        Ein Minimieren gibt es hier nicht — das Fenster hat keinen Rahmen vom
+        System. Zugeklappt bleibt nur die Kopfzeile stehen, und der Blick auf
+        den Text ist wieder frei.
+        """
+        self.eingeklappt = not self.eingeklappt
+        self.zeichne()
+        self.ans_untere_ende()
 
     def nimm(self, nr):
         """Einen einzelnen Fund übernehmen — wie ein Tipp auf „Ändern“ in der App.

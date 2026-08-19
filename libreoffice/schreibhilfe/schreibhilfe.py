@@ -890,6 +890,11 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
                 return None
         else:
             try:
+                # Zugeklappt oder weggelegt: Der Menüpunkt holt sie ganz
+                # zurück — sonst klickt man ins Menü und es passiert nichts
+                # Sichtbares.
+                tafel.eingeklappt = False
+                tafel.zeichne()
                 tafel.fenster.setVisible(True)
                 tafel.ans_untere_ende()
             except Exception:                               # noqa: BLE001
