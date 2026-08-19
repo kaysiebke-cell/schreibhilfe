@@ -25,8 +25,10 @@ import traceback
 import urllib.error
 import urllib.request
 
+import uno
 import unohelper
 from com.sun.star.awt import XCallback
+from com.sun.star.datatransfer import DataFlavor, XTransferable
 from com.sun.star.frame import XDispatchProvider, XDispatch
 from com.sun.star.lang import XServiceInfo, XInitialization
 from com.sun.star.awt import XActionListener
@@ -230,6 +232,21 @@ def merke_aenderung(fund, werte):
     return True
 
 
+def baue_sicherung(werte):
+    """Der Sicherungs-Text, wortgleich mit dem der Handy-App.
+
+    Der API-Schlüssel bleibt bewusst draußen: Ein Schlüssel gehört nicht in
+    einen Text, den man durch die Gegend schickt.
+    """
+    return json.dumps({
+        "schreibhilfe": 1,
+        "woerter": werte["gelernt"]["woerter"],
+        "inRuhe": werte["gelernt"]["inRuhe"],
+        "einstellungen": {name: werte[name]
+                          for name in ("tonfall", "modell", "sprache")},
+    }, ensure_ascii=False)
+
+
 def spiele_sicherung_ein(roh, werte):
     """Nimmt den Sicherungs-Text aus der Handy-App auf. Alles Ankommende ist
     ungeprüft, deshalb wird jeder Eintrag einzeln angesehen."""
@@ -398,6 +415,34 @@ class _Knopfdruck(unohelper.Base, XActionListener):
 
     def disposing(self, ereignis):
         pass
+
+
+class _NurText(unohelper.Base, XTransferable):
+    """Ein Stück Text für die Zwischenablage. Mehr kann und braucht es nicht."""
+
+    ART = "text/plain;charset=utf-16"
+
+    def __init__(self, text):
+        self.text = text
+
+    def getTransferData(self, art):
+        return self.text
+
+    def getTransferDataFlavors(self):
+        flavor = DataFlavor()
+        flavor.MimeType = self.ART
+        flavor.HumanPresentableName = "Text"
+        flavor.DataType = uno.getTypeByName("string")
+        return (flavor,)
+
+    def isDataFlavorSupported(self, art):
+        return art.MimeType == self.ART
+
+
+def in_zwischenablage(ctx, text):
+    ablage = ctx.ServiceManager.createInstanceWithContext(
+        "com.sun.star.datatransfer.clipboard.SystemClipboard", ctx)
+    ablage.setContents(_NurText(text), None)
 
 
 class Oberflaeche(object):
@@ -614,6 +659,221 @@ class Oberflaeche(object):
             elif gedrueckt == "zurueck":
                 seite = (seite - 1) % seiten
 
+
+    # --- das Einstellungsfenster, nach dem Vorbild der App ---
+
+    # Maße in Dialogeinheiten. Die App reiht Abschnitte untereinander:
+    # fette Überschrift, blasser Untertitel, darunter das Feld.
+    E_BREITE = 300
+    E_RAND = 10
+
+    def _e_titel(self, dialog, name, y, text, unter=""):
+        """Überschrift eines Abschnitts, darunter der blasse Untertitel."""
+        farbe = self.farben()
+        kopf = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
+        kopf.PositionX, kopf.PositionY = self.E_RAND, y
+        kopf.Width, kopf.Height = self.E_BREITE - self.E_RAND * 2, 11
+        kopf.Label = text
+        kopf.FontWeight = 150
+        kopf.FontHeight = SCHRIFT_WORT
+        dialog.insertByName(name, kopf)
+        y += 13
+        if unter:
+            u = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
+            u.PositionX, u.PositionY = self.E_RAND, y
+            u.Width, u.Height = self.E_BREITE - self.E_RAND * 2, 10
+            u.Label = unter
+            u.TextColor = farbe["blass"]
+            u.FontHeight = SCHRIFT_GRUND
+            dialog.insertByName(name + "_u", u)
+            y += 11
+        return y
+
+    def _e_knopf(self, dialog, name, x, y, breite, text):
+        k = dialog.createInstance("com.sun.star.awt.UnoControlButtonModel")
+        k.PositionX, k.PositionY = x, y
+        k.Width, k.Height = breite, 15
+        k.Label = text
+        k.PushButtonType = 0
+        dialog.insertByName(name, k)
+
+    def _e_verweis(self, dialog, name, x, y, breite, text, ziel):
+        v = dialog.createInstance("com.sun.star.awt.UnoControlFixedHyperlinkModel")
+        v.PositionX, v.PositionY = x, y
+        v.Width, v.Height = breite, 10
+        v.Label = text
+        v.URL = ziel
+        v.Align = 2                                   # rechtsbündig
+        v.FontHeight = SCHRIFT_GRUND
+        dialog.insertByName(name, v)
+
+    def einstellungsfenster(self, werte, fassung):
+        """Baut das Fenster und gibt (gedrückter Knopf, geänderte Werte) zurück.
+
+        Die Knöpfe „Kopieren“, „Sichern“ und so weiter schließen das Fenster,
+        erledigen ihre Sache und öffnen es wieder — ein Dialog kann nicht
+        gleichzeitig offen bleiben und eine Meldung zeigen.
+        """
+        farbe = self.farben()
+        breite, rand = self.E_BREITE, self.E_RAND
+        w = breite - rand * 2
+        dialog = self._dienst("com.sun.star.awt.UnoControlDialogModel")
+        dialog.Width, dialog.Title = breite, "Schreibhilfe — Einstellungen"
+        dialog.PositionX, dialog.PositionY = 60, 30
+        y = rand
+
+        # 1. API-Schlüssel
+        y = self._e_titel(dialog, "t_key", y, "API-Schlüssel",
+                          "für Korrigieren, Vorschläge und Übersetzen")
+        feld = dialog.createInstance("com.sun.star.awt.UnoControlEditModel")
+        feld.PositionX, feld.PositionY = rand, y
+        feld.Width, feld.Height = w, 14
+        feld.Text = werte["apiKey"]
+        feld.EchoChar = ord("•")
+        dialog.insertByName("apiKey", feld)
+        y += 17
+
+        stand = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
+        stand.PositionX, stand.PositionY = rand, y
+        stand.Width, stand.Height = w - 90, 10
+        stand.Label = self._schluessel_stand(werte["apiKey"])
+        stand.TextColor = farbe["blass"]
+        stand.FontHeight = SCHRIFT_GRUND
+        dialog.insertByName("keystand", stand)
+        self._e_verweis(dialog, "v_key", rand + w - 88, y, 88,
+                        "Schlüssel erstellen ↗",
+                        "https://console.anthropic.com/settings/keys")
+        y += 14
+        self._e_knopf(dialog, "anzeigen", rand, y, (w - 6) // 2, "Anzeigen")
+        self._e_knopf(dialog, "kopieren", rand + (w - 6) // 2 + 6, y,
+                      (w - 6) // 2, "Kopieren")
+        y += 22
+
+        # 2. KI-Modell
+        y = self._e_titel(dialog, "t_modell", y, "KI-Modell")
+        namen = [name for _, name in Handler.MODELL_NAMEN]
+        kennungen = [kennung for kennung, _ in Handler.MODELL_NAMEN]
+        modell = dialog.createInstance("com.sun.star.awt.UnoControlListBoxModel")
+        modell.PositionX, modell.PositionY = rand, y
+        modell.Width, modell.Height = w, 14
+        modell.Dropdown = True
+        modell.StringItemList = tuple(namen)
+        modell.SelectedItems = (kennungen.index(werte["modell"])
+                                if werte["modell"] in kennungen else 0,)
+        dialog.insertByName("modell", modell)
+        y += 20
+
+        # 3. Tonfall
+        y = self._e_titel(dialog, "t_ton", y, "Tonfall",
+                          "wie die KI-Korrektur klingen soll")
+        toene = list(TONFAELLE.keys())
+        ton = dialog.createInstance("com.sun.star.awt.UnoControlListBoxModel")
+        ton.PositionX, ton.PositionY = rand, y
+        ton.Width, ton.Height = w, 14
+        ton.Dropdown = True
+        ton.StringItemList = tuple(toene)
+        ton.SelectedItems = (toene.index(werte["tonfall"])
+                             if werte["tonfall"] in toene else 0,)
+        dialog.insertByName("tonfall", ton)
+        y += 17
+        self._e_verweis(dialog, "v_geld", rand, y, w, "Guthaben aufladen ↗",
+                        "https://console.anthropic.com/settings/billing")
+        y += 18
+
+        # 4. Gedächtnis
+        y = self._e_titel(dialog, "t_ged", y, "Gedächtnis",
+                          "bleibt auf diesem Rechner")
+        merk = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
+        merk.PositionX, merk.PositionY = rand, y
+        merk.Width, merk.Height = w, 10
+        merk.Label = self._gedaechtnis_stand(werte)
+        merk.FontWeight = 150
+        merk.FontHeight = SCHRIFT_GRUND
+        dialog.insertByName("gedstand", merk)
+        y += 13
+        self._e_knopf(dialog, "sichern", rand, y, (w - 6) // 2, "Sichern")
+        self._e_knopf(dialog, "einspielen", rand + (w - 6) // 2 + 6, y,
+                      (w - 6) // 2, "Einspielen")
+        y += 22
+
+        # 5. Weitere Werkzeuge
+        y = self._e_titel(dialog, "t_werk", y, "Weitere Werkzeuge",
+                          "brauchen den Schlüssel und Internet")
+        sprache = dialog.createInstance("com.sun.star.awt.UnoControlListBoxModel")
+        sprache.PositionX, sprache.PositionY = rand, y
+        sprache.Width, sprache.Height = w, 14
+        sprache.Dropdown = True
+        sprache.StringItemList = tuple(SPRACHEN)
+        sprache.SelectedItems = (SPRACHEN.index(werte["sprache"])
+                                 if werte["sprache"] in SPRACHEN else 0,)
+        dialog.insertByName("sprache", sprache)
+        y += 20
+
+        # 6. Fußzeile
+        fuss = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
+        fuss.PositionX, fuss.PositionY = rand, y
+        fuss.Width, fuss.Height = w, 10
+        fuss.Label = fassung
+        fuss.TextColor = farbe["blass"]
+        fuss.FontHeight = SCHRIFT_GRUND
+        dialog.insertByName("fassung", fuss)
+        y += 16
+
+        self._e_knopf(dialog, "loeschen", rand, y, 76, "Schlüssel löschen")
+        self._e_knopf(dialog, "abbrechen", breite - rand - 122, y, 58, "Abbrechen")
+        self._e_knopf(dialog, "speichern", breite - rand - 58, y, 58, "Speichern")
+        y += 20
+        dialog.Height = y
+
+        fenster = self._dienst("com.sun.star.awt.UnoControlDialog")
+        fenster.setModel(dialog)
+        fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"), None)
+
+        horcher = _Knopfdruck(fenster)
+        for name in ("anzeigen", "kopieren", "sichern", "einspielen",
+                     "loeschen", "abbrechen", "speichern"):
+            fenster.getControl(name).addActionListener(horcher)
+
+        while True:
+            fenster.execute()
+            gewaehlt = {
+                "apiKey": fenster.getControl("apiKey").getModel().Text,
+                "modell": kennungen[fenster.getControl("modell").getSelectedItemPos()],
+                "tonfall": fenster.getControl("tonfall").getSelectedItem(),
+                "sprache": fenster.getControl("sprache").getSelectedItem(),
+            }
+            if horcher.name == "anzeigen":
+                # Nur umschalten, dann weiter im selben Fenster — dafür muss
+                # niemand die Einstellungen verlassen.
+                marke = fenster.getControl("apiKey").getModel()
+                marke.EchoChar = 0 if marke.EchoChar else ord("•")
+                fenster.getControl("anzeigen").getModel().Label = (
+                    "Verbergen" if marke.EchoChar == 0 else "Anzeigen")
+                horcher.name = None
+                continue
+            break
+
+        fenster.dispose()
+        if horcher.name in (None, "abbrechen"):
+            return None, gewaehlt
+        return horcher.name, gewaehlt
+
+    def _schluessel_stand(self, schluessel):
+        """Zeigt Anfang und Ende — genug zum Wiedererkennen, zu wenig zum
+        Missbrauchen."""
+        if not schluessel:
+            return "Noch keiner hinterlegt."
+        if len(schluessel) < 20:
+            return "Gespeichert · %d Zeichen" % len(schluessel)
+        return "Gespeichert: %s…%s · %d Zeichen" % (
+            schluessel[:12], schluessel[-4:], len(schluessel))
+
+    def _gedaechtnis_stand(self, werte):
+        anzahl = len(werte["gelernt"]["woerter"])
+        if not anzahl:
+            return "Noch nichts gelernt. Jedes „Ändern“ bringt etwas bei."
+        return "%d Schreibweise%s gelernt." % (anzahl, "" if anzahl == 1 else "n")
+
     def frage_mehreres(self, titel, felder, mehrzeilig=False):
         """felder: Liste aus (Beschriftung, Vorgabe, Art) — Art ist „text“,
         „passwort“ oder eine Liste zur Auswahl."""
@@ -812,6 +1072,9 @@ def auf_hauptfaden(ctx, tun):
         tun()
 
 
+FASSUNG_TEXT = "Schreibhilfe 1.0 — LibreOffice"
+
+
 class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
               XInitialization):
     """Nimmt die Menübefehle entgegen."""
@@ -853,12 +1116,14 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
     def dispatch(self, url, argumente):
         """Nimmt den Menüklick entgegen — und arbeitet auf dem Hauptfaden.
 
-        Fenster darf nur der Hauptfaden des Programms bauen. Kommt der Befehl
-        von woanders her (aus einem Skript etwa), entsteht die Tafel zwar
-        klaglos, bleibt aber unsichtbar. Darum wird die Arbeit erst in die
-        Warteschlange des Programms gelegt und dort ausgeführt.
+        Der Weg über die Warteschlange des Programms (AsyncCallback) wäre
+        sauberer, verträgt sich aber nicht mit festen Fenstern: Die
+        Einstellungen bauten sich dann vollständig auf und blieben trotzdem
+        unsichtbar, weil ein Dialog aus einem Leerlauf-Auftrag heraus keine
+        eigene Warteschleife öffnen darf. Menüklicks kommen ohnehin vom
+        Hauptfaden.
         """
-        auf_hauptfaden(self.ctx, lambda: self._arbeite(url))
+        self._arbeite(url)
 
     def _arbeite(self, url):
         gui = Oberflaeche(self.ctx, self.rahmen)
@@ -954,21 +1219,54 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
     def _dokument(self):
         return self.rahmen.getController().getModel()
 
+    # Beschriftungen wortgleich mit der App — wer beides benutzt, soll nicht
+    # zweimal dasselbe unter zwei Namen lernen müssen.
+    FASSUNG = FASSUNG_TEXT
+
+    MODELL_NAMEN = [
+        ("claude-opus-5",    "Beste Qualität · Opus 5"),
+        ("claude-sonnet-5",  "Mittelweg · Sonnet 5"),
+        ("claude-haiku-4-5", "Günstig & schnell · Haiku 4.5"),
+    ]
+
     def einstellungen(self, gui):
         werte = lies_einstellungen()
-        antwort = gui.frage_mehreres("Schreibhilfe — Einstellungen", [
-            ("API-Schlüssel (für Korrigieren, Vorschläge, Übersetzen)",
-             werte["apiKey"], "passwort"),
-            ("KI-Modell", werte["modell"], MODELLE),
-            ("Tonfall", werte["tonfall"], list(TONFAELLE.keys())),
-            ("Sprache zum Übersetzen", werte["sprache"], SPRACHEN),
-        ])
-        if antwort is None:
-            return
-        werte["apiKey"], werte["modell"], werte["tonfall"], werte["sprache"] = antwort
-        schreib_einstellungen(werte)
-        gui.melde("Schreibhilfe", "Gespeichert.\n\nDie Angaben liegen in\n"
-                  + EINSTELLUNGSDATEI)
+        while True:
+            was, neue = gui.einstellungsfenster(werte, self.FASSUNG)
+            if was is None:                      # Abbrechen oder Fenster zu
+                return
+            werte.update(neue)
+
+            if was == "speichern":
+                schreib_einstellungen(werte)
+                gui.melde("Schreibhilfe", "Gespeichert.\n\nDie Angaben liegen in\n"
+                          + EINSTELLUNGSDATEI)
+                return
+            if was == "kopieren":
+                if werte["apiKey"]:
+                    in_zwischenablage(self.ctx, werte["apiKey"])
+                    gui.melde("Schreibhilfe", "Der Schlüssel liegt in der "
+                              "Zwischenablage.")
+                else:
+                    gui.melde("Schreibhilfe", "Es ist kein Schlüssel da.")
+            elif was == "loeschen":
+                if gui.frage_ja_nein("Schlüssel löschen",
+                                     "Den API-Schlüssel wirklich entfernen?\n\n"
+                                     "Prüfen ohne Internet geht weiter; "
+                                     "Korrigieren, Vorschläge und Übersetzen "
+                                     "brauchen ihn."):
+                    werte["apiKey"] = ""
+                    schreib_einstellungen(werte)
+            elif was == "sichern":
+                in_zwischenablage(self.ctx, baue_sicherung(werte))
+                gui.melde("Gedächtnis",
+                          "Der Sicherungs-Text liegt in der Zwischenablage.\n\n"
+                          "In der Handy-App: Zahnrad → Gedächtnis → Einspielen.\n\n"
+                          "Der API-Schlüssel ist NICHT dabei — der gehört nicht "
+                          "in einen Text, den man verschickt.")
+            elif was == "einspielen":
+                self.gedaechtnis(gui)
+                werte = lies_einstellungen()
 
     def gedaechtnis(self, gui):
         werte = lies_einstellungen()
