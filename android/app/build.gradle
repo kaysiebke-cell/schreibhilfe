@@ -44,7 +44,7 @@ if (signVorhanden) {
     logger.lifecycle("Signierung: kein fester Schlüssel gefunden — es wird der Debug-Schlüssel benutzt.")
 }
 
-// --- Die Web-App im Wurzelverzeichnis ist die einzige Quelle der Wahrheit ---
+// --- Die Web-App in online/ ist die einzige Quelle der Wahrheit ---
 // Dieselben Dateien bedienen GitHub Pages und die APK. Statt sie doppelt im Repo
 // zu halten, kopiert der Build sie vor dem Zusammenbauen nach
 // src/main/assets/www (der Ordner ist ge-.gitignore-t).
@@ -56,8 +56,8 @@ if (signVorhanden) {
 def webDst = file("src/main/assets/www")
 
 tasks.register('copyWebApp', Copy) {
-    description = 'Kopiert die Web-App aus dem Wurzelverzeichnis in die App-Assets.'
-    from("$rootDir/..") {
+    description = 'Kopiert die Web-App aus online/ in die App-Assets.'
+    from("$rootDir/../online") {
         include 'index.html'
         include 'sw.js'
         include 'manifest.webmanifest'

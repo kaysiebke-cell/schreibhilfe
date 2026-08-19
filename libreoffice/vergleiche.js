@@ -1,5 +1,5 @@
 /*
- * Läuft den Prüfteil aus js/app.js in node — ohne Browser, ohne Oberfläche.
+ * Läuft den Prüfteil aus online/js/app.js in node — ohne Browser, ohne Oberfläche.
  *
  * Zweck: Die Python-Übersetzung (schreibhilfe/pruefung.py) muss genau dasselbe
  * finden. Dieses Programm liefert die JavaScript-Seite des Vergleichs.
@@ -12,7 +12,7 @@ const fs = require('fs');
 const pfad = require('path');
 
 const wurzel = pfad.join(__dirname, '..');
-const quelle = fs.readFileSync(pfad.join(wurzel, 'js/app.js'), 'utf8');
+const quelle = fs.readFileSync(pfad.join(wurzel, 'online/js/app.js'), 'utf8');
 
 /* Denselben Bereich herausschneiden wie beim Prüfen von Hand: von der
    Wörterliste bis zum Ende von findeProbleme(). */
@@ -40,7 +40,7 @@ const Gelernt = {
 };
 
 const WOERTERBUCH_GROSS = new Set(
-  fs.readFileSync(pfad.join(wurzel, 'daten/woerter.txt'), 'utf8').split('\n')
+  fs.readFileSync(pfad.join(wurzel, 'online/daten/woerter.txt'), 'utf8').split('\n')
 );
 
 const bauen = new Function('Gelernt', 'WOERTERBUCH_GROSS',

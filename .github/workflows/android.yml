@@ -17,12 +17,8 @@ on:
   push:
     branches: [ "**" ]
     paths:
-      - "index.html"
-      - "css/**"
-      - "js/**"
-      - "sw.js"
-      - "manifest.webmanifest"
-      - "icon.svg"
+      # Die Web-App liegt in online/ — von dort holt sie der Build.
+      - "online/**"
       - "android/**"
       - ".github/workflows/android.yml"
     tags:

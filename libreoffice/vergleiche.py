@@ -4,7 +4,7 @@
 Stellt die Python-Prüfung der JavaScript-Prüfung gegenüber.
 
 Die Erweiterung für LibreOffice trägt eine Übersetzung der Prüfung aus
-js/app.js. Eine Übersetzung ist nur so viel wert wie ihr Nachweis: Dieses
+online/js/app.js. Eine Übersetzung ist nur so viel wert wie ihr Nachweis: Dieses
 Programm schickt dieselben Sätze durch beide Fassungen und meldet jede
 Abweichung.
 
@@ -26,7 +26,16 @@ import pruefung                                                    # noqa: E402
 
 # Die Wörterliste des Projekts benutzen, nicht die des Systems — sonst
 # vergliche man zwei verschiedene Wörterbücher statt zweier Fassungen.
-pruefung.lade_woerter(os.path.join(HIER, '..', 'daten', 'woerter.txt'))
+#
+# Und zwar hörbar: Findet lade_woerter die Datei nicht, greift es
+# stillschweigend zur Liste des Systems, der Vergleich läuft grün durch und
+# beweist nichts. Genau das ist beim Verschieben nach online/ passiert.
+LISTE = os.path.join(HIER, '..', 'online', 'daten', 'woerter.txt')
+if not os.path.exists(LISTE):
+    raise SystemExit('Die Wörterliste fehlt: %s\n'
+                     'Ohne sie vergleicht dieses Werkzeug zwei verschiedene '
+                     'Wörterbücher und beweist nichts.' % LISTE)
+pruefung.lade_woerter(LISTE)
 
 SAETZE = [
     # --- Wörter, die kein Rechtschreibprüfer findet ---

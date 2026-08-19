@@ -1,0 +1,46 @@
+# Veröffentlicht die Online-Fassung unter
+# https://kaysiebke-cell.github.io/schreibhilfe/
+#
+# Früher hat GitHub einfach das Wurzelverzeichnis ausgeliefert. Seit die
+# Web-App in online/ liegt, muss jemand sagen, dass genau dieser Ordner
+# gemeint ist — das tut dieser Ablauf. Die Adresse bleibt dieselbe, damit
+# die App auf dem Handy weiter funktioniert.
+name: Online-Fassung veröffentlichen
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "online/**"
+      - ".github/workflows/seite.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Zwei Auslieferungen gleichzeitig würden sich ins Gehege kommen.
+concurrency:
+  group: seite
+  cancel-in-progress: false
+
+jobs:
+  veroeffentlichen:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.ausliefern.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - name: Ordner online/ einpacken
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: online
+
+      - name: Ausliefern
+        id: ausliefern
+        uses: actions/deploy-pages@v4

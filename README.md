@@ -179,9 +179,9 @@ die Claude-App, nicht für den API-Zugang.
 ### Aufbau
 
 ```
-index.html                    Aufbau der Seite
-css/style.css                 Gestaltung (Papier-Optik, hell und dunkel)
-js/app.js                     Prüfen, KI, Teilen, Einstellungen
+online/index.html             Aufbau der Seite
+online/css/style.css          Gestaltung (Papier-Optik, hell und dunkel)
+online/js/app.js              Prüfen, KI, Teilen, Einstellungen
 sw.js                         Offline-Betrieb im Browser (in der App abgeschaltet)
 manifest.webmanifest          Angaben für den Startbildschirm
 icon.svg                      App-Symbol (Quelle)
@@ -228,7 +228,8 @@ inkscape icon.svg -w 192 -h 192 -o icon-192.png && inkscape icon.svg -w 512 -h 5
 Danach die Zahl in `sw.js` (`schreibhilfe-vN`) hochsetzen, sonst behalten
 bereits installierte Browser-Fassungen die alten Dateien.
 
-**Die Zahl gehört bei jeder Änderung an `index.html`, `css/` oder `js/` hoch**
+**Die Zahl gehört bei jeder Änderung an `online/index.html`, `online/css/`
+oder `online/js/` hoch**
 — der Service Worker liefert sonst weiter aus seinem Zwischenspeicher. In der
 **App** ist er abgeschaltet: Dort liegen die Dateien in der APK, offline ist
 ohnehin alles da, und sein Zwischenspeicher überlebte sonst das App-Update.

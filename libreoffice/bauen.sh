@@ -1,11 +1,11 @@
 #!/bin/sh
 # Packt die Erweiterung zu schreibhilfe.oxt (eine ZIP-Datei mit fester Endung).
 #
-# Die deutsche Wörterliste wird aus daten/ hereingeholt: Sie ist dieselbe, die
-# auch in der Handy-App steckt — eine Quelle, kein zweiter Stand.
+# Die deutsche Wörterliste wird aus online/daten/ hereingeholt: Sie ist dieselbe,
+# die auch in der Handy-App steckt — eine Quelle, kein zweiter Stand.
 set -e
 cd "$(dirname "$0")"
-cp ../daten/woerter.txt schreibhilfe/woerter.txt
+cp ../online/daten/woerter.txt schreibhilfe/woerter.txt
 rm -f schreibhilfe.oxt
 cd schreibhilfe
 zip -r -q ../schreibhilfe.oxt . -x '*.pyc' -x '__pycache__/*'

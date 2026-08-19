@@ -1,22 +1,33 @@
 # Was liegt wo
 
-Ein Projekt, drei Wege: Handy, PC-Browser, LibreOffice.
+Ein Projekt, drei Wege — und jeder hat seinen eigenen Ordner:
 
-## Gemeinsam — die App selbst
+    online/       Handy und PC-Browser (das, was im Netz steht)
+    android/      der Rahmen um die App herum, daraus wird die APK
+    libreoffice/  die Erweiterung für Writer
+    .github/      die Abläufe, die APK und Netz-Seite bauen
+
+## online/ — die App selbst
 Handy und PC-Browser benutzen dieselben Dateien. Nichts davon liegt doppelt.
 
-    index.html            die Oberfläche
-    css/style.css         das Aussehen
-    js/app.js             die ganze Arbeit: Prüfer, KI, Gedächtnis, Kosten
-    js/systempruefer.js   Brücke zum Rechtschreibprüfer von Android
-    sw.js                 damit die App ohne Internet startet
-    manifest.webmanifest  Name und Symbole der App
-    daten/woerter.txt     die deutsche Wörterliste — die EINE Quelle
+    online/index.html            die Oberfläche
+    online/css/style.css         das Aussehen
+    online/js/app.js             die ganze Arbeit: Prüfer, KI, Gedächtnis, Kosten
+    online/js/systempruefer.js   Brücke zum Rechtschreibprüfer von Android
+    online/sw.js                 damit die App ohne Internet startet
+    online/manifest.webmanifest  Name und Symbole der App
+    online/daten/woerter.txt     die deutsche Wörterliste — die EINE Quelle
+
+Dieser Ordner — und nur dieser — wird im Netz veröffentlicht, unter
+https://kaysiebke-cell.github.io/schreibhilfe/ . Dafür sorgt
+`.github/workflows/seite.yml`. Was hier nicht drinliegt, ist im Netz nicht
+zu haben: Deshalb wohnt auch `daten/` mit hier drin.
 
 ## Nur Android
     android/              der Kotlin-Rahmen um die App herum
 
-Die App wird beim Bauen nach `android/app/src/main/assets/www/` kopiert.
+Die App wird beim Bauen aus `online/` nach
+`android/app/src/main/assets/www/` kopiert.
 Dieser Ordner ist von git ausgenommen; im Projekt liegt die App kein
 zweites Mal.
 
@@ -28,12 +39,12 @@ zweites Mal.
     libreoffice/bauen.sh                       packt schreibhilfe.oxt
     libreoffice/vergleiche.py / .js            hält beide Prüfer gleich
 
-`bauen.sh` holt die Wörterliste beim Packen aus `daten/` und löscht sie
-danach wieder — ein Stand, keine Kopie.
+`bauen.sh` holt die Wörterliste beim Packen aus `online/daten/` und löscht
+sie danach wieder — ein Stand, keine Kopie.
 
 ## Vorsicht: der Prüfer steht doppelt da
 
-Einmal als JavaScript in `js/app.js`, einmal als Python in
+Einmal als JavaScript in `online/js/app.js`, einmal als Python in
 `libreoffice/schreibhilfe/pruefung.py`. LibreOffice führt kein JavaScript
 aus, deshalb geht es nicht anders. Auch die KI-Anweisungen und die
 Tonfälle gibt es zweimal.
