@@ -479,6 +479,24 @@ class _Knopfdruck(unohelper.Base, XActionListener):
         pass
 
 
+class _ImFenster(unohelper.Base, XActionListener):
+    """Ein Knopf, der im offenen Fenster arbeitet, statt es zu schließen.
+
+    Der andere Melder beendet den Dialog — richtig für alles, was danach eine
+    Meldung zeigt. Für „Anzeigen“ ist es falsch: Das Fenster klappte zu und
+    wieder auf, und der Schlüssel war immer noch verdeckt.
+    """
+
+    def __init__(self, tun):
+        self.tun = tun
+
+    def actionPerformed(self, ereignis):
+        self.tun()
+
+    def disposing(self, ereignis):
+        pass
+
+
 class _NurText(unohelper.Base, XTransferable):
     """Ein Stück Text für die Zwischenablage. Mehr kann und braucht es nicht."""
 
@@ -521,27 +539,35 @@ class Oberflaeche(object):
     def _fenster(self):
         return self.rahmen.getContainerWindow()
 
-    def melde(self, titel, text, art="infobox"):
+    def melde(self, titel, text, art="infobox", ueber=None):
+        """ueber: das Fenster, über dem die Meldung stehen soll.
+
+        Ohne diese Angabe hängt sie am Writer-Fenster. Steht davor ein festes
+        Fenster — die Einstellungen etwa —, verschwindet sie dahinter, und das
+        Programm sieht aus, als hinge es.
+        """
         from com.sun.star.awt.MessageBoxButtons import BUTTONS_OK
         werkzeug = self._dienst("com.sun.star.awt.Toolkit")
         kasten = werkzeug.createMessageBox(
-            self._fenster(), art, BUTTONS_OK, titel, text)
+            ueber or self._fenster(), art, BUTTONS_OK, titel, text)
         kasten.execute()
         kasten.dispose()
 
-    def frage_ja_nein(self, titel, text):
+    def frage_ja_nein(self, titel, text, ueber=None):
         from com.sun.star.awt.MessageBoxButtons import BUTTONS_YES_NO
         werkzeug = self._dienst("com.sun.star.awt.Toolkit")
         kasten = werkzeug.createMessageBox(
-            self._fenster(), "querybox", BUTTONS_YES_NO, titel, text)
+            ueber or self._fenster(), "querybox", BUTTONS_YES_NO, titel, text)
         antwort = kasten.execute()
         kasten.dispose()
         return antwort == 2      # 2 = Ja
 
-    def frage_text(self, titel, beschriftung, vorgabe="", mehrzeilig=False):
+    def frage_text(self, titel, beschriftung, vorgabe="", mehrzeilig=False,
+                   ueber=None):
         """Ein Eingabefenster. Gibt None zurück, wenn abgebrochen wurde."""
         felder = [(beschriftung, vorgabe, "text")]
-        ergebnis = self.frage_mehreres(titel, felder, mehrzeilig=mehrzeilig)
+        ergebnis = self.frage_mehreres(titel, felder, mehrzeilig=mehrzeilig,
+                                       ueber=ueber)
         return None if ergebnis is None else ergebnis[0]
 
     # ----------------------------------------------------------------
@@ -773,11 +799,11 @@ class Oberflaeche(object):
         dialog.insertByName(name, v)
 
     def einstellungsfenster(self, werte, fassung):
-        """Baut das Fenster und gibt (gedrückter Knopf, geänderte Werte) zurück.
+        """Baut das Fenster und gibt („speichern“ oder None, Werte) zurück.
 
-        Die Knöpfe „Kopieren“, „Sichern“ und so weiter schließen das Fenster,
-        erledigen ihre Sache und öffnen es wieder — ein Dialog kann nicht
-        gleichzeitig offen bleiben und eine Meldung zeigen.
+        Alle übrigen Knöpfe arbeiten im offenen Fenster: Sie erledigen ihre
+        Sache, tragen das Ergebnis gleich in die Zeile darüber ein und lassen
+        das Fenster stehen.
         """
         farbe = self.farben()
         breite, rand = self.E_BREITE, self.E_RAND
@@ -908,36 +934,121 @@ class Oberflaeche(object):
         fenster.setModel(dialog)
         fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"), None)
 
+        # Nur diese beiden schließen das Fenster. Alles andere erledigt seine
+        # Sache, wo es steht — ein Fenster, das bei jedem Knopfdruck zuklappt
+        # und wieder aufgeht, ist nicht zu bedienen.
         horcher = _Knopfdruck(fenster)
-        for name in ("anzeigen", "kopieren", "sichern", "einspielen",
-                     "loeschen", "abbrechen", "speichern", "zuruecksetzen"):
+        for name in ("abbrechen", "speichern"):
+            fenster.getControl(name).addActionListener(horcher)
+
+        im_fenster = {
+            "anzeigen":   lambda: self._schluessel_umschalten(fenster),
+            "kopieren":   lambda: self._schluessel_kopieren(fenster),
+            "loeschen":   lambda: self._schluessel_loeschen(fenster, werte),
+            "sichern":    lambda: self._gedaechtnis_sichern(fenster, werte),
+            "einspielen": lambda: self._gedaechtnis_einspielen(fenster, werte),
+            "zuruecksetzen": lambda: self._zaehler_leeren(fenster, werte),
+        }
+        self._melder = []                   # am Leben halten, sonst räumt
+        for name, tun in im_fenster.items():  # Python sie gleich wieder weg
             steuer = fenster.getControl(name)
-            if steuer is not None:          # „zurücksetzen“ gibt es nur,
-                steuer.addActionListener(horcher)   # wenn schon etwas zählt
+            if steuer is None:              # „zurücksetzen“ gibt es nur,
+                continue                    # wenn schon etwas gezählt wurde
+            melder = _ImFenster(tun)
+            self._melder.append(melder)
+            steuer.addActionListener(melder)
 
-        while True:
-            fenster.execute()
-            gewaehlt = {
-                "apiKey": fenster.getControl("apiKey").getModel().Text,
-                "modell": kennungen[fenster.getControl("modell").getSelectedItemPos()],
-                "tonfall": fenster.getControl("tonfall").getSelectedItem(),
-                "sprache": fenster.getControl("sprache").getSelectedItem(),
-            }
-            if horcher.name == "anzeigen":
-                # Nur umschalten, dann weiter im selben Fenster — dafür muss
-                # niemand die Einstellungen verlassen.
-                marke = fenster.getControl("apiKey").getModel()
-                marke.EchoChar = 0 if marke.EchoChar else ord("•")
-                fenster.getControl("anzeigen").getModel().Label = (
-                    "Verbergen" if marke.EchoChar == 0 else "Anzeigen")
-                horcher.name = None
-                continue
-            break
-
+        fenster.execute()
+        gewaehlt = {
+            "apiKey": fenster.getControl("apiKey").getModel().Text,
+            "modell": kennungen[fenster.getControl("modell").getSelectedItemPos()],
+            "tonfall": fenster.getControl("tonfall").getSelectedItem(),
+            "sprache": fenster.getControl("sprache").getSelectedItem(),
+        }
         fenster.dispose()
         if horcher.name in (None, "abbrechen"):
             return None, gewaehlt
         return horcher.name, gewaehlt
+
+    def _schluessel_umschalten(self, fenster):
+        """Punkte zeigen oder den Schlüssel — im offenen Fenster."""
+        feld = fenster.getControl("apiKey")
+        marke = feld.getModel()
+        marke.EchoChar = 0 if marke.EchoChar else ord("•")
+        # Ohne das Neusetzen des Textes bleibt das Feld stehen, wie es war:
+        # Die Punkte sind schon gezeichnet, und niemand fordert sie neu an.
+        feld.setText(marke.Text)
+        fenster.getControl("anzeigen").getModel().Label = (
+            "Verbergen" if marke.EchoChar == 0 else "Anzeigen")
+
+    def _schluessel_kopieren(self, fenster):
+        schluessel = fenster.getControl("apiKey").getModel().Text
+        if not schluessel:
+            self.melde("Schreibhilfe", "Es ist kein Schlüssel da.",
+                       ueber=fenster.getPeer())
+            return
+        in_zwischenablage(self.ctx, schluessel)
+        self.melde("Schreibhilfe", "Der Schlüssel liegt in der Zwischenablage.",
+                   ueber=fenster.getPeer())
+
+    def _schluessel_loeschen(self, fenster, werte):
+        if not self.frage_ja_nein(
+                "Schlüssel löschen",
+                "Den API-Schlüssel wirklich entfernen?\n\n"
+                "Prüfen ohne Internet geht weiter; Korrigieren, Vorschläge "
+                "und Übersetzen brauchen ihn.", ueber=fenster.getPeer()):
+            return
+        werte["apiKey"] = ""
+        try:
+            schreib_einstellungen(werte)
+        except OSError:
+            pass
+        fenster.getControl("apiKey").setText("")
+        fenster.getControl("keystand").getModel().Label = \
+            self._schluessel_stand("")
+
+    def _gedaechtnis_sichern(self, fenster, werte):
+        in_zwischenablage(self.ctx, baue_sicherung(werte))
+        self.melde("Gedächtnis",
+                   "Der Sicherungs-Text liegt in der Zwischenablage.\n\n"
+                   "In der Handy-App: Zahnrad → Gedächtnis → Einspielen.\n\n"
+                   "Der API-Schlüssel ist NICHT dabei — der gehört nicht in "
+                   "einen Text, den man verschickt.", ueber=fenster.getPeer())
+
+    def _gedaechtnis_einspielen(self, fenster, werte):
+        roh = self.frage_text(
+            "Gedächtnis einspielen",
+            "Sicherungs-Text aus der Handy-App hier einfügen\n"
+            "(dort: Zahnrad → Gedächtnis → Sichern):",
+            "", mehrzeilig=True, ueber=fenster.getPeer())
+        if roh is None or not roh.strip():
+            return
+        ergebnis, fehler = spiele_sicherung_ein(roh, werte)
+        if fehler:
+            self.melde("Gedächtnis", fehler, "errorbox",
+                       ueber=fenster.getPeer())
+            return
+        try:
+            schreib_einstellungen(werte)
+        except OSError:
+            pass
+        fenster.getControl("gedstand").getModel().Label = \
+            self._gedaechtnis_stand(werte)
+        self.melde("Gedächtnis",
+                   "Eingespielt: %d Schreibweisen, %d Wörter in Ruhe.\n\n"
+                   "Insgesamt bekannt: %d Schreibweisen."
+                   % (ergebnis[0], ergebnis[1],
+                      len(werte["gelernt"]["woerter"])),
+                   ueber=fenster.getPeer())
+
+    def _zaehler_leeren(self, fenster, werte):
+        werte["kosten"] = {"anzahl": 0, "cent": 0.0}
+        try:
+            schreib_einstellungen(werte)
+        except OSError:
+            pass
+        fenster.getControl("kostenstand").getModel().Label = kostenstand(werte)
+        fenster.getControl("zuruecksetzen").getModel().Enabled = False
 
     def _schluessel_stand(self, schluessel):
         """Zeigt Anfang und Ende — genug zum Wiedererkennen, zu wenig zum
@@ -955,7 +1066,7 @@ class Oberflaeche(object):
             return "Noch nichts gelernt. Jedes „Ändern“ bringt etwas bei."
         return "%d Schreibweise%s gelernt." % (anzahl, "" if anzahl == 1 else "n")
 
-    def frage_mehreres(self, titel, felder, mehrzeilig=False):
+    def frage_mehreres(self, titel, felder, mehrzeilig=False, ueber=None):
         """felder: Liste aus (Beschriftung, Vorgabe, Art) — Art ist „text“,
         „passwort“ oder eine Liste zur Auswahl."""
         dialog = self._dienst("com.sun.star.awt.UnoControlDialogModel")
@@ -1010,7 +1121,7 @@ class Oberflaeche(object):
 
         fenster = self._dienst("com.sun.star.awt.UnoControlDialog")
         fenster.setModel(dialog)
-        fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"), None)
+        fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"), ueber)
         genommen = fenster.execute()
 
         werte = None
@@ -1311,46 +1422,16 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
     ]
 
     def einstellungen(self, gui):
+        """Öffnet die Einstellungen. Alles Weitere erledigt das Fenster selbst
+        — hier kommt nur noch an, ob gespeichert werden soll."""
         werte = lies_einstellungen()
-        while True:
-            was, neue = gui.einstellungsfenster(werte, self.FASSUNG)
-            if was is None:                      # Abbrechen oder Fenster zu
-                return
-            werte.update(neue)
-
-            if was == "speichern":
-                schreib_einstellungen(werte)
-                gui.melde("Schreibhilfe", "Gespeichert.\n\nDie Angaben liegen in\n"
-                          + EINSTELLUNGSDATEI)
-                return
-            if was == "kopieren":
-                if werte["apiKey"]:
-                    in_zwischenablage(self.ctx, werte["apiKey"])
-                    gui.melde("Schreibhilfe", "Der Schlüssel liegt in der "
-                              "Zwischenablage.")
-                else:
-                    gui.melde("Schreibhilfe", "Es ist kein Schlüssel da.")
-            elif was == "loeschen":
-                if gui.frage_ja_nein("Schlüssel löschen",
-                                     "Den API-Schlüssel wirklich entfernen?\n\n"
-                                     "Prüfen ohne Internet geht weiter; "
-                                     "Korrigieren, Vorschläge und Übersetzen "
-                                     "brauchen ihn."):
-                    werte["apiKey"] = ""
-                    schreib_einstellungen(werte)
-            elif was == "zuruecksetzen":
-                werte["kosten"] = {"anzahl": 0, "cent": 0.0}
-                schreib_einstellungen(werte)
-            elif was == "sichern":
-                in_zwischenablage(self.ctx, baue_sicherung(werte))
-                gui.melde("Gedächtnis",
-                          "Der Sicherungs-Text liegt in der Zwischenablage.\n\n"
-                          "In der Handy-App: Zahnrad → Gedächtnis → Einspielen.\n\n"
-                          "Der API-Schlüssel ist NICHT dabei — der gehört nicht "
-                          "in einen Text, den man verschickt.")
-            elif was == "einspielen":
-                self.gedaechtnis(gui)
-                werte = lies_einstellungen()
+        was, neue = gui.einstellungsfenster(werte, self.FASSUNG)
+        if was != "speichern":
+            return
+        werte.update(neue)
+        schreib_einstellungen(werte)
+        gui.melde("Schreibhilfe", "Gespeichert.\n\nDie Angaben liegen in\n"
+                  + EINSTELLUNGSDATEI)
 
     def gedaechtnis(self, gui):
         werte = lies_einstellungen()
@@ -1359,7 +1440,7 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
             "Gedächtnis einspielen",
             "Sicherungs-Text aus der Handy-App hier einfügen\n"
             "(dort: Zahnrad → Gedächtnis → Sichern):",
-            "", mehrzeilig=True)
+            "", mehrzeilig=True, ueber=fenster.getPeer())
         if roh is None or not roh.strip():
             return
         ergebnis, fehler = spiele_sicherung_ein(roh, werte)
