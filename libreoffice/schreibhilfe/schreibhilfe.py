@@ -519,6 +519,37 @@ class _NurText(unohelper.Base, XTransferable):
         return art.MimeType == self.ART
 
 
+def waehle_datei(ctx, titel, vorschlag=None):
+    """Öffnet den Datei-Auswähler. Gibt den Pfad zurück — oder None.
+
+    Ohne Vorschlag wird eine Datei zum Öffnen gesucht, mit Vorschlag eine zum
+    Speichern angelegt.
+    """
+    from com.sun.star.ui.dialogs.TemplateDescription import (
+        FILEOPEN_SIMPLE, FILESAVE_AUTOEXTENSION)
+    waehler = ctx.ServiceManager.createInstanceWithContext(
+        "com.sun.star.ui.dialogs.FilePicker", ctx)
+    waehler.initialize((FILESAVE_AUTOEXTENSION if vorschlag else FILEOPEN_SIMPLE,))
+    waehler.setTitle(titel)
+    try:
+        waehler.setDisplayDirectory(
+            uno.systemPathToFileUrl(os.path.expanduser("~")))
+        if vorschlag:
+            waehler.setDefaultName(vorschlag)
+    except Exception:                                       # noqa: BLE001
+        pass
+    try:
+        if waehler.execute() != 1:                          # 1 = OK
+            return None
+        gewaehlt = waehler.getSelectedFiles()
+        return uno.fileUrlToSystemPath(gewaehlt[0]) if gewaehlt else None
+    finally:
+        try:
+            waehler.dispose()
+        except Exception:                                   # noqa: BLE001
+            pass
+
+
 def in_zwischenablage(ctx, text):
     ablage = ctx.ServiceManager.createInstanceWithContext(
         "com.sun.star.datatransfer.clipboard.SystemClipboard", ctx)
@@ -822,6 +853,17 @@ class Oberflaeche(object):
         feld.Text = werte["apiKey"]
         feld.EchoChar = ord("•")
         dialog.insertByName("apiKey", feld)
+
+        # Ein zweites Feld an derselben Stelle, nur ohne Punkte. LibreOffice
+        # legt das Punkt-Zeichen fest, wenn das Feld gebaut wird, und ändert
+        # es danach nicht mehr — „Anzeigen“ konnte umschalten, so viel es
+        # wollte, zu sehen war weiter nichts. Also wird zwischen zwei Feldern
+        # umgeschaltet statt am einen herumgedreht.
+        klar = dialog.createInstance("com.sun.star.awt.UnoControlEditModel")
+        klar.PositionX, klar.PositionY = rand, y
+        klar.Width, klar.Height = w, 14
+        klar.Text = werte["apiKey"]
+        dialog.insertByName("apiKeyKlar", klar)
         y += 17
 
         stand = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
@@ -933,6 +975,7 @@ class Oberflaeche(object):
         fenster = self._dienst("com.sun.star.awt.UnoControlDialog")
         fenster.setModel(dialog)
         fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"), None)
+        fenster.getControl("apiKeyKlar").setVisible(False)
 
         # Nur diese beiden schließen das Fenster. Alles andere erledigt seine
         # Sache, wo es steht — ein Fenster, das bei jedem Knopfdruck zuklappt
@@ -960,7 +1003,7 @@ class Oberflaeche(object):
 
         fenster.execute()
         gewaehlt = {
-            "apiKey": fenster.getControl("apiKey").getModel().Text,
+            "apiKey": self._schluessel_jetzt(fenster),
             "modell": kennungen[fenster.getControl("modell").getSelectedItemPos()],
             "tonfall": fenster.getControl("tonfall").getSelectedItem(),
             "sprache": fenster.getControl("sprache").getSelectedItem(),
@@ -971,18 +1014,26 @@ class Oberflaeche(object):
         return horcher.name, gewaehlt
 
     def _schluessel_umschalten(self, fenster):
-        """Punkte zeigen oder den Schlüssel — im offenen Fenster."""
-        feld = fenster.getControl("apiKey")
-        marke = feld.getModel()
-        marke.EchoChar = 0 if marke.EchoChar else ord("•")
-        # Ohne das Neusetzen des Textes bleibt das Feld stehen, wie es war:
-        # Die Punkte sind schon gezeichnet, und niemand fordert sie neu an.
-        feld.setText(marke.Text)
+        """Zwischen dem verdeckten und dem offenen Feld wechseln."""
+        verdeckt = fenster.getControl("apiKey")
+        offen = fenster.getControl("apiKeyKlar")
+        zeigen = not offen.isVisible()
+        # Was der Nutzer zuletzt getippt hat, muss mit hinüber.
+        (offen if zeigen else verdeckt).setText(
+            (verdeckt if zeigen else offen).getText())
+        offen.setVisible(zeigen)
+        verdeckt.setVisible(not zeigen)
         fenster.getControl("anzeigen").getModel().Label = (
-            "Verbergen" if marke.EchoChar == 0 else "Anzeigen")
+            "Verbergen" if zeigen else "Anzeigen")
+
+    def _schluessel_jetzt(self, fenster):
+        """Der Schlüssel aus dem Feld, das gerade zu sehen ist."""
+        offen = fenster.getControl("apiKeyKlar")
+        return (offen if offen.isVisible() else
+                fenster.getControl("apiKey")).getText()
 
     def _schluessel_kopieren(self, fenster):
-        schluessel = fenster.getControl("apiKey").getModel().Text
+        schluessel = self._schluessel_jetzt(fenster)
         if not schluessel:
             self.melde("Schreibhilfe", "Es ist kein Schlüssel da.",
                        ueber=fenster.getPeer())
@@ -1004,23 +1055,63 @@ class Oberflaeche(object):
         except OSError:
             pass
         fenster.getControl("apiKey").setText("")
+        fenster.getControl("apiKeyKlar").setText("")
         fenster.getControl("keystand").getModel().Label = \
             self._schluessel_stand("")
 
     def _gedaechtnis_sichern(self, fenster, werte):
-        in_zwischenablage(self.ctx, baue_sicherung(werte))
+        """Schreibt die Sicherung in eine Datei, die der Nutzer aussucht.
+
+        Vorher landete sie nur in der Zwischenablage — unsichtbar, und wer
+        nicht sofort einfügte, hatte sie verloren. Jetzt steht am Ende der
+        volle Pfad in der Meldung.
+        """
+        text = baue_sicherung(werte)
+        in_zwischenablage(self.ctx, text)
+        pfad = waehle_datei(self.ctx, "Gedächtnis sichern",
+                            "schreibhilfe-gedaechtnis.txt")
+        if pfad:
+            try:
+                with open(pfad, "w", encoding="utf-8") as datei:
+                    datei.write(text)
+            except OSError as fehler:
+                self.melde("Gedächtnis", "Die Datei ließ sich nicht "
+                           "schreiben:\n\n%s" % fehler, "errorbox",
+                           ueber=fenster.getPeer())
+                return
+            wohin = "Gespeichert in:\n%s\n\n" % pfad
+        else:
+            wohin = ""
         self.melde("Gedächtnis",
-                   "Der Sicherungs-Text liegt in der Zwischenablage.\n\n"
+                   wohin + "Der Text liegt außerdem in der Zwischenablage.\n\n"
                    "In der Handy-App: Zahnrad → Gedächtnis → Einspielen.\n\n"
                    "Der API-Schlüssel ist NICHT dabei — der gehört nicht in "
                    "einen Text, den man verschickt.", ueber=fenster.getPeer())
 
     def _gedaechtnis_einspielen(self, fenster, werte):
-        roh = self.frage_text(
-            "Gedächtnis einspielen",
-            "Sicherungs-Text aus der Handy-App hier einfügen\n"
-            "(dort: Zahnrad → Gedächtnis → Sichern):",
-            "", mehrzeilig=True, ueber=fenster.getPeer())
+        """Erst nach einer Sicherungsdatei fragen, sonst einfügen lassen.
+
+        Vom Handy kommt der Text zum Einfügen, von diesem Rechner eine Datei
+        — beide Wege müssen gehen.
+        """
+        roh = None
+        pfad = waehle_datei(self.ctx, "Sicherungsdatei öffnen (oder Abbrechen "
+                                      "zum Einfügen)")
+        if pfad:
+            try:
+                with open(pfad, "r", encoding="utf-8") as datei:
+                    roh = datei.read()
+            except OSError as fehler:
+                self.melde("Gedächtnis", "Die Datei ließ sich nicht lesen:"
+                           "\n\n%s" % fehler, "errorbox",
+                           ueber=fenster.getPeer())
+                return
+        else:
+            roh = self.frage_text(
+                "Gedächtnis einspielen",
+                "Sicherungs-Text aus der Handy-App hier einfügen\n"
+                "(dort: Zahnrad → Gedächtnis → Sichern):",
+                "", mehrzeilig=True, ueber=fenster.getPeer())
         if roh is None or not roh.strip():
             return
         ergebnis, fehler = spiele_sicherung_ein(roh, werte)
