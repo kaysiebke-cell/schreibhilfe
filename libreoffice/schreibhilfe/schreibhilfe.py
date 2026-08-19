@@ -26,6 +26,7 @@ import urllib.error
 import urllib.request
 
 import unohelper
+from com.sun.star.awt import XCallback
 from com.sun.star.frame import XDispatchProvider, XDispatch
 from com.sun.star.lang import XServiceInfo, XInitialization
 from com.sun.star.awt import XActionListener
@@ -787,6 +788,30 @@ def hole_text(dokument):
     return dokument.getText().getString(), dokument.getText()
 
 
+class _Auftrag(unohelper.Base, XCallback):
+    """Ein Stück Arbeit, das der Hauptfaden gleich erledigen soll."""
+
+    def __init__(self, tun):
+        self.tun = tun
+
+    def notify(self, was):
+        self.tun()
+
+
+def auf_hauptfaden(ctx, tun):
+    """Legt die Arbeit in die Warteschlange des Programms.
+
+    Klappt das nicht, wird sie eben sofort erledigt — dann ist es immer noch
+    besser, als gar nichts zu tun.
+    """
+    try:
+        bote = ctx.ServiceManager.createInstanceWithContext(
+            "com.sun.star.awt.AsyncCallback", ctx)
+        bote.addCallback(_Auftrag(tun), None)
+    except Exception:                                       # noqa: BLE001
+        tun()
+
+
 class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
               XInitialization):
     """Nimmt die Menübefehle entgegen."""
@@ -826,6 +851,16 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
         pass
 
     def dispatch(self, url, argumente):
+        """Nimmt den Menüklick entgegen — und arbeitet auf dem Hauptfaden.
+
+        Fenster darf nur der Hauptfaden des Programms bauen. Kommt der Befehl
+        von woanders her (aus einem Skript etwa), entsteht die Tafel zwar
+        klaglos, bleibt aber unsichtbar. Darum wird die Arbeit erst in die
+        Warteschlange des Programms gelegt und dort ausgeführt.
+        """
+        auf_hauptfaden(self.ctx, lambda: self._arbeite(url))
+
+    def _arbeite(self, url):
         gui = Oberflaeche(self.ctx, self.rahmen)
         try:
             befehl = url.Path
@@ -883,23 +918,36 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
         except ImportError:
             return None
         tafel = T.tafel_von(self.rahmen)
-        if tafel is None:
+        if tafel is not None:
             try:
-                tafel = T.Tafel(self.ctx, self.rahmen)
-            except Exception:                               # noqa: BLE001
-                return None
-        else:
-            try:
-                # Zugeklappt oder weggelegt: Der Menüpunkt holt sie ganz
-                # zurück — sonst klickt man ins Menü und es passiert nichts
-                # Sichtbares.
-                tafel.eingeklappt = False
-                tafel.zeichne()
+                # Weggeklickt: Der Menüpunkt holt sie zurück — sonst klickt
+                # man ins Menü und es passiert nichts Sichtbares.
                 tafel.fenster.setVisible(True)
                 tafel.ans_untere_ende()
+                # Nachsehen, ob wirklich etwas zu sehen ist. Ein abgeräumtes
+                # Fenster nimmt „zeige dich“ klaglos entgegen und bleibt doch
+                # weg — der Menüpunkt täte dann gar nichts.
+                # Nachmessen. Ein Fenster, das der Nutzer über das Kreuz
+                # geschlossen hat, nimmt „zeige dich“ klaglos entgegen,
+                # schrumpft dabei aber auf null mal null — sichtbar meldet es
+                # sich trotzdem. Nur die Größe verrät, dass da nichts mehr ist.
+                if tafel.fenster.getPosSize().Width < 10:
+                    raise RuntimeError("Fenster ist nur noch eine Hülle")
+                return tafel
             except Exception:                               # noqa: BLE001
-                return None
-        return tafel
+                # Das Kreuz in der Titelleiste räumt das Fenster ganz ab,
+                # nicht nur aus dem Blick. Dann ist die alte Tafel nicht mehr
+                # zu gebrauchen und es wird eine neue gebaut — sonst bliebe
+                # der Menüpunkt nach dem ersten Schließen wirkungslos.
+                T.entferne_tafel(self.rahmen)
+                try:
+                    tafel.fenster.dispose()
+                except Exception:                           # noqa: BLE001
+                    pass
+        try:
+            return T.Tafel(self.ctx, self.rahmen)
+        except Exception:                                   # noqa: BLE001
+            return None
 
     # --- die einzelnen Befehle ---
 

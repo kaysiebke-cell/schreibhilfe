@@ -18,7 +18,8 @@ import os
 import sys
 
 import unohelper
-from com.sun.star.awt import XActionListener, XWindowListener
+from com.sun.star.awt import (XActionListener, XTopWindowListener,
+                              XWindowListener)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import schreibhilfe as SH                                        # noqa: E402
@@ -36,7 +37,11 @@ except ImportError:                                              # pragma: no co
 # verschiedener Kennnummer. Verglichen werden muss deshalb mit ==, das die
 # Brücke auf das dahinterliegende Fenster durchreicht — also eine Liste statt
 # einer Zuordnungstabelle.
-OFFENE_TAFELN = []
+# LibreOffice lädt dieses Modul bei jedem Menüklick frisch. Eine gewöhnliche
+# Liste hier oben wäre danach wieder leer — die Tafel von eben wäre vergessen,
+# und jeder Klick baute eine neue. Darum hängt die Liste am Modul „sys“, das
+# es im Programm nur ein einziges Mal gibt.
+OFFENE_TAFELN = sys.__dict__.setdefault("_schreibhilfe_tafeln", [])
 
 
 def merke_tafel(rahmen, tafel):
@@ -66,7 +71,7 @@ def tafel_von(rahmen):
 
 
 
-class Tafel(unohelper.Base, XWindowListener):
+class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
     """Der Inhalt der Seitenleiste: Knöpfe oben, Fundkästen darunter."""
 
     RAND = 6
@@ -78,7 +83,6 @@ class Tafel(unohelper.Base, XWindowListener):
         self.gui = SH.Oberflaeche(ctx, rahmen)
         self.funde = None      # None = noch nicht geprüft
         self.ziel = None
-        self.eingeklappt = False
         self.breite_px = 900
 
         self.modell = self._dienst("com.sun.star.awt.UnoControlDialogModel")
@@ -91,7 +95,23 @@ class Tafel(unohelper.Base, XWindowListener):
 
         self.fenster = self._dienst("com.sun.star.awt.UnoControlDialog")
         self.fenster.setModel(self.modell)
-        self.fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"), None)
+        # Die Tafel gehört zum Writer-Fenster: Sie liegt immer davor, und wenn
+        # Writer ins Taskleisten-Fach wandert, geht sie mit. Ohne dieses
+        # Elternteil bliebe sie als eigenes Fenster auf dem Bildschirm liegen.
+        try:
+            eltern = rahmen.getContainerWindow()
+        except Exception:                                    # noqa: BLE001
+            eltern = None
+        self.fenster.createPeer(self._dienst("com.sun.star.awt.Toolkit"), eltern)
+
+        # Das Kreuz in der Titelleiste meldet sich hier. Hört niemand zu,
+        # passiert beim Klick darauf schlicht nichts — genau das war der
+        # Fehler: ein Fenster, das man nicht mehr loswird.
+        for wo in (self.fenster, self.fenster.getPeer()):
+            try:
+                wo.addTopWindowListener(self)
+            except Exception:                                # noqa: BLE001
+                pass
 
         merke_tafel(rahmen, self)
 
@@ -101,6 +121,9 @@ class Tafel(unohelper.Base, XWindowListener):
         try:
             self.writer = rahmen.getContainerWindow()
             self.writer.addWindowListener(self)
+            # Klappt der Nutzer Writer in die Taskleiste, soll die Tafel nicht
+            # allein auf dem leeren Bildschirm zurückbleiben.
+            self.writer.addTopWindowListener(self)
         except Exception:                                    # noqa: BLE001
             self.writer = None
 
@@ -196,21 +219,6 @@ class Tafel(unohelper.Base, XWindowListener):
         w = breite - rand * 2
         y = rand
 
-        # Kopfzeile mit eigenen Knöpfen. Das Fenster hat keinen Rahmen vom
-        # System — ohne diese Zeile ließe sich die Tafel weder zuklappen noch
-        # schließen, und sie stünde für immer unten im Weg.
-        self._text("kopf", rand, y + 3, w - 150, 12, "Schreibhilfe",
-                   TextColor=self.gui.farben()["blass"],
-                   FontWeight=150, FontHeight=SH.SCHRIFT_WORT)
-        self._knopf("klappen", breite - rand - 130, y, 62, 16,
-                    "Aufklappen" if self.eingeklappt else "Zuklappen")
-        self._knopf("schliessen", breite - rand - 64, y, 64, 16, "Schließen")
-        y += 22
-
-        if self.eingeklappt:
-            self.modell.Height = y + self.RAND
-            return
-
         self._knopf("pruefen", rand, y, w, 20, "✓  Prüfen")
         y += 26
 
@@ -295,25 +303,7 @@ class Tafel(unohelper.Base, XWindowListener):
             self.ki_lauf("uebersetzen")
         elif name.startswith("nimm"):
             self.nimm(int(name[4:]))
-        elif name == "schliessen":
-            self.schliessen()
-        elif name == "klappen":
-            self.klappen()
 
-    def schliessen(self):
-        """Tafel weglegen. Der Menüpunkt holt sie mitsamt Funden zurück."""
-        self.fenster.setVisible(False)
-
-    def klappen(self):
-        """Zwischen ganzer Tafel und schmaler Kopfzeile umschalten.
-
-        Ein Minimieren gibt es hier nicht — das Fenster hat keinen Rahmen vom
-        System. Zugeklappt bleibt nur die Kopfzeile stehen, und der Blick auf
-        den Text ist wieder frei.
-        """
-        self.eingeklappt = not self.eingeklappt
-        self.zeichne()
-        self.ans_untere_ende()
 
     def nimm(self, nr):
         """Einen einzelnen Fund übernehmen — wie ein Tipp auf „Ändern“ in der App.
@@ -422,8 +412,49 @@ class Tafel(unohelper.Base, XWindowListener):
         finally:
             self._beschaeftigt = False
 
-    def windowShown(self, ereignis): pass
-    def windowHidden(self, ereignis): pass
+    def windowClosing(self, ereignis):
+        """Das Kreuz in der Titelleiste. Die Tafel geht weg, bleibt aber
+        bestehen — der Menüpunkt holt sie mitsamt Funden zurück."""
+        self.fenster.setVisible(False)
+
+    def windowOpened(self, ereignis): pass
+    def windowClosed(self, ereignis): pass
+    def windowMinimized(self, ereignis):
+        try:
+            self.fenster.setVisible(False)
+        except Exception:                                    # noqa: BLE001
+            pass
+
+    def windowNormalized(self, ereignis):
+        """Writer ist zurück. Die Tafel auch — sofern sie vorher offen war."""
+        try:
+            if self.fenster.getPosSize().Width > 10:
+                self.fenster.setVisible(True)
+                self.ans_untere_ende()
+        except Exception:                                    # noqa: BLE001
+            pass
+    def windowActivated(self, ereignis): pass
+    def windowDeactivated(self, ereignis): pass
+
+    def windowHidden(self, ereignis):
+        """Writer ist vom Bildschirm verschwunden — meist in die Taskleiste.
+
+        Der eigentlich zuständige Melder für das Einklappen schweigt auf
+        diesem System; dieser hier kommt zuverlässig. Ohne ihn bliebe die
+        Tafel allein auf dem leeren Bildschirm stehen.
+        """
+        try:
+            self.fenster.setVisible(False)
+        except Exception:                                    # noqa: BLE001
+            pass
+
+    def windowShown(self, ereignis):
+        try:
+            if self.fenster.getPosSize().Width > 10:
+                self.fenster.setVisible(True)
+                self.ans_untere_ende()
+        except Exception:                                    # noqa: BLE001
+            pass
     def disposing(self, ereignis): pass
 
 
