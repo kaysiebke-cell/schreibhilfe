@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dieselben Farben wie in der Web-App: Papier und Petrol. -->
-    <color name="paper">#EDECE5</color>
-    <color name="paper_raised">#F7F6F1</color>
-    <color name="petrol">#2B4C5C</color>
-    <color name="petrol_deep">#1B333F</color>
+    <!-- Dieselben Farben wie in der Web-App: kühler Grund und die eine
+         Betonfarbe. Sie stehen hier ein zweites Mal, weil Fensterhintergrund
+         und Systemleisten schon stehen, bevor die Web-Ansicht das erste Bild
+         gezeichnet hat — sonst blitzte beim Start die alte Farbe auf. -->
+    <color name="paper">#F4F5F7</color>
+    <color name="paper_raised">#F4F5F7</color>
+    <color name="petrol">#2F6FD0</color>
+    <color name="petrol_deep">#24589F</color>
 
     <!-- Rückmeldung des Schwebeknopfs: kurz aufblinken statt nur ein Toast. -->
-    <color name="knopf_gut">#4B7B5D</color>
-    <color name="knopf_nichts">#6B7480</color>
-    <color name="knopf_fehler">#B04A3D</color>
+    <color name="knopf_gut">#2E7D57</color>
+    <color name="knopf_nichts">#626A73</color>
+    <color name="knopf_fehler">#C0392B</color>
 </resources>

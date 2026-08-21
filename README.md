@@ -75,16 +75,17 @@ Rechtschreibprüfer nicht finden *kann* — weil beide Schreibweisen für sich
 genommen richtige Wörter sind. Jeder Fund wird einzeln angezeigt; nichts ändert
 sich von allein, und **„Rückgängig"** holt jede Änderung zurück.
 
-Die Funde haben drei Sorten, am farbigen Balken links zu erkennen:
+Die Funde haben drei Sorten. Welche es ist, steht als Wort oben auf der Karte —
+eine Farbe allein müsste man erst lernen:
 
-* **Orange** — sicher falsch. „Wir hat" wird zu „Wir haben", der Satzanfang
-  wird großgeschrieben, das doppelte Wort fliegt raus.
-* **Blau mit Knopf** — kommt auf den Zusammenhang an: das fehlende Komma vor
-  „weil", „dass" aus „das", der Punkt am Ende. Lies die Stelle noch einmal,
-  bevor du änderst.
-* **Blau ohne Knopf** — ein Hinweis zum Satzbau, kein Fehler: ein Satz mit
+* **„Sicher falsch"** — „Wir hat" wird zu „Wir haben", der Satzanfang wird
+  großgeschrieben, das doppelte Wort fliegt raus.
+* **„Kommt drauf an"** — das fehlende Komma vor „weil", „dass" aus „das", der
+  Punkt am Ende. Lies die Stelle noch einmal, bevor du änderst.
+* **„Zum Nachdenken"** — ein Hinweis zum Satzbau, kein Fehler: ein Satz mit
   30 Wörtern, eine Kette aus lauter „und", eine Klammer ohne Gegenstück. Hier
-  gibt es nichts zu ersetzen, das entscheidest du selbst.
+  gibt es nichts zu ersetzen und deshalb auch keinen Knopf — das entscheidest
+  du selbst.
 
 Lieber eine Lücke als ein falscher Alarm: Regeln, die auch richtige Sätze
 anmeckern würden, sind bewusst nicht drin. „Das Buch, das ich gelesen habe"

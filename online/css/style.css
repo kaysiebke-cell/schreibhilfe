@@ -1,33 +1,67 @@
 /* ============================================================
    Schreib | hilfe — Gestaltung
 
-   Minimal: eine Kopfzeile, das Schreibfeld, eine Knopfleiste.
-   Keine Kästen um Kästen, keine Erklärtexte. Der Bildschirm
-   gehört dem eigenen Text.
+   Ein Regelwerk, keine zwei. Alles Sichtbare hängt an den Marken
+   ganz oben: Farben, Abstände, Ecken. Wer etwas ändern will,
+   ändert dort einen Wert und nicht dreißig Stellen.
+
+   Der Aufbau bleibt, was er war: Kopfzeile, Schreibfeld, Leiste.
+   Immer nur eine Ebene, ein großer Knopf, alles in Daumenreichweite.
    ============================================================ */
 
 :root{
-  --paper:       #EDECE5;
-  --paper-raised:#F7F6F1;
-  --surface:     #ffffff;
-  --ink:         #232930;
-  --ink-soft:    #565f68;
-  --line:        #d8d6cc;
-  --petrol:      #2B4C5C;
-  --petrol-deep: #1B333F;
-  --ok:          #4B7B5D;
-  --warn:        #C08A2E;
-  --urgent:      #B04A3D;
-  /* Streifen hinter dem Wort, an dem gerade geschrieben wird. Wie Grün, Gelb
-     und Rot bleibt er von den Systemfarben unberührt — er muss sich auch dann
-     noch vom Papier abheben, wenn Android die Palette stellt. */
-  --marker:      #F0E3B4;
-  --radius:      3px;
-  --focus-ring:  2px solid var(--petrol);
+  /* --- Die acht Namen unten reicht die Android-Hülle als Material-You-
+     Palette herein (FARB_ZUORDNUNG in app.js). Deshalb heißen sie weiter so,
+     auch wenn „Petrol" jetzt ein kühles Blau ist: Wer sie umbenennt, schaltet
+     „Farben vom System" ab. Alles Übrige leitet sich von ihnen ab. --- */
+  --paper:       #F4F5F7;   /* der Grund, auf dem alles liegt */
+  --paper-raised:#F4F5F7;   /* Kopf- und Fußleiste — bewusst derselbe Ton */
+  --surface:     #FFFFFF;   /* Karten: Schreibfeld, Funde, Einstellungen */
+  --ink:         #1B1E22;
+  --ink-soft:    #626A73;
+  --line:        #E2E5E9;
+  --petrol:      #2F6FD0;   /* die eine Betonfarbe */
+  --petrol-deep: #24589F;
 
-  --serif: "Iowan Old Style","Palatino Linotype","URW Palladio",Palatino,Georgia,serif;
-  --sans:  -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --mono:  "SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  /* Abgeleitet. Feste Werte, damit sie auch ohne color-mix() stimmen —
+     unter „Farben vom System" rechnet der @supports-Block sie neu aus. */
+  --surface-2:   #ECEEF1;   /* tonale Fläche: Knöpfe ohne Rand, Chips */
+  --surface-3:   #E3E6EA;   /* ausgeschalteter Schiebeschalter */
+  --petrol-container:#E3EDFC;
+  --ink-faint:   #98A0A8;   /* dritte Stufe: Zitate, Einheiten, Beiwerk */
+  --on-petrol:   #FFFFFF;   /* Schrift auf der Betonfarbe */
+
+  /* Bedeutungsfarben. Sie bleiben von der Systempalette unberührt — ein
+     gefundener Fehler muss erkennbar bleiben, egal welches Hintergrundbild
+     eingestellt ist. */
+  --ok:          #2E7D57;
+  --ok-container:#DFF1E7;
+  --warn:        #A8721A;
+  --warn-container:#F8EEDA;
+  --urgent:      #C0392B;
+  /* Streifen hinter dem Wort, an dem gerade geschrieben wird. Etwas kräftiger
+     als das Container-Blau der Chips: Er muss beim Schreiben auffallen, ohne
+     den Text darauf schwerer lesbar zu machen. */
+  --marker:      #D3E2FA;
+
+  /* Eine Abstandsskala statt handverlesener Werte. */
+  --s1:.25rem; --s2:.5rem; --s3:.75rem; --s4:1rem; --s5:1.5rem;
+
+  /* Ecken: Karten rund, Knöpfe ganz rund. */
+  --r-karte:  16px;
+  --r-feld:   18px;
+  --r-klein:  12px;
+  --r-pille:  999px;
+
+  /* Höhe statt Linien: Was oben liegt, wirft einen weichen Schatten. */
+  --e1: 0 1px 2px rgba(16,20,26,.07), 0 1px 3px rgba(16,20,26,.05);
+  --e2: 0 2px 6px rgba(16,20,26,.08), 0 8px 20px rgba(16,20,26,.07);
+
+  /* Systemschrift durchgehend — die App sieht aus wie das Gerät, auf dem
+     sie läuft, und erbt dessen Schriftschnitte. */
+  --sys: -apple-system,BlinkMacSystemFont,"Segoe UI Variable","Segoe UI",
+         Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
 
   /* Nur der eigene Text wächst mit A− / A+. Die Bedienung bleibt gleich groß. */
   --schrift: 1.05rem;
@@ -37,29 +71,53 @@
 
 :root[data-theme="dark"]{
   color-scheme: dark;
-  --paper:#1a1c20; --paper-raised:#24272d; --surface:#2b2f36;
-  --ink:#e7e9ec; --ink-soft:#9aa2ac; --line:#3a3e45;
-  --petrol:#6aa3bd; --petrol-deep:#a4c7d8;
-  --ok:#74b98d; --warn:#d7a24e; --urgent:#e0837a;
-  /* Warm statt grau: Auf dunklem Papier verschwimmt ein blaugrauer Streifen
-     mit dem Untergrund. Der Bernstein hebt sich ab und bleibt derselbe
-     Gedanke wie das Gelb im Hellen. Heller ginge, aber dann wird der Text
-     darauf zu blass — er muss die Hauptsache bleiben. */
-  --marker:#6f5a26;
+  --paper:#121316; --paper-raised:#121316; --surface:#1C1E22;
+  --ink:#E6E8EB; --ink-soft:#9AA1A9; --line:#2B2F35;
+  --petrol:#8AB4F8; --petrol-deep:#B3CEFB;
+
+  --surface-2:#24272C; --surface-3:#2C3037;
+  --petrol-container:#22314A;
+  --ink-faint:#767D85;
+  /* Auf dunklem Grund ist die Betonfarbe hell — die Schrift darauf muss
+     dunkel sein, sonst leuchtet Weiß auf Hellblau. */
+  --on-petrol:#0F1620;
+
+  --ok:#74C79A; --ok-container:#1D3329;
+  --warn:#E0B25A; --warn-container:#342B18;
+  --urgent:#F0897E;
+  --marker:#2C4266;
+
+  --e1: 0 1px 2px rgba(0,0,0,.5);
+  --e2: 0 2px 8px rgba(0,0,0,.5), 0 10px 24px rgba(0,0,0,.4);
 }
+
+/* Unter „Farben vom System" stellt Android die acht Grundfarben. Die
+   abgeleiteten müssen dann mitwandern, sonst stünde ein graues Kärtchen auf
+   einem grünen Grund. Der @supports-Riegel ist Absicht: Ältere Web-Ansichten
+   kennen color-mix() nicht, und ohne ihn bekämen sie gar keinen Wert. */
+@supports (color: color-mix(in srgb, #000 50%, #fff)){
+  :root[data-systemfarben]{
+    --surface-2: color-mix(in srgb, var(--ink) 7%,  var(--surface));
+    --surface-3: color-mix(in srgb, var(--ink) 14%, var(--surface));
+    --petrol-container: color-mix(in srgb, var(--petrol) 16%, var(--surface));
+    --ink-faint: color-mix(in srgb, var(--ink-soft) 72%, var(--paper));
+  }
+}
+
+/* Die Auswahlliste selbst gehört dem System — im Dunklen muss sie mit. */
 :root[data-theme="dark"] select,
 :root[data-theme="dark"] option{background:var(--surface);color:var(--ink)}
 
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;height:100%}
-/* Eigene display-Regeln (.btn{display:inline-flex}) schlagen sonst das hidden-Attribut. */
+/* Eigene display-Regeln schlagen sonst das hidden-Attribut. */
 [hidden]{display:none !important}
 
 body{
   background:var(--paper);
   color:var(--ink);
-  font-family:var(--sans);
-  line-height:1.45;
+  font-family:var(--sys);
+  line-height:1.5;
   display:flex;
   flex-direction:column;
   height:100dvh;
@@ -74,83 +132,94 @@ body{
   stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;
 }
 
-/* ---- Kopfzeile ---- */
-.topbar{
-  display:flex;align-items:center;justify-content:space-between;gap:.5rem;
-  padding:.25rem .55rem;
-  padding-top:max(.25rem, env(safe-area-inset-top));
-  border-bottom:1px solid var(--line);
-  flex:none;
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important;animation:none !important}
 }
-.wortmarke{
-  font-family:var(--serif);font-size:1.05rem;font-weight:600;
-  margin:0;line-height:1.1;white-space:nowrap;
-  /* Auf sehr schmalen Geräten weicht der Name, nicht die Knöpfe. */
+
+/* ------------------------------------------------------------
+   Kopfzeile — der Name links, das Zahnrad rechts, keine Trennlinie.
+   Die Fläche trägt die Trennung, nicht ein Strich.
+   ------------------------------------------------------------ */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--s2);
+  padding:var(--s3) var(--s3) var(--s2);
+  padding-top:max(var(--s3), env(safe-area-inset-top));
+  background:var(--paper-raised);
+  flex:none;
+  /* Dieselbe Breite wie Schreibfeld und Leiste — sonst klebt der Name am
+     linken Rand, während der Inhalt am Rechner mittig steht. */
+  width:100%;max-width:820px;margin:0 auto;
+}
+.app-titel{
+  font-size:1.25rem;font-weight:600;letter-spacing:-.015em;
+  margin:0;line-height:1.2;white-space:nowrap;
+  /* Auf sehr schmalen Geräten weicht der Name, nicht das Zahnrad. */
   min-width:0;overflow:hidden;text-overflow:ellipsis;
 }
-.wortmarke__a{color:var(--petrol)}
-.wortmarke__b{color:var(--ok)}
+.topbar__tools{display:flex;align-items:center;gap:var(--s1);flex:none}
 
-.topbar__tools{display:flex;align-items:center;gap:.05rem;flex:none}
-.zaehler{
-  font-family:var(--mono);font-size:.66rem;color:var(--ink-soft);
-  white-space:nowrap;margin-right:.3rem;
-}
-.zaehler:empty{display:none}
+/* Runde Trefferfläche, 48 px — darunter trifft man mit dem Daumen nicht. */
 .topbar__icon{
   appearance:none;background:none;border:none;cursor:pointer;
   color:var(--ink-soft);
   display:inline-flex;align-items:center;justify-content:center;
-  min-width:2rem;height:2rem;
-  border-radius:var(--radius);line-height:1;
+  width:3rem;height:3rem;padding:0;
+  border-radius:var(--r-pille);line-height:1;
+  transition:background .15s, color .15s;
 }
-.topbar__icon:active{color:var(--petrol)}
-.topbar__icon:focus-visible{outline:var(--focus-ring);outline-offset:1px}
-.schriftknopf{font-family:var(--serif);font-size:.8rem;font-weight:700}
-.schriftknopf.gross{font-size:1rem}
+.topbar__icon:hover{background:var(--surface-2);color:var(--ink)}
+.topbar__icon:active{background:var(--surface-3)}
+.topbar__icon:focus-visible{outline:2px solid var(--petrol);outline-offset:2px}
+.topbar__icon .ic{width:1.4em;height:1.4em}
 
-/* ---- Mitte: das Schreibfeld bekommt allen übrigen Platz ---- */
+/* ------------------------------------------------------------
+   Mitte — das Schreibfeld bekommt allen übrigen Platz
+   ------------------------------------------------------------ */
 #app{
   flex:1;min-height:0;
   width:100%;max-width:820px;margin:0 auto;
-  padding:.45rem .5rem 0;
-  display:flex;flex-direction:column;gap:.4rem;
+  padding:0 var(--s3);
+  display:flex;flex-direction:column;gap:var(--s3);
 }
 
-/* Feld und Zwilling liegen übereinander. Die Papierfarbe trägt der Rahmen,
-   damit der Zwilling dazwischen durchscheint. */
+/* Das Feld ist eine Karte auf dem Grund: kein Rahmen, sondern Höhe.
+   Feld und Zwilling liegen darin übereinander. */
 .feld{
   position:relative;flex:1;min-height:5rem;
   display:flex;
   background:var(--surface);
-  border-radius:var(--radius);
+  border-radius:var(--r-feld);
+  box-shadow:var(--e1);
 }
 
 /* Zeichen für Zeichen deckungsgleich: gleiche Schrift, gleiche Innenabstände,
    gleicher Zeilenfall. Weicht hier etwas ab, verrutscht der Streifen. */
-#spiegel,textarea#text{
-  font-family:var(--sans);
+#spiegel,textarea#text,.ergebnis{
+  font-family:var(--sys);
   font-size:var(--schrift);
   line-height:1.6;
-  letter-spacing:.012em;
-  padding:.55rem .6rem;
+  letter-spacing:.01em;
+  padding:var(--s4);
 }
 textarea#text{
   flex:1;min-width:0;
   width:100%;resize:none;
-  border:1px solid var(--line);
-  border-radius:var(--radius);
+  border:none;
+  border-radius:var(--r-feld);
   background:transparent;   /* der Zwilling scheint durch */
   color:var(--ink);
   position:relative;        /* liegt über dem Zwilling */
 }
-textarea#text:focus{outline:none;border-color:var(--petrol)}
+textarea#text:focus{outline:none}
+/* Der Ring liegt an der Karte, nicht am Feld darin — sonst säße er innerhalb
+   der runden Ecke und sähe aus wie ein zweiter Rahmen. */
+.feld:focus-within{box-shadow:var(--e1), 0 0 0 2px var(--petrol)}
 
-/* Der Zwilling sitzt innerhalb des Randes; seine Breite setzt die App auf die
-   Innenbreite des Feldes, damit ein Rollbalken den Zeilenfall nicht verschiebt.
+/* Der Zwilling füllt die Karte; seine Breite setzt die App auf die Innenbreite
+   des Feldes, damit ein Rollbalken den Zeilenfall nicht verschiebt.
    Der Text ist durchsichtig — zu sehen ist nur der Streifen. */
 #spiegel{
-  position:absolute;top:1px;left:1px;bottom:1px;
+  position:absolute;inset:0;
   margin:0;overflow:hidden;
   white-space:pre-wrap;overflow-wrap:break-word;
   color:transparent;
@@ -159,284 +228,214 @@ textarea#text:focus{outline:none;border-color:var(--petrol)}
 }
 #spiegel mark{
   background:var(--marker);color:transparent;
-  border-radius:2px;
+  border-radius:4px;
 }
-
-/* ---- Fundliste ---- */
-/* Die Fundliste darf höchstens die halbe Seite nehmen — der Rest bleibt Schreibfeld. */
-#funde{overflow-y:auto;flex:0 1 auto;min-height:0;max-height:50%}
-#funde:empty{display:none}
-
-.fund{
-  display:flex;align-items:center;justify-content:space-between;gap:.5rem;
-  background:var(--surface);
-  border:1px solid var(--line);
-  border-left:3px solid var(--warn);
-  border-radius:var(--radius);
-  padding:.35rem .45rem;
-}
-/* Blau statt orange: hier ist nichts sicher falsch, es kommt auf den
-   Zusammenhang an. Hinweise zum Satzbau haben gar keinen Knopf. */
-.fund--tipp,.fund--hinweis{border-left-color:var(--petrol)}
-.fund + .fund{margin-top:.3rem}
-.fund__text{flex:1;min-width:0}
-.fund__wort{font-family:var(--mono);font-size:.85rem;line-height:1.3}
-/* Der zitierte Satz: eine Zeile, danach Auslassungspunkte. */
-.fund__stelle{
-  font-family:var(--serif);font-size:.8rem;line-height:1.3;color:var(--ink);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-}
-/* Vorschläge sind ganze Sätze: untereinander statt nebeneinander. Der alte
-   Satz wird nicht durchgestrichen — er ist nicht falsch, nur schwerer. */
-.fund__satz{font-size:.82rem;line-height:1.4}
-.fund__satz--alt{color:var(--ink-soft)}
-.fund__satz--neu{color:var(--ink);font-weight:600}
-.fund__satz--neu::before{content:"→ ";color:var(--ok);font-weight:400}
-.fund--vorschlag{border-left-color:var(--ok)}
-/* Bei ganzen Sätzen steht der Knopf unten rechts statt daneben. */
-.fund--vorschlag{flex-direction:column;align-items:stretch;gap:.35rem}
-.fund--vorschlag .btn{align-self:flex-end}
-
-.fund__falsch{color:var(--urgent);text-decoration:line-through;text-decoration-thickness:1px}
-.fund__pfeil{color:var(--ink-soft);margin:0 .3rem}
-.fund__richtig{color:var(--ok);font-weight:700}
-.fund__grund{display:block;font-size:.7rem;color:var(--ink-soft);line-height:1.3}
-
-.hint{margin:0;font-size:.76rem;color:var(--ink-soft);line-height:1.35}
-.hint:empty{display:none}
-
-/* „Zurückholen" steht über der Leiste, nicht darin — sonst wäre es der Knopf,
-   der die Reihe sprengt. Es nimmt nur die Breite seines Wortes ein und ist
-   überhaupt nur da, wenn es etwas zurückzuholen gibt. */
-/* Die beiden Knöpfe über der Leiste. Sie nehmen nur die Breite ihrer Wörter
-   ein und sind überhaupt nur da, wenn sie etwas zu tun haben. */
-.aktionen{display:flex;gap:.4rem;flex-wrap:wrap}
-.aktionen .btn{min-height:3rem}
-
-/* ---- Knopfleiste unten ----
-   Jeder Knopf ist mindestens 48px hoch und breit — darunter trifft man mit
-   dem Daumen nicht mehr zuverlässig. Das bleibt so.
-   Wird es eng, fallen zuerst die Wörter hinter den Sinnbildern weg
-   (.leiste--eng, die App misst das selbst) — erst wenn auch das nicht reicht,
-   bricht die Reihe um. */
-.leiste{
-  flex:none;
-  display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;
-  padding:.4rem .5rem;
-  padding-bottom:max(.4rem, env(safe-area-inset-bottom));
-  border-top:1px solid var(--line);
-  background:var(--paper-raised);
-  width:100%;max-width:820px;margin:0 auto;
-}
-.leiste .btn{min-height:3rem}
-.leiste .btn .ic{width:1.2em;height:1.2em}
-/* Rückgängig und Löschen sitzen rechts, abgesetzt von den Knöpfen mit
-   Beschriftung — damit man Löschen nicht neben „Kopieren“ erwischt. */
-.leiste__rechts{display:flex;gap:.4rem;margin-left:auto;flex:none}
-/* Ohne Wort bleibt die Trefferfläche trotzdem daumengroß. */
-/* Teilen und Kopieren dürfen ihr Wort verlieren — Pfeil und Doppelblatt kennt
-   man. Beim KI-Knopf ginge das schief: Ein Funkeln sagt niemandem, was
-   dahintersteckt, und ohne Wort wusste keiner mehr, wo Korrigieren und
-   Übersetzen wohnen. „Prüfen“ behält sein Wort ohnehin. */
-.leiste--eng #btn-teilen .btn__wort,
-.leiste--eng #btn-kopieren .btn__wort{display:none}
-.leiste--eng #btn-teilen,
-.leiste--eng #btn-kopieren{padding:.5rem;min-width:3rem}
-/* Letzte Stufe, nur auf sehr schmalen Geräten: dann geht auch „KI“ —
-   immer noch besser als eine Leiste, die auf zwei Zeilen aufklappt. */
-.leiste--sehr-eng #btn-ki .btn__wort{display:none}
-.leiste--sehr-eng #btn-ki{padding:.5rem;min-width:3rem}
-
-.btn{
-  font-family:var(--sans);font-size:.82rem;font-weight:600;
-  display:inline-flex;align-items:center;justify-content:center;gap:.3rem;
-  border-radius:var(--radius);
-  padding:.5rem .65rem;
-  cursor:pointer;
-  border:1px solid var(--line);
-  background:var(--surface);color:var(--petrol-deep);
-}
-.btn .ic{width:1em;height:1em}
-.btn:active{border-color:var(--petrol)}
-.btn:focus-visible{outline:var(--focus-ring);outline-offset:1px}
-.btn--primary{background:var(--petrol);color:#fff;border-color:var(--petrol)}
-:root[data-theme="dark"] .btn--primary{color:#101418}
-.btn--breit{flex:1 1 auto;min-width:0}
-.btn--icon{padding:.5rem;min-width:3rem;color:var(--ink-soft)}
-.btn--ghost{border-color:transparent;background:none;color:var(--ink-soft)}
-.btn--laeuft,.btn:disabled{opacity:.5;cursor:default}
-
-/* ---- Einstellungen ----
-   Die Regeln für <dialog> und .dlg__head standen hier, bis die Einstellungen
-   ein eigener Bildschirm wurden. Seither gibt es kein <dialog> mehr in der
-   App; ihr Ersatz steht ganz unten bei .seite. */
-.form{display:flex;flex-direction:column;gap:.8rem}
-.field{display:flex;flex-direction:column;gap:.25rem;font-size:.8rem;font-weight:700}
-.field em{font-weight:400;font-style:normal;color:var(--ink-soft)}
-.field input,.field select{
-  font-family:var(--sans);font-size:.9rem;font-weight:400;
-  padding:.5rem .6rem;
-  border:1px solid var(--line);border-radius:var(--radius);
-  background:var(--surface);color:var(--ink);
-}
-.field input:focus,.field select:focus{outline:var(--focus-ring);outline-offset:1px}
-/* Schalterzeile: Kästchen links, Beschriftung daneben. */
-.field--schalter{flex-direction:row;align-items:flex-start;gap:.55rem;cursor:pointer}
-.field--schalter input{width:1.35rem;height:1.35rem;flex:none;margin-top:.1rem;accent-color:var(--petrol)}
-.field--schalter em{display:block;font-weight:400;font-style:normal;font-size:.73rem;color:var(--ink-soft);line-height:1.35}
-.form__actions{display:flex;justify-content:flex-end;gap:.45rem;flex-wrap:wrap}
-/* Zahl links, Knopf rechts — der Knopf ist nur da, wenn es etwas zurückzusetzen gibt. */
-.zeile{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-top:-.35rem}
-.btn--klein{font-size:.72rem;padding:.35rem .5rem;flex:none}
-/* Verweise nach draußen: Android macht daraus den Systembrowser. Trefferfläche
-   großzügig, damit man sie mit dem Daumen erwischt. */
-.verweis{
-  font-size:.74rem;color:var(--petrol);text-decoration:underline;
-  white-space:nowrap;flex:none;padding:.4rem 0;
-}
-
-/* ============================================================
-   Aufgeräumte Bedienung: ein großer Knopf, danach der Weg zurück.
-   Vorher standen bis zu dreizehn Bedienelemente auf einem Bildschirm,
-   teils in Fenstern hinter Fenstern. Für eine App gegen Lesestress
-   ist das verkehrt herum.
-   ============================================================ */
-.knopf{
-  font-family:var(--sans);
-  display:flex;align-items:center;justify-content:center;gap:.5rem;
-  border-radius:var(--radius);
-  cursor:pointer;
-  border:1.5px solid var(--line);
-  background:transparent;color:var(--ink);
-  transition:transform .1s ease, background .15s ease;
-}
-.knopf:active{transform:scale(.985)}
-.knopf:focus-visible{outline:var(--focus-ring);outline-offset:2px}
-
-/* Der Hauptknopf ist absichtlich groß: er ist fast immer der richtige. */
-.knopf--haupt{
-  width:100%;
-  padding:1.05rem;
-  font-size:1.15rem;font-weight:700;
-  background:var(--petrol);color:#fff;border-color:var(--petrol);
-}
-:root[data-theme="dark"] .knopf--haupt{color:#11181d}
-.knopf--haupt .ic{width:1.15em;height:1.15em}
-
-.knopf--klein{
-  flex:1;
-  padding:.7rem .8rem;
-  font-size:.95rem;font-weight:600;
-  color:var(--ink-soft);
-}
-.knopf--klein:hover{color:var(--ink);background:var(--paper)}
-
-/* Was nach dem Korrigieren zu tun ist, erscheint erst danach. */
-.danach{display:flex;flex-direction:column;gap:.5rem;margin-top:.5rem}
-.danach__klein{display:flex;gap:.5rem}
-.reihe-klein{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center;margin-top:.35rem}
-.reihe-klein select{flex:1;min-width:7rem}
-
-/* Die verbesserten Stellen leuchten IM Text — der Zwilling hinter dem
-   Schreibfeld legt die Farbe genau unter die Buchstaben. */
+/* Die verbesserten Stellen leuchten IM Text — der Zwilling legt die Farbe
+   genau unter die Buchstaben. */
 #spiegel mark.neu{
-  background:color-mix(in srgb, var(--ok) 32%, transparent);
-  border-radius:2px;
+  background:var(--ok-container);
+  border-radius:4px;
   color:transparent;
 }
 
-/* Hinweise zum Satzbau sind Sätze zum Nachdenken, keine Knöpfe. */
-.hinweis-satz{
-  margin:.35rem 0 0;
-  padding-left:.7rem;
-  border-left:3px solid var(--petrol);
-  font-size:.88rem;color:var(--ink-soft);line-height:1.4;
-}
-
-.trenner{border:none;border-top:1px solid var(--line);margin:.4rem 0}
-
-/* Die Erfolgsmeldung steht mittig und grün unter dem Text — sie gehört zum
-   Ergebnis, nicht zur Bedienung. */
-.status--gut{
-  color:var(--ok);
-  font-weight:700;
-  text-align:center;
-}
-
-/* Die Ergebnis-Ansicht liegt genau über dem Schreibfeld und sieht aus wie es —
-   nur sind die verbesserten Wörter grün und fett. Ein Tipp darauf, und man
-   schreibt wieder im Feld. */
+/* Nach dem Korrigieren liegt hier der fertige Text mit grünen Wörtern.
+   Ein <textarea> lässt sich innen nicht einfärben — daher diese Ansicht
+   darüber. Ein Tipp darauf, und man schreibt wieder im Feld. */
 .ergebnis{
-  position:absolute;inset:1px;
+  position:absolute;inset:0;
   overflow:auto;
   background:var(--surface);
-  border-radius:var(--radius);
+  border-radius:var(--r-feld);
   color:var(--ink);
-  font-family:var(--sans);
-  font-size:var(--schrift);
-  line-height:1.6;
-  letter-spacing:.012em;
-  padding:.55rem .6rem;
   white-space:pre-wrap;
   overflow-wrap:break-word;
   cursor:text;
 }
-.ergebnis .neu{color:var(--ok);font-weight:700}
-
-/* Bau-Nummer in der Kopfzeile: klein, unaufdringlich — aber auf jedem
-   Bildschirmfoto lesbar. Damit ist immer klar, welcher Stand zu sehen ist. */
-.baunummer{
-  font-family:var(--mono);
-  font-size:.7rem;
-  color:var(--ink-soft);
-  opacity:.75;
-  margin-right:.15rem;
-}
-
-/* ============================================================
-   Die Fußleiste war als Zeile gebaut (flex-direction: row). Darin schrumpft
-   jeder Knopf auf seinen Inhalt — „Teilen" endete bei rund 70 % und rechts
-   blieb ein leerer Streifen. Im Entwurf reichen die Knöpfe von Rand zu Rand.
-   Deshalb hier eine Spalte, in der die Kinder auf volle Breite gezogen werden.
-   ============================================================ */
-.leiste{
-  flex-direction:column;
-  flex-wrap:nowrap;
-  align-items:stretch;
-  gap:.5rem;
-}
-.leiste > .knopf,
-.leiste > .danach{ width:100%; }
-/* Rückgängig und Löschen teilen sich die Breite zu gleichen Teilen. */
-.danach__klein{ display:flex; gap:.5rem; }
-.danach__klein > .knopf{ flex:1 1 0; }
-
-/* Die beiden KI-Wege stehen nebeneinander unter dem Hauptknopf. */
-.ki-reihe{display:flex;gap:.5rem}
-.ki-reihe > .knopf{flex:1 1 0}
-
-/* Der Werkzeug-Kasten steht als letzter unter den Vorschlägen — dort, wo der
-   Blick nach dem Prüfen ohnehin ist, und in Daumenreichweite. */
-.fund--werkzeug{border-left-color:var(--ok);align-items:flex-start}
-.werkzeug__titel{font-size:.85rem;font-weight:600;color:var(--ink-soft)}
-.werkzeuge{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.45rem}
-.werkzeug{
-  font-family:var(--sans);font-size:.82rem;font-weight:600;
-  display:inline-flex;align-items:center;gap:.3rem;
-  background:var(--paper);color:var(--petrol-deep);
-  border:1px solid var(--line);border-radius:var(--radius);
-  padding:.45rem .7rem;cursor:pointer;
-}
-.werkzeug:active{transform:scale(.97)}
-.werkzeug .ic{width:1em;height:1em;color:var(--ok)}
+.ergebnis .neu{color:var(--ok);font-weight:600}
 
 /* ------------------------------------------------------------
-   Die Einstellungen als eigener Bildschirm.
+   Fundliste — je ein Kärtchen, die Sorte steht als Wort darüber
+   ------------------------------------------------------------ */
+/* Die Liste darf höchstens die halbe Seite nehmen — der Rest bleibt Schreibfeld. */
+#funde{
+  overflow-y:auto;flex:0 1 auto;min-height:0;max-height:50%;
+  display:flex;flex-direction:column;gap:var(--s2);
+  /* Rollt die Liste, soll die letzte Karte nicht am Rand kleben. */
+  padding-bottom:2px;
+}
+#funde:empty{display:none}
 
-   Vorher lagen sie als <dialog> über der App — ein Fenster in einem Fenster,
-   mit Schließkreuz oben rechts, wo der Daumen nicht hinreicht. Jetzt tritt der
-   Schreibbildschirm ab, solange sie offen sind: immer nur eine Ebene, und die
-   Android-Zurück-Taste tut das, was man von ihr erwartet.
+.fund{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:var(--s2) var(--s3);
+  background:var(--surface);
+  border-radius:var(--r-karte);
+  box-shadow:var(--e1);
+  padding:var(--s3);
+}
+
+/* Der Chip sagt, woran man ist: sicher falsch, kommt drauf an, zum Nachdenken.
+   Vorher tat das ein farbiger Balken links — die Farbe allein muss man aber
+   erst gelernt haben. */
+.fund__sorte{
+  grid-column:1 / -1;
+  justify-self:start;
+  font-size:.6875rem;font-weight:600;
+  letter-spacing:.04em;text-transform:uppercase;
+  padding:.2rem .6rem;border-radius:var(--r-pille);
+  background:var(--warn-container);color:var(--warn);
+}
+.fund--tipp    .fund__sorte,
+.fund--hinweis .fund__sorte{background:var(--petrol-container);color:var(--petrol-deep)}
+.fund--vorschlag .fund__sorte,
+.fund--werkzeug  .fund__sorte{background:var(--ok-container);color:var(--ok)}
+
+.fund__text{grid-column:1;min-width:0}
+.fund > .btn{grid-column:2;align-self:center}
+
+/* „widersprechen" ist ein Wort, das auf 320 px nicht neben den Knopf passt.
+   Ohne diese Zeile läuft es unter ihn und ist nicht mehr zu lesen. */
+.fund__wort{font-size:.95rem;line-height:1.35;overflow-wrap:anywhere}
+/* Der zitierte Satz: eine Zeile, danach Auslassungspunkte. */
+.fund__stelle{
+  font-size:.8rem;line-height:1.35;color:var(--ink-faint);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+/* Vorschläge sind ganze Sätze: untereinander statt nebeneinander. Der alte
+   Satz wird nicht durchgestrichen — er ist nicht falsch, nur schwerer. */
+.fund__satz{font-size:.9rem;line-height:1.45}
+.fund__satz--alt{color:var(--ink-soft)}
+.fund__satz--neu{color:var(--ink);font-weight:600}
+.fund__satz--neu::before{content:"→ ";color:var(--ok);font-weight:400}
+/* Bei ganzen Sätzen steht der Knopf unten rechts statt daneben. */
+.fund--vorschlag .fund__text{grid-column:1 / -1}
+.fund--vorschlag > .btn{grid-column:1 / -1;justify-self:end}
+
+.fund__falsch{color:var(--ink-faint);text-decoration:line-through;text-decoration-thickness:1px}
+.fund__pfeil{color:var(--ink-faint);margin:0 .35rem}
+.fund__richtig{color:var(--ok);font-weight:600}
+.fund__grund{display:block;font-size:.78rem;color:var(--ink-soft);line-height:1.4;margin-top:.15rem}
+
+/* Auf sehr schmalen Geräten steht der Knopf unter dem Text statt daneben:
+   Nebeneinander bliebe für das Wort selbst kaum noch Platz. */
+@media (max-width:360px){
+  .fund{grid-template-columns:1fr}
+  .fund__text{grid-column:1 / -1}
+  .fund > .btn{grid-column:1 / -1;justify-self:end}
+}
+
+/* Hinweise zum Satzbau sind Sätze zum Nachdenken, keine Knöpfe. */
+.hinweis-satz{
+  margin:0;
+  background:var(--surface);
+  border-radius:var(--r-karte);
+  box-shadow:var(--e1);
+  padding:var(--s3);
+  font-size:.9rem;color:var(--ink-soft);line-height:1.45;
+}
+
+/* Der Werkzeug-Kasten steht als letzter unter den Funden — dort, wo der Blick
+   nach dem Prüfen ohnehin ist, und in Daumenreichweite. */
+.fund--werkzeug{grid-template-columns:1fr}
+.fund--werkzeug .fund__text{grid-column:1 / -1}
+.werkzeug__titel{font-size:.9rem;font-weight:600;color:var(--ink)}
+.werkzeuge{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s2)}
+
+.hint{margin:0;font-size:.8rem;color:var(--ink-soft);line-height:1.4;text-align:center}
+.hint:empty{display:none}
+/* Die Erfolgsmeldung gehört zum Ergebnis, nicht zur Bedienung. */
+.status--gut{color:var(--ok);font-weight:600}
+
+/* ------------------------------------------------------------
+   Knopfleiste unten
+
+   Jeder Knopf ist mindestens 48 px hoch — darunter trifft man mit dem Daumen
+   nicht mehr zuverlässig. Das bleibt so.
+   ------------------------------------------------------------ */
+.leiste{
+  flex:none;
+  display:flex;flex-direction:column;align-items:stretch;gap:var(--s2);
+  padding:var(--s3);
+  padding-bottom:max(var(--s3), env(safe-area-inset-bottom));
+  background:var(--paper-raised);
+  width:100%;max-width:820px;margin:0 auto;
+}
+/* Was nach dem Korrigieren zu tun ist, erscheint erst danach. */
+.danach{display:flex;flex-direction:column;gap:var(--s2)}
+/* Die kleinen Wege teilen sich eine Zeile zu gleichen Teilen. */
+.danach__klein{display:flex;gap:var(--s1)}
+.danach__klein > .btn{flex:1 1 0;min-width:0}
+
+/* ------------------------------------------------------------
+   EIN Knopf-System, drei Stufen:
+
+     .btn--haupt   gefüllt   — der eine richtige Weg
+     .btn--tonal   getönt    — der zweitwichtigste
+     .btn--text    nur Wort  — Nebenwege
+     .btn--klein   Umriss    — Werkzeuge in den Einstellungen
+
+   Vorher gab es .btn und .knopf nebeneinander, mit verschiedenen Ecken,
+   Größen und Farben — und in den Einstellungen standen beide in einer Zeile.
+   ------------------------------------------------------------ */
+.btn,.werkzeug{
+  font-family:var(--sys);font-size:.875rem;font-weight:600;
+  display:inline-flex;align-items:center;justify-content:center;gap:.4em;
+  border:none;border-radius:var(--r-pille);
+  padding:.7rem 1.1rem;min-height:3rem;
+  cursor:pointer;
+  background:var(--surface-2);color:var(--ink);
+  transition:background .15s ease, transform .1s ease, box-shadow .15s ease;
+}
+.btn .ic,.werkzeug .ic{width:1.1em;height:1.1em}
+.btn:active,.werkzeug:active{transform:scale(.985)}
+.btn:focus-visible,.werkzeug:focus-visible{outline:2px solid var(--petrol);outline-offset:2px}
+
+/* Der Hauptknopf ist absichtlich groß: er ist fast immer der richtige. */
+.btn--haupt{
+  width:100%;
+  padding:1rem;min-height:3.5rem;
+  font-size:1.0625rem;font-weight:600;
+  background:var(--petrol);color:var(--on-petrol);
+  box-shadow:var(--e1);
+}
+.btn--haupt .ic{width:1.15em;height:1.15em}
+
+/* Getönt: dieselbe Farbe, nur leise. Der zweite Weg neben dem Hauptknopf —
+   und der Knopf an jeder Fundkarte („Ändern", „Nehmen"), den app.js als
+   .btn--primary erzeugt. */
+.btn--tonal,.btn--primary,.werkzeug{
+  background:var(--petrol-container);color:var(--petrol-deep);
+  box-shadow:none;
+}
+.btn--primary{padding:.6rem 1rem;min-height:2.75rem;font-size:.8125rem}
+.werkzeug .ic{color:var(--ok)}
+
+/* Nur das Wort: Nebenwege, die selten gebraucht werden. */
+.btn--text,.btn--ghost{background:transparent;color:var(--ink-soft)}
+.btn--text:hover,.btn--ghost:hover{background:var(--surface-2);color:var(--ink)}
+/* Löschen sieht anders aus als Teilen — man soll es nicht aus Versehen treffen. */
+.btn--gefahr{color:var(--urgent)}
+.btn--gefahr:hover{background:var(--surface-2);color:var(--urgent)}
+
+/* Umriss: Werkzeugknöpfe in den Einstellungen. Sie stehen auf einer Karte,
+   dort wäre eine zweite Fläche eine Fläche zu viel. */
+.btn--klein{
+  background:transparent;color:var(--ink);
+  border:1px solid var(--line);
+  padding:.55rem .9rem;min-height:2.75rem;font-size:.8125rem;
+}
+.btn--klein:hover{background:var(--surface-2)}
+.btn--laeuft,.btn:disabled{opacity:.5;cursor:default}
+
+.schriftknopf{font-weight:700}
+.schriftknopf.gross{font-size:1.15em}
+
+/* ------------------------------------------------------------
+   Einstellungen — ein eigener Bildschirm, kein Fenster im Fenster.
+   Das Zahnrad tauscht den Schreibbildschirm gegen diesen hier aus; der Pfeil
+   und die Android-Zurück-Taste bringen zurück. Immer nur eine Ebene.
    ------------------------------------------------------------ */
 .seite{
   flex:1;min-height:0;
@@ -448,32 +447,156 @@ body.seite-offen > #app,
 body.seite-offen > .leiste{ display:none !important; }
 
 .seite__kopf{
-  display:flex;align-items:center;gap:.35rem;
-  padding:.25rem .55rem;
-  padding-top:max(.25rem, env(safe-area-inset-top));
-  border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:var(--s1);
+  padding:var(--s3) var(--s3) var(--s2);
+  padding-top:max(var(--s3), env(safe-area-inset-top));
+  background:var(--paper-raised);
   flex:none;
+  width:100%;
 }
 .seite__kopf h2{
-  font-family:var(--serif);font-size:1.05rem;margin:0;
-  color:var(--petrol-deep);font-weight:600;
+  font-size:1.25rem;margin:0;font-weight:600;letter-spacing:-.015em;
+  color:var(--ink);
 }
 
 /* Nur die Einstellungen rollen, nicht die Seite. So bleiben Kopf und
    Speichern-Knopf stehen, wo sie sind. */
 .seite .form{
   flex:1;min-height:0;overflow-y:auto;
-  padding:.7rem .6rem .5rem;
+  /* Unten kein Abstand: Den setzt der Speichern-Balken, der dort klebt.
+     Sonst bliebe unter ihm ein Streifen, durch den Inhalt durchscheint. */
+  padding:var(--s1) var(--s3) 0;
+}
+.form{display:flex;flex-direction:column;gap:var(--s5)}
+
+/* Gruppen mit Überschrift statt einer langen Liste, in der alles gleich
+   wiegt. Die Überschrift steht klein über der Karte, wie im System. */
+.gruppe{display:flex;flex-direction:column;gap:var(--s2)}
+.gruppe__titel{
+  font-size:.6875rem;font-weight:600;
+  letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-faint);
+  padding-left:var(--s4);
+}
+.karte{
+  background:var(--surface);
+  border-radius:var(--r-karte);
+  box-shadow:var(--e1);
+  overflow:hidden;
+}
+/* Zeilen einer Karte trennt eine Haarlinie, keine Lücke. */
+.karte > * + *{border-top:1px solid var(--line)}
+
+/* Eine Zeile: Beschriftung, darunter das Feld. */
+.field{
+  display:flex;flex-direction:column;gap:var(--s1);
+  font-size:.9375rem;font-weight:500;
+  padding:var(--s3) var(--s4);
+  margin:0;
+}
+.field em{
+  display:block;
+  font-weight:400;font-style:normal;
+  font-size:.8125rem;color:var(--ink-faint);line-height:1.4;
+}
+.field input[type="password"],
+.field input[type="text"]{
+  font-family:var(--sys);font-size:.9375rem;font-weight:400;
+  padding:.6rem .75rem;margin-top:var(--s1);
+  border:1px solid var(--line);border-radius:var(--r-klein);
+  background:var(--paper);color:var(--ink);
+  width:100%;
+}
+.field input:focus-visible,.field select:focus-visible{
+  outline:2px solid var(--petrol);outline-offset:1px;
 }
 
+/* Auswahlzeile: Beschriftung links, Wert rechts — die Liste selbst gehört
+   dem System, samt seinem Pfeil. */
+.field--zeile{
+  flex-direction:row;align-items:center;justify-content:space-between;
+  gap:var(--s3);
+}
+.field--zeile > span{flex:1;min-width:0}
+.field--zeile select{
+  font-family:var(--sys);font-size:.9375rem;font-weight:400;
+  background:transparent;color:var(--ink-soft);
+  border:none;padding:.35rem 0;
+  max-width:60%;text-align:right;
+  cursor:pointer;
+}
+
+/* Auf 320-px-Geräten passt „Beste Qualität · Opus 5" nicht mehr neben die
+   Beschriftung — dann steht der Wert darunter statt abgeschnitten daneben. */
+@media (max-width:360px){
+  .field--zeile{flex-direction:column;align-items:stretch;gap:var(--s1)}
+  .field--zeile select{
+    max-width:none;text-align:left;margin-top:var(--s1);
+    border:1px solid var(--line);border-radius:var(--r-klein);
+    padding:.5rem .6rem;background:var(--paper);color:var(--ink);
+  }
+}
+
+/* Schiebeschalter wie im System: Beschriftung links, Schalter rechts.
+   Das Kästchen bleibt ein echtes <input type=checkbox> — Tastatur,
+   Vorlesefunktion und app.js sehen weiter genau das. */
+.field--schalter{
+  flex-direction:row;align-items:center;justify-content:space-between;
+  gap:var(--s3);cursor:pointer;
+}
+.field--schalter > span{flex:1;min-width:0}
+.field--schalter input{
+  appearance:none;-webkit-appearance:none;
+  flex:none;position:relative;
+  width:2.75rem;height:1.625rem;margin:0;
+  border-radius:var(--r-pille);
+  background:var(--surface-3);
+  cursor:pointer;
+  transition:background .15s ease;
+}
+.field--schalter input::after{
+  content:"";position:absolute;top:3px;left:3px;
+  width:1.125rem;height:1.125rem;border-radius:var(--r-pille);
+  background:var(--surface);box-shadow:var(--e1);
+  transition:transform .15s ease;
+}
+.field--schalter input:checked{background:var(--petrol)}
+.field--schalter input:checked::after{transform:translateX(1.125rem)}
+.field--schalter input:focus-visible{outline:2px solid var(--petrol);outline-offset:2px}
+
+/* Zahl links, Knopf rechts — der Knopf ist nur da, wenn es etwas zu tun gibt. */
+.zeile{display:flex;align-items:center;justify-content:space-between;gap:var(--s2)}
+.zeile .hint{text-align:left}
+.reihe-klein{display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center;margin-top:var(--s2)}
+.reihe-klein select{
+  flex:1;min-width:7rem;
+  font-family:var(--sys);font-size:.875rem;
+  padding:.55rem .6rem;
+  border:1px solid var(--line);border-radius:var(--r-klein);
+  background:var(--paper);color:var(--ink);
+}
+.reihe-klein .btn{flex:0 1 auto}
+
+/* Verweise nach draußen: Android macht daraus den Systembrowser.
+   Trefferfläche großzügig, damit man sie mit dem Daumen erwischt. */
+.verweis{
+  font-size:.8125rem;color:var(--petrol);text-decoration:none;font-weight:600;
+  white-space:nowrap;flex:none;padding:.5rem 0;
+}
+.verweis:hover{text-decoration:underline}
+
 /* Speichern klebt unten: bei langen Einstellungen muss man sonst erst ans
-   Ende rollen, um ihn zu finden. Das auto-Maß oben schiebt ihn auch dann an
-   den unteren Rand, wenn die Einstellungen kurz sind — sonst schwebte er
-   mitten auf dem Bildschirm. */
+   Ende rollen, um ihn zu finden. */
 .seite .form__actions{
   position:sticky;bottom:0;
-  margin-top:auto;
-  padding:.55rem 0 max(.2rem, env(safe-area-inset-bottom));
+  /* Über die Innenabstände der Liste hinaus: Der Balken soll von Rand zu Rand
+     gehen, sonst schiebt sich beim Rollen eine weiße Karte an ihm vorbei. */
+  margin:auto calc(var(--s3) * -1) 0;
+  display:flex;justify-content:flex-end;align-items:center;gap:var(--s2);
+  padding:var(--s2) var(--s3) max(var(--s2), env(safe-area-inset-bottom));
   background:var(--paper-raised);
-  border-top:1px solid var(--line);
+  /* Nur ein Hauch Schatten nach oben — er sagt: hier geht es noch weiter. */
+  box-shadow:0 -8px 12px -8px rgba(16,20,26,.18);
 }
+:root[data-theme="dark"] .seite .form__actions{box-shadow:0 -8px 14px -8px rgba(0,0,0,.6)}
+.form__actions .btn--haupt{width:auto;min-height:3rem;padding:.75rem 1.5rem;font-size:.9375rem}

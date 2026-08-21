@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2B4C5C">
+<meta name="theme-color" content="#F4F5F7">
 <title>Schreib hilfe</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -49,13 +49,12 @@
   <symbol id="i-globus"   viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.4 5.3 3.4 8.5s-1.2 6.2-3.4 8.5c-2.2-2.3-3.4-5.3-3.4-8.5S9.8 5.8 12 3.5z"/></symbol>
 </svg>
 
+<!-- Der Name in Systemschrift, wie das Gerät seine eigenen Apps beschriftet.
+     Die zweifarbige Wortmarke in Serifen stand quer zu allem anderen. -->
 <header class="topbar">
-  <h1 class="wortmarke">
-    <span class="wortmarke__a">Schreib</span><span class="wortmarke__b">hilfe</span>
-  </h1>
+  <h1 class="app-titel">Schreibhilfe</h1>
 
   <div class="topbar__tools">
-    
     <button class="topbar__icon" id="btn-settings" title="Einstellungen" aria-label="Einstellungen"><svg class="ic"><use href="#i-settings"></use></svg></button>
   </div>
 </header>
@@ -96,24 +95,26 @@
   <!-- EIN Knopf. Er prüft, wendet alles Eindeutige an und zeigt das Ergebnis —
        kein Auswählen, kein Fenster davor. Was danach zu tun ist, erscheint erst
        danach: der Weg zurück, und falls es nicht passt, Rückgängig. -->
-  <button class="knopf knopf--haupt" id="btn-pruefen">
+  <button class="btn btn--haupt" id="btn-pruefen">
     <svg class="ic"><use href="#i-check"></use></svg> Korrigieren
   </button>
 
-
-
+  <!-- Drei Stufen statt zweier gleich großer Blöcke: „Zurückgeben" ist der
+       eine richtige Weg (gefüllt), „Teilen" der zweitbeste (getönt), und was
+       selten gebraucht wird, steht als bloßes Wort darunter. Am Rechner gibt
+       es kein Zurückgeben — dann ist „Teilen" von selbst das Auffälligste. -->
   <div id="danach" class="danach" hidden>
-    <button class="knopf knopf--haupt" id="btn-zurueckgeben" hidden>
+    <button class="btn btn--haupt" id="btn-zurueckgeben" hidden>
       <svg class="ic"><use href="#i-undo"></use></svg> <span id="wort-zurueck">Zurückgeben</span>
     </button>
-    <button class="knopf knopf--haupt" id="btn-teilen">
+    <button class="btn btn--haupt btn--tonal" id="btn-teilen">
       <svg class="ic"><use href="#i-share"></use></svg> Teilen
     </button>
     <div class="danach__klein">
-      <button class="knopf knopf--klein" id="btn-zurueck" hidden>
+      <button class="btn btn--text" id="btn-zurueck" hidden>
         <svg class="ic"><use href="#i-undo"></use></svg> Rückgängig
       </button>
-      <button class="knopf knopf--klein" id="btn-leeren">
+      <button class="btn btn--text btn--gefahr" id="btn-leeren">
         <svg class="ic"><use href="#i-trash"></use></svg> Löschen
       </button>
     </div>
@@ -140,134 +141,160 @@
     <h2>Einstellungen</h2>
   </div>
 
+  <!-- Gruppen mit Überschrift statt einer einzigen langen Liste, in der
+       Schlüssel, Schriftgröße und Gedächtnis gleich viel wogen. Die Reihenfolge
+       ist die alte, es sind nur Zäune drumherum. -->
   <div class="form">
-    <label class="field">
-      API-Schlüssel <em>für Korrigieren und Übersetzen</em>
-      <input id="api-key" type="password" placeholder="sk-ant-…" autocomplete="off">
-    </label>
-    <!-- Das Feld zeigt Punkte statt Zeichen. Ohne diese Zeile sieht niemand,
-         ob überhaupt etwas gespeichert ist und ob es plausibel aussieht. -->
-    <div class="zeile">
-      <p class="hint" id="schluessel-stand"></p>
-      <!-- Öffnet den Systembrowser: Die WebView reicht fremde Adressen an
-           Android weiter, damit man nicht in der App festhängt. -->
-      <a class="verweis" href="https://platform.claude.com/settings/keys"
-         target="_blank" rel="noopener">Schlüssel erstellen&nbsp;↗</a>
+
+    <div class="gruppe">
+      <span class="gruppe__titel">KI-Werkzeuge</span>
+      <div class="karte">
+
+        <label class="field">
+          API-Schlüssel <em>für Korrigieren und Übersetzen</em>
+          <input id="api-key" type="password" placeholder="sk-ant-…" autocomplete="off">
+          <!-- Das Feld zeigt Punkte statt Zeichen. Ohne diese Zeile sieht
+               niemand, ob überhaupt etwas gespeichert ist. -->
+          <div class="zeile">
+            <p class="hint" id="schluessel-stand"></p>
+            <!-- Öffnet den Systembrowser: Die WebView reicht fremde Adressen an
+                 Android weiter, damit man nicht in der App festhängt. -->
+            <a class="verweis" href="https://platform.claude.com/settings/keys"
+               target="_blank" rel="noopener">Schlüssel erstellen&nbsp;↗</a>
+          </div>
+          <!-- Um den Schlüssel auf ein zweites Gerät zu bekommen, muss man ihn
+               sehen oder kopieren können. „Anzeigen“ blendet ihn nur kurz auf
+               und verbirgt ihn von selbst wieder. -->
+          <div class="reihe-klein">
+            <button class="btn btn--klein" id="btn-schluessel-zeigen" type="button">
+              <svg class="ic"><use href="#i-auge"></use></svg> <span id="wort-zeigen">Anzeigen</span>
+            </button>
+            <button class="btn btn--klein" id="btn-schluessel-kopieren" type="button">
+              <svg class="ic"><use href="#i-copy"></use></svg> Kopieren
+            </button>
+          </div>
+        </label>
+
+        <label class="field field--zeile">
+          <span>KI-Modell</span>
+          <select id="modell">
+            <option value="claude-opus-5">Beste Qualität &middot; Opus 5</option>
+            <option value="claude-sonnet-5">Mittelweg &middot; Sonnet 5</option>
+            <option value="claude-haiku-4-5">Günstig &amp; schnell &middot; Haiku 4.5</option>
+          </select>
+        </label>
+
+        <!-- Ein Widerspruch ans Jobcenter und eine Nachricht an den Nachbarn
+             brauchen nicht denselben Ton. „Wie geschrieben“ ist die sichere
+             Voreinstellung: Dann korrigiert die KI, ohne umzuschreiben. -->
+        <label class="field field--zeile">
+          <span>Tonfall <em>wie die KI-Korrektur klingen soll</em></span>
+          <select id="tonfall">
+            <option>Wie geschrieben</option>
+            <option>Förmlich (Amt)</option>
+            <option>Freundlich</option>
+            <option>Kurz und sachlich</option>
+          </select>
+        </label>
+
+        <!-- Was bisher verbraucht wurde. Zählt die App selbst mit, aus den
+             Angaben, die jede Antwort mitliefert — der Blick ins Dashboard
+             bleibt einem damit erspart. -->
+        <div class="field">
+          Verbrauch
+          <div class="zeile">
+            <p class="hint" id="kosten-stand"></p>
+            <button class="btn btn--klein" id="btn-kosten-weg" type="button" hidden>zurücksetzen</button>
+          </div>
+          <div class="zeile">
+            <a class="verweis" href="https://platform.claude.com/settings/billing"
+               target="_blank" rel="noopener">Guthaben aufladen&nbsp;↗</a>
+          </div>
+        </div>
+
+        <label class="field">Übersetzen <em>braucht den Schlüssel und Internet</em>
+          <!-- KI-Korrektur und Vorschläge stehen als Kasten unter den Funden,
+               nicht mehr hier. Diese beiden bleiben versteckt, weil ihre
+               Verdrahtung dort weiterhin gebraucht wird. -->
+          <button id="btn-korrigieren" type="button" hidden></button>
+          <button id="btn-formulieren" type="button" hidden></button>
+          <div class="reihe-klein">
+            <select id="zielsprache" aria-label="Zielsprache"><option value="Deutsch">Deutsch</option><option value="Englisch">Englisch</option><option value="Türkisch">Türkisch</option><option value="Polnisch">Polnisch</option><option value="Russisch">Russisch</option><option value="Arabisch">Arabisch</option></select>
+            <!-- Das Wort steckt in einem eigenen span: app.js schreibt beim
+                 Sprachwechsel „Nach Englisch übersetzen“ hinein. Ohne den span
+                 brach die Zeile mit einem Fehler ab. -->
+            <button class="btn btn--klein" id="btn-uebersetzen" type="button"><svg class="ic"><use href="#i-globus"></use></svg> <span class="btn__wort">Übersetzen</span></button>
+          </div>
+        </label>
+
+      </div>
     </div>
 
-    <!-- Um den Schlüssel auf ein zweites Gerät zu bekommen, muss man ihn
-         sehen oder kopieren können. „Anzeigen“ blendet ihn nur kurz auf und
-         verbirgt ihn von selbst wieder — ein dauerhaft offenes Feld vergisst
-         man beim Weiterreichen des Geräts. -->
-    <div class="reihe-klein">
-      <button class="knopf knopf--klein" id="btn-schluessel-zeigen" type="button">
-        <svg class="ic"><use href="#i-auge"></use></svg> <span id="wort-zeigen">Anzeigen</span>
-      </button>
-      <button class="knopf knopf--klein" id="btn-schluessel-kopieren" type="button">
-        <svg class="ic"><use href="#i-copy"></use></svg> Kopieren
-      </button>
+    <div class="gruppe">
+      <span class="gruppe__titel">Beim Schreiben</span>
+      <div class="karte">
+        <label class="field field--schalter">
+          <span>Wort hervorheben
+            <em>Ein farbiger Streifen zeigt beim Schreiben, wo du gerade bist.</em>
+          </span>
+          <input id="wortmarker" type="checkbox">
+        </label>
+
+        <!-- Nur sichtbar, wenn das Gerät eine Systempalette liefert (Android 12+). -->
+        <label class="field field--schalter" id="feld-systemfarben" hidden>
+          <span>Farben vom System übernehmen
+            <em>Android 12 und neuer. Sie richten sich nach deinem Hintergrundbild.</em>
+          </span>
+          <input id="systemfarben" type="checkbox">
+        </label>
+      </div>
     </div>
 
-    <label class="field">
-      KI-Modell
-      <select id="modell">
-        <option value="claude-opus-5">Beste Qualität &middot; Opus 5</option>
-        <option value="claude-sonnet-5">Mittelweg &middot; Sonnet 5</option>
-        <option value="claude-haiku-4-5">Günstig &amp; schnell &middot; Haiku 4.5</option>
-      </select>
-    </label>
-
-    <!-- Ein Widerspruch ans Jobcenter und eine Nachricht an den Nachbarn
-         brauchen nicht denselben Ton. „Wie geschrieben“ ist die sichere
-         Voreinstellung: Dann korrigiert die KI, ohne umzuschreiben. -->
-    <label class="field">
-      Tonfall <em>wie die KI-Korrektur klingen soll</em>
-      <select id="tonfall">
-        <option>Wie geschrieben</option>
-        <option>Förmlich (Amt)</option>
-        <option>Freundlich</option>
-        <option>Kurz und sachlich</option>
-      </select>
-    </label>
-
-    <!-- Was bisher verbraucht wurde. Zählt die App selbst mit, aus den
-         Angaben, die jede Antwort mitliefert — der Blick ins Dashboard
-         bleibt einem damit erspart. -->
-    <div class="zeile">
-      <p class="hint" id="kosten-stand"></p>
-      <button class="btn btn--ghost btn--klein" id="btn-kosten-weg" hidden>zurücksetzen</button>
-    </div>
-    <div class="zeile">
-      <a class="verweis" href="https://platform.claude.com/settings/billing"
-         target="_blank" rel="noopener">Guthaben aufladen&nbsp;↗</a>
+    <div class="gruppe">
+      <span class="gruppe__titel">Gedächtnis</span>
+      <div class="karte">
+        <!-- Was die App sich gemerkt hat. Sichtbar, weil niemand ein Gedächtnis
+             über sich haben sollte, in das er nicht hineinsehen kann — und weil
+             eine falsch gelernte Schreibweise sonst für immer bliebe. -->
+        <label class="field">Gelernte Schreibweisen <em>bleiben auf dem Gerät</em>
+          <div class="zeile">
+            <p class="hint" id="gelernt-stand"></p>
+            <button class="btn btn--klein" id="btn-gelernt-weg" type="button" hidden>vergessen</button>
+          </div>
+          <!-- Handy und PC lernen getrennt. Der Sicherungs-Text ist die Brücke:
+               auf dem einen Gerät kopieren, auf dem anderen einsetzen. Der
+               API-Schlüssel bleibt bewusst draußen — ein Schlüssel gehört nicht
+               in einen Text, den man durch die Gegend schickt. -->
+          <div class="reihe-klein">
+            <button class="btn btn--klein" id="btn-sichern" type="button">
+              <svg class="ic"><use href="#i-copy"></use></svg> Sichern
+            </button>
+            <button class="btn btn--klein" id="btn-einspielen" type="button">
+              <svg class="ic"><use href="#i-einspielen"></use></svg> Einspielen
+            </button>
+          </div>
+        </label>
+      </div>
     </div>
 
-    <!-- Was die App sich gemerkt hat. Sichtbar, weil niemand ein Gedächtnis
-         über sich haben sollte, in das er nicht hineinsehen kann — und weil
-         eine falsch gelernte Schreibweise sonst für immer bliebe. -->
-    <label class="field">Gedächtnis <em>bleibt auf dem Gerät</em>
-      <div class="zeile">
-        <p class="hint" id="gelernt-stand"></p>
-        <button class="btn btn--ghost btn--klein" id="btn-gelernt-weg" type="button" hidden>vergessen</button>
+    <div class="gruppe">
+      <span class="gruppe__titel">Darstellung</span>
+      <div class="karte">
+        <div class="field">Schrift und Helligkeit
+          <div class="reihe-klein">
+            <button class="btn btn--klein" id="btn-kleiner" type="button"><span class="schriftknopf">A&minus;</span> kleiner</button>
+            <button class="btn btn--klein" id="btn-groesser" type="button"><span class="schriftknopf gross">A+</span> größer</button>
+            <button class="btn btn--klein" id="btn-theme" type="button"><svg class="ic"><use href="#i-auto" id="theme-symbol"></use></svg> Hell/Dunkel</button>
+          </div>
+        </div>
       </div>
-      <!-- Handy und PC lernen getrennt. Der Sicherungs-Text ist die Brücke:
-           auf dem einen Gerät kopieren, auf dem anderen einsetzen. Der
-           API-Schlüssel bleibt bewusst draußen — ein Schlüssel gehört nicht in
-           einen Text, den man durch die Gegend schickt. -->
-      <div class="reihe-klein">
-        <button class="knopf knopf--klein" id="btn-sichern" type="button">
-          <svg class="ic"><use href="#i-copy"></use></svg> Sichern
-        </button>
-        <button class="knopf knopf--klein" id="btn-einspielen" type="button">
-          <svg class="ic"><use href="#i-einspielen"></use></svg> Einspielen
-        </button>
-      </div>
-    </label>
-
-    <label class="field field--schalter">
-      <input id="wortmarker" type="checkbox">
-      <span>Wort hervorheben
-        <em>Ein farbiger Streifen zeigt beim Schreiben, wo du gerade bist.</em>
-      </span>
-    </label>
-
-    <!-- Nur sichtbar, wenn das Gerät eine Systempalette liefert (Android 12+). -->
-    <label class="field field--schalter" id="feld-systemfarben" hidden>
-      <input id="systemfarben" type="checkbox">
-      <span>Farben vom System übernehmen
-        <em>Android 12 und neuer. Sie richten sich nach deinem Hintergrundbild.</em>
-      </span>
-    </label>
-
-
-
-    <hr class="trenner">
-
-    <label class="field">Darstellung
-      <div class="reihe-klein">
-        <button class="knopf knopf--klein" id="btn-kleiner" type="button"><span class="schriftknopf">A&minus;</span> kleiner</button>
-        <button class="knopf knopf--klein" id="btn-groesser" type="button"><span class="schriftknopf gross">A+</span> größer</button>
-        <button class="knopf knopf--klein" id="btn-theme" type="button"><svg class="ic"><use href="#i-auto" id="theme-symbol"></use></svg> Hell/Dunkel</button>
-      </div>
-    </label>
-
-    <label class="field">Weitere Werkzeuge <em>brauchen den Schlüssel und Internet</em>
-      <!-- KI-Korrektur und Vorschläge stehen als Kasten unter den Funden,
-           nicht mehr hier. Diese beiden bleiben versteckt, weil ihre
-           Verdrahtung dort weiterhin gebraucht wird. -->
-      <button id="btn-korrigieren" type="button" hidden></button>
-      <button id="btn-formulieren" type="button" hidden></button>
-      <div class="reihe-klein">
-        <select id="zielsprache" aria-label="Zielsprache"><option value="Deutsch">Deutsch</option><option value="Englisch">Englisch</option><option value="Türkisch">Türkisch</option><option value="Polnisch">Polnisch</option><option value="Russisch">Russisch</option><option value="Arabisch">Arabisch</option></select>
-        <button class="knopf knopf--klein" id="btn-uebersetzen" type="button"><svg class="ic"><use href="#i-globus"></use></svg> Übersetzen</button>
-      </div>
-    </label>
+    </div>
 
     <p class="hint" id="fassung"></p>
 
     <div class="form__actions">
-      <button class="btn btn--ghost" id="btn-schluessel-weg">Schlüssel löschen</button>
-      <button class="btn btn--primary" id="btn-speichern">Speichern</button>
+      <button class="btn btn--text" id="btn-schluessel-weg">Schlüssel löschen</button>
+      <button class="btn btn--haupt" id="btn-speichern">Speichern</button>
     </div>
   </div>
 </section>
