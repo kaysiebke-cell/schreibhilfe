@@ -341,7 +341,19 @@ textarea#text:focus{outline:none}
 .fund--werkzeug{grid-template-columns:1fr}
 .fund--werkzeug .fund__text{grid-column:1 / -1}
 .werkzeug__titel{font-size:.9rem;font-weight:600;color:var(--ink)}
-.werkzeuge{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s2)}
+/* Drei gleich breite Knöpfe in EINER Zeile. Nebeneinander gestellt und
+   umbrechen lassen sah aus wie ein Versehen: Auf 393 px braucht die Reihe
+   401 px, also fiel der dritte allein in die zweite Zeile. Als Raster teilen
+   sie sich die Breite und stehen immer nebeneinander. */
+.werkzeuge{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:var(--s2);margin-top:var(--s2);
+}
+/* Auf sehr schmalen Geräten reicht auch das nicht — dort untereinander,
+   über die volle Breite. Das sieht gewollt aus, ein Umbruch nicht. */
+@media (max-width:359px){
+  .werkzeuge{grid-template-columns:1fr}
+}
 
 .hint{margin:0;font-size:.8rem;color:var(--ink-soft);line-height:1.4;text-align:center}
 .hint:empty{display:none}
@@ -388,7 +400,7 @@ textarea#text:focus{outline:none}
   background:var(--surface-2);color:var(--ink);
   transition:background .15s ease, transform .1s ease, box-shadow .15s ease;
 }
-.btn .ic,.werkzeug .ic{width:1.1em;height:1.1em}
+.btn .ic{width:1.1em;height:1.1em}
 .btn:active,.werkzeug:active{transform:scale(.985)}
 .btn:focus-visible,.werkzeug:focus-visible{outline:2px solid var(--petrol);outline-offset:2px}
 
@@ -409,8 +421,14 @@ textarea#text:focus{outline:none}
   background:var(--petrol-container);color:var(--petrol-deep);
   box-shadow:none;
 }
+/* Enger als ein gewöhnlicher Knopf: Drei müssen nebeneinander passen.
+   Bleibt trotzdem daumengroß, die Höhe kommt von .btn. */
+.werkzeug{
+  min-width:0;
+  padding:.6rem .5rem;font-size:.8125rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
 .btn--primary{padding:.6rem 1rem;min-height:2.75rem;font-size:.8125rem}
-.werkzeug .ic{color:var(--ok)}
 
 /* Nur das Wort: Nebenwege, die selten gebraucht werden. */
 .btn--text,.btn--ghost{background:transparent;color:var(--ink-soft)}

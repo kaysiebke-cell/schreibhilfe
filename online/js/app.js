@@ -1365,18 +1365,22 @@ function zeigeWerkzeugKasten() {
   const reihe = document.createElement('div');
   reihe.className = 'werkzeuge';
 
-  const mach = (sinnbild, beschriftung, tu) => {
+  /* Ohne Sinnbild: Zu dritt nebeneinander kostet jedes rund 21 px, und
+     erklärt hat noch nie eines von ihnen etwas — ein Funkeln sagt niemandem,
+     was dahintersteckt. Mit den Wörtern allein passen alle drei in eine
+     Zeile, und darauf kommt es hier an. */
+  const mach = (beschriftung, tu) => {
     const knopf = document.createElement('button');
     knopf.type = 'button';
     knopf.className = 'werkzeug';
-    knopf.append(icon(sinnbild), document.createTextNode(' ' + beschriftung));
+    knopf.textContent = beschriftung;
     knopf.addEventListener('click', tu);
     reihe.appendChild(knopf);
   };
 
-  mach('i-sparkle', 'KI-Korrektur', () => el.btnKorrigieren.click());
-  mach('i-sparkle', 'Vorschläge',   () => el.btnFormulieren.click());
-  mach('i-globus',  Speicher.lies('sprache', 'Englisch'), () => el.btnUebersetzen.click());
+  mach('KI-Korrektur', () => el.btnKorrigieren.click());
+  mach('Vorschläge',   () => el.btnFormulieren.click());
+  mach(Speicher.lies('sprache', 'Englisch'), () => el.btnUebersetzen.click());
 
   inhalt.append(titel, reihe);
   karte.appendChild(inhalt);
