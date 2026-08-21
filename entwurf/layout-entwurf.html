@@ -1,0 +1,956 @@
+<title>Schreibhilfe Layout-Entwurf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+
+<style>
+/* ============================================================
+   Die Seite selbst: ein ruhiges Reißbrett. Alles Auffällige
+   gehört in die beiden Handy-Rahmen, nicht drumherum.
+   ============================================================ */
+:root{
+  --ground:#E9EBEE;
+  --panel:#FFFFFF;
+  --panel-2:#F4F6F8;
+  --ink:#14181C;
+  --ink-2:#5C666F;
+  --ink-3:#8A939B;
+  --rule:#D3D8DE;
+  --accent:#2F3FA8;
+  --accent-soft:#E4E7F6;
+  --flag:#A8382B;
+  --good:#2A6E4E;
+  --shadow:0 1px 2px rgba(20,24,28,.06), 0 8px 24px rgba(20,24,28,.07);
+
+  --ui:"Archivo",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --prose:"Newsreader","Iowan Old Style",Georgia,serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Consolas,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#101215;
+    --panel:#191C20;
+    --panel-2:#22262B;
+    --ink:#E8EBEE;
+    --ink-2:#A2ACB5;
+    --ink-3:#757F88;
+    --rule:#2E343A;
+    --accent:#93A4F0;
+    --accent-soft:#23294A;
+    --flag:#E08376;
+    --good:#6FBF95;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101215;
+  --panel:#191C20;
+  --panel-2:#22262B;
+  --ink:#E8EBEE;
+  --ink-2:#A2ACB5;
+  --ink-3:#757F88;
+  --rule:#2E343A;
+  --accent:#93A4F0;
+  --accent-soft:#23294A;
+  --flag:#E08376;
+  --good:#6FBF95;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.45);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--ui);
+  line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{
+  max-width:1120px;
+  margin:0 auto;
+  padding:clamp(20px,4vw,56px) clamp(16px,3vw,32px) 72px;
+  display:flex;
+  flex-direction:column;
+  gap:clamp(28px,4vw,44px);
+}
+
+/* ---- Kopf ---- */
+.kopf{display:flex;flex-direction:column;gap:14px}
+.eyebrow{
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-3);margin:0;
+}
+h1{
+  font-size:clamp(1.9rem,4.4vw,2.9rem);
+  line-height:1.08;letter-spacing:-.022em;font-weight:700;
+  margin:0;text-wrap:balance;
+}
+.lead{
+  font-family:var(--prose);font-size:clamp(1.02rem,2vw,1.18rem);
+  line-height:1.55;color:var(--ink-2);margin:0;max-width:62ch;
+}
+
+/* ---- Schalter über den Rahmen ---- */
+.controls{
+  display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;
+  padding:12px;border-radius:14px;
+  background:var(--panel);border:1px solid var(--rule);
+}
+.ctl{display:flex;align-items:center;gap:8px;min-width:0}
+.ctl__lbl{
+  font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);white-space:nowrap;
+}
+.seg{display:flex;background:var(--panel-2);border-radius:10px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{
+  font-family:var(--ui);font-size:.82rem;font-weight:500;
+  border:none;background:none;color:var(--ink-2);
+  padding:7px 12px;border-radius:8px;cursor:pointer;white-space:nowrap;
+}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ---- Die zwei Spalten ---- */
+.frames{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(290px,1fr));
+  gap:clamp(18px,3vw,34px);
+  align-items:start;
+}
+.col{margin:0;display:flex;flex-direction:column;gap:12px;align-items:center;min-width:0}
+.col__head{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center}
+.tag{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 10px;border-radius:999px;border:1px solid var(--rule);color:var(--ink-2);
+}
+.tag--neu{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.col__note{font-size:.82rem;color:var(--ink-3)}
+
+/* ---- Der Handy-Rahmen ---- */
+.phone{
+  width:min(330px,100%);
+  aspect-ratio:330/668;
+  border-radius:34px;
+  padding:9px;
+  background:linear-gradient(170deg,#3b4249,#20252a);
+  box-shadow:var(--shadow);
+  flex:none;
+}
+:root[data-theme="dark"] .phone,
+:root:not([data-theme="light"]) .phone{background:linear-gradient(170deg,#43494f,#191c20)}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .phone{background:linear-gradient(170deg,#3b4249,#20252a)}}
+.phone__screen{
+  width:100%;height:100%;
+  border-radius:26px;overflow:hidden;
+  display:flex;flex-direction:column;
+  position:relative;
+}
+
+/* ============================================================
+   Die Nachbauten. Eigene Farbwerte, damit sie unabhängig vom
+   Hell/Dunkel dieser Seite umschaltbar bleiben.
+   ============================================================ */
+.mock{
+  flex:1;min-height:0;display:flex;flex-direction:column;
+  font-size:13px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+.mock *{box-sizing:border-box}
+.mock .mi{
+  width:1.15em;height:1.15em;flex:none;vertical-align:-.15em;
+  fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;
+}
+.scr{display:none;flex:1;min-height:0;flex-direction:column}
+.board[data-screen="schreiben"] .scr[data-scr="schreiben"],
+.board[data-screen="funde"]     .scr[data-scr="funde"],
+.board[data-screen="einstell"]  .scr[data-scr="einstell"]{display:flex}
+.mock__body{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+
+/* ---------- JETZT: Werte 1:1 aus online/css/style.css ---------- */
+.mock--alt{
+  --paper:#EDECE5; --raised:#F7F6F1; --surface:#ffffff;
+  --ink:#232930; --ink-soft:#565f68; --line:#d8d6cc;
+  --petrol:#2B4C5C; --petrol-deep:#1B333F;
+  --ok:#4B7B5D; --warn:#C08A2E; --urgent:#B04A3D;
+  --r:3px;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  font-family:var(--sans);
+  background:var(--paper);color:var(--ink);
+}
+.board[data-mock="dark"] .mock--alt{
+  --paper:#1a1c20; --raised:#24272d; --surface:#2b2f36;
+  --ink:#e7e9ec; --ink-soft:#9aa2ac; --line:#3a3e45;
+  --petrol:#6aa3bd; --petrol-deep:#a4c7d8;
+  --ok:#74b98d; --warn:#d7a24e; --urgent:#e0837a;
+}
+.a-top{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 9px;border-bottom:1px solid var(--line);flex:none;
+}
+.a-mark{font-family:var(--serif);font-size:14px;font-weight:600}
+.a-mark i{font-style:normal;color:var(--petrol)}
+.a-mark b{color:var(--ok)}
+.a-icon{
+  background:none;border:none;color:var(--ink-soft);cursor:pointer;
+  width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:var(--r);padding:0;
+}
+.a-main{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;padding:6px 7px 0;overflow:hidden}
+.a-feld{
+  flex:1;min-height:0;overflow:hidden;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:8px 9px;font-size:13.5px;line-height:1.6;letter-spacing:.012em;
+}
+.a-feld .marker{background:#F0E3B4;border-radius:2px}
+.board[data-mock="dark"] .a-feld .marker{background:#6f5a26}
+.a-feld .neu{color:var(--ok);font-weight:700}
+.a-feld--platz{color:var(--ink-soft)}
+/* Wie in der App: die Funde nehmen bis zur halben Höhe, das Feld gibt nach. */
+.board[data-screen="funde"] .mock--alt .a-feld{flex:0 1 auto;max-height:34%}
+.board[data-screen="funde"] .mock--alt .a-funde{flex:1 1 auto}
+.a-reihe{display:flex;gap:5px;align-items:center;margin-top:3px}
+.a-reihe .a-btn{flex:1}
+.a-trenner{border:none;border-top:1px solid var(--line);margin:2px 0}
+.a-funde{overflow:hidden;display:flex;flex-direction:column;gap:4px;flex:0 1 auto;min-height:0}
+.a-fund{
+  display:flex;align-items:center;justify-content:space-between;gap:7px;
+  background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--warn);
+  border-radius:var(--r);padding:5px 6px;
+}
+.a-fund--tipp{border-left-color:var(--petrol)}
+.a-fund--werkzeug{border-left-color:var(--ok);flex-direction:column;align-items:flex-start;gap:5px}
+.a-fund__t{flex:1;min-width:0}
+.a-wort{font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:11.5px;line-height:1.3}
+.a-falsch{color:var(--urgent);text-decoration:line-through}
+.a-pfeil{color:var(--ink-soft);margin:0 3px}
+.a-richtig{color:var(--ok);font-weight:700}
+.a-grund{display:block;font-size:9.5px;color:var(--ink-soft);line-height:1.3}
+.a-stelle{font-family:var(--serif);font-size:10.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a-btn{
+  font-family:var(--sans);font-size:10.5px;font-weight:600;
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  border:1px solid var(--line);border-radius:var(--r);
+  background:var(--surface);color:var(--petrol-deep);
+  padding:6px 8px;cursor:pointer;flex:none;
+}
+.a-werkzeuge{display:flex;flex-wrap:wrap;gap:5px}
+.a-werkzeug{
+  font-family:var(--sans);font-size:10.5px;font-weight:600;
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--paper);color:var(--petrol-deep);
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:6px 9px;cursor:pointer;
+}
+.a-werkzeug .mi{color:var(--ok)}
+.a-wtitel{font-size:11px;font-weight:600;color:var(--ink-soft)}
+.a-status{font-size:10px;color:var(--ink-soft);margin:0}
+.a-status--gut{color:var(--ok);font-weight:700;text-align:center}
+.a-leiste{
+  flex:none;display:flex;flex-direction:column;gap:6px;
+  padding:6px 7px 8px;border-top:1px solid var(--line);background:var(--raised);
+}
+.a-haupt{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
+  font-family:var(--sans);font-size:14.5px;font-weight:700;
+  padding:13px;border-radius:var(--r);
+  background:var(--petrol);color:#fff;border:1.5px solid var(--petrol);cursor:pointer;
+}
+.board[data-mock="dark"] .a-haupt{color:#11181d}
+.a-klein-reihe{display:flex;gap:6px}
+.a-klein{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+  font-family:var(--sans);font-size:12px;font-weight:600;
+  padding:9px 10px;border-radius:var(--r);
+  border:1.5px solid var(--line);background:transparent;color:var(--ink-soft);cursor:pointer;
+}
+/* Einstellungen, jetzige Fassung */
+.a-seitkopf{
+  display:flex;align-items:center;gap:5px;padding:6px 9px;
+  border-bottom:1px solid var(--line);flex:none;
+}
+.a-seitkopf h3{font-family:var(--serif);font-size:14px;margin:0;color:var(--petrol-deep);font-weight:600}
+.a-form{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:11px;padding:9px 8px}
+.a-field{display:flex;flex-direction:column;gap:3px;font-size:10.5px;font-weight:700}
+.a-field em{font-weight:400;font-style:normal;color:var(--ink-soft)}
+.a-input{
+  font-family:var(--sans);font-size:12px;font-weight:400;padding:7px 8px;
+  border:1px solid var(--line);border-radius:var(--r);
+  background:var(--surface);color:var(--ink);
+}
+.a-zeile{display:flex;align-items:center;justify-content:space-between;gap:7px}
+.a-verweis{font-size:10px;color:var(--petrol);text-decoration:underline;white-space:nowrap}
+.a-schalter{flex-direction:row;align-items:flex-start;gap:8px}
+.a-box{width:16px;height:16px;flex:none;margin-top:1px;border:1px solid var(--ink-soft);border-radius:2px;background:var(--surface)}
+.a-box--an{background:var(--petrol);border-color:var(--petrol);position:relative}
+.a-box--an::after{
+  content:"";position:absolute;left:4px;top:1px;width:5px;height:9px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg);
+}
+.a-actions{
+  margin-top:auto;display:flex;justify-content:flex-end;gap:6px;
+  padding-top:8px;border-top:1px solid var(--line);
+}
+.a-ghost{
+  font-family:var(--sans);font-size:11px;font-weight:600;
+  border:1px solid transparent;background:none;color:var(--ink-soft);
+  padding:7px 9px;border-radius:var(--r);cursor:pointer;
+}
+.a-primary{
+  font-family:var(--sans);font-size:11px;font-weight:600;
+  border:1px solid var(--petrol);background:var(--petrol);color:#fff;
+  padding:7px 11px;border-radius:var(--r);cursor:pointer;
+}
+.board[data-mock="dark"] .a-primary{color:#101418}
+
+/* ---------- ENTWURF: kühl, systemnah ---------- */
+.mock--neu{
+  --bg:#F4F5F7; --surface:#FFFFFF; --surface-2:#ECEEF1; --surface-3:#E3E6EA;
+  --ink:#1B1E22; --ink-2:#626A73; --ink-3:#98A0A8; --line:#E2E5E9;
+  --accent:#2F6FD0; --accent-c:#E3EDFC; --on-accent:#FFFFFF;
+  --ok:#2E7D57; --ok-c:#DFF1E7; --warn:#A8721A; --warn-c:#F8EEDA; --urgent:#C0392B;
+  --sys:-apple-system,BlinkMacSystemFont,"Segoe UI Variable","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --e1:0 1px 2px rgba(16,20,26,.07),0 1px 3px rgba(16,20,26,.05);
+  --e2:0 2px 6px rgba(16,20,26,.08),0 8px 20px rgba(16,20,26,.07);
+  font-family:var(--sys);
+  background:var(--bg);color:var(--ink);
+}
+.board[data-mock="dark"] .mock--neu{
+  --bg:#121316; --surface:#1C1E22; --surface-2:#24272C; --surface-3:#2C3037;
+  --ink:#E6E8EB; --ink-2:#9AA1A9; --ink-3:#767D85; --line:#2B2F35;
+  --accent:#8AB4F8; --accent-c:#22314A; --on-accent:#0F1620;
+  --ok:#74C79A; --ok-c:#1D3329; --warn:#E0B25A; --warn-c:#342B18; --urgent:#F0897E;
+  --e1:0 1px 2px rgba(0,0,0,.5);
+  --e2:0 2px 8px rgba(0,0,0,.5),0 10px 24px rgba(0,0,0,.4);
+}
+.n-top{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px 8px;flex:none;background:var(--bg);
+}
+.n-title{font-size:19px;font-weight:600;letter-spacing:-.015em;margin:0}
+.n-icon{
+  background:none;border:none;color:var(--ink-2);cursor:pointer;padding:0;
+  width:36px;height:36px;border-radius:999px;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.n-icon:hover{background:var(--surface-2);color:var(--ink)}
+.n-main{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:2px 12px 0;overflow:hidden}
+.n-feld{
+  flex:1;min-height:0;overflow:hidden;
+  background:var(--surface);border-radius:18px;box-shadow:var(--e1);
+  padding:14px;font-size:13.5px;line-height:1.62;
+}
+.n-feld .marker{background:var(--accent-c);border-radius:4px;padding:1px 0}
+.n-feld .neu{color:var(--ok);font-weight:600}
+.n-feld--platz{color:var(--ink-3)}
+.n-funde{display:flex;flex-direction:column;gap:8px;overflow:hidden;flex:0 1 auto;min-height:0}
+.n-fund{
+  background:var(--surface);border-radius:16px;box-shadow:var(--e1);
+  padding:11px 12px;display:flex;flex-direction:column;gap:7px;
+}
+.n-fund__kopf{display:flex;align-items:center;gap:7px}
+.n-chip{
+  font-size:9.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  padding:3px 8px;border-radius:999px;background:var(--warn-c);color:var(--warn);flex:none;
+}
+.n-chip--tipp{background:var(--accent-c);color:var(--accent)}
+.n-chip--ki{background:var(--ok-c);color:var(--ok)}
+.n-fund__stelle{font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.n-fund__zeile{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.n-wort{font-size:13.5px;line-height:1.3;min-width:0}
+.n-falsch{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1px}
+.n-pfeil{color:var(--ink-3);margin:0 5px}
+.n-richtig{color:var(--ok);font-weight:600}
+.n-grund{display:block;font-size:10.5px;color:var(--ink-2);line-height:1.35;margin-top:2px}
+.n-tonal{
+  font-family:var(--sys);font-size:12px;font-weight:600;
+  background:var(--accent-c);color:var(--accent);border:none;
+  padding:8px 15px;border-radius:999px;cursor:pointer;flex:none;
+}
+.n-werkzeuge{display:flex;flex-wrap:wrap;gap:7px}
+.n-werkzeug{
+  font-family:var(--sys);font-size:11.5px;font-weight:500;
+  display:inline-flex;align-items:center;gap:5px;
+  background:var(--surface-2);color:var(--ink);border:none;
+  padding:8px 13px;border-radius:999px;cursor:pointer;
+}
+.n-werkzeug .mi{color:var(--ok)}
+.n-status{font-size:11px;color:var(--ink-2);margin:0;text-align:center}
+.n-status b{color:var(--ok)}
+.n-leiste{
+  flex:none;display:flex;flex-direction:column;gap:6px;
+  padding:10px 12px 14px;background:var(--bg);
+}
+.n-haupt{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--sys);font-size:15px;font-weight:600;letter-spacing:.005em;
+  padding:15px;border-radius:999px;border:none;
+  background:var(--accent);color:var(--on-accent);cursor:pointer;box-shadow:var(--e1);
+}
+.n-text-reihe{display:flex;gap:4px}
+.n-text{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+  font-family:var(--sys);font-size:12.5px;font-weight:600;
+  padding:11px 8px;border-radius:999px;border:none;
+  background:none;color:var(--ink-2);cursor:pointer;
+}
+.n-text:hover{background:var(--surface-2);color:var(--ink)}
+.n-text--warn{color:var(--urgent)}
+/* Einstellungen, Entwurf */
+.n-seitkopf{display:flex;align-items:center;gap:6px;padding:12px 10px 8px;flex:none}
+.n-seitkopf h3{font-size:19px;margin:0;font-weight:600;letter-spacing:-.015em}
+.n-liste{flex:1;min-height:0;overflow:hidden;padding:0 12px 12px;display:flex;flex-direction:column;gap:16px}
+.n-gruppe{display:flex;flex-direction:column;gap:6px}
+.n-gruppe__titel{
+  font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);padding-left:14px;
+}
+.n-karte{background:var(--surface);border-radius:16px;box-shadow:var(--e1);overflow:hidden}
+.n-row{display:flex;align-items:center;gap:10px;padding:11px 13px;min-height:46px}
+.n-row + .n-row{border-top:1px solid var(--line)}
+.n-row__t{flex:1;min-width:0}
+.n-row__t b{display:block;font-size:12.5px;font-weight:500;line-height:1.3}
+.n-row__t span{display:block;font-size:10.5px;color:var(--ink-3);line-height:1.35;margin-top:1px}
+.n-row__wert{font-size:12px;color:var(--ink-3);display:flex;align-items:center;gap:4px;flex:none}
+.n-switch{width:38px;height:22px;border-radius:999px;background:var(--surface-3);flex:none;position:relative;transition:background .15s}
+.n-switch::after{
+  content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:999px;
+  background:var(--surface);box-shadow:var(--e1);transition:transform .15s;
+}
+.n-switch--an{background:var(--accent)}
+.n-switch--an::after{transform:translateX(16px);background:var(--on-accent)}
+.n-seg{display:flex;gap:2px;background:var(--surface-2);border-radius:999px;padding:3px;flex:none}
+.n-seg span{
+  font-size:11.5px;font-weight:600;color:var(--ink-2);
+  padding:5px 11px;border-radius:999px;
+}
+.n-seg span.an{background:var(--surface);color:var(--ink);box-shadow:var(--e1)}
+.n-fuss{
+  padding:10px 12px 14px;flex:none;display:flex;gap:8px;justify-content:flex-end;
+  background:var(--bg);
+}
+
+/* ---- Der Vergleich unter den Rahmen ---- */
+.sektion{display:flex;flex-direction:column;gap:14px}
+h2{
+  font-size:clamp(1.15rem,2.4vw,1.5rem);font-weight:600;letter-spacing:-.014em;
+  margin:0;text-wrap:balance;
+}
+.sektion > p{font-family:var(--prose);font-size:1.02rem;line-height:1.6;color:var(--ink-2);margin:0;max-width:62ch}
+.tabelle-huelle{overflow-x:auto;border-radius:14px;border:1px solid var(--rule);background:var(--panel)}
+table{border-collapse:collapse;width:100%;min-width:600px}
+th,td{text-align:left;padding:12px 16px;vertical-align:top;font-size:.9rem}
+thead th{
+  font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:500;border-bottom:1px solid var(--rule);
+}
+tbody tr + tr td{border-top:1px solid var(--rule)}
+tbody th{font-weight:600;font-size:.9rem;white-space:nowrap;width:1%}
+td.ist{color:var(--ink-2)}
+td.neu{color:var(--ink)}
+td code,.mono{font-family:var(--mono);font-size:.82em;background:var(--panel-2);padding:1px 5px;border-radius:4px}
+
+/* Schmal: die Tabelle wird zu Kärtchen — sonst schiebt sich die Entwurf-Spalte
+   aus dem Bild, und genau die ist der Punkt. */
+@media (max-width:640px){
+  table{min-width:0}
+  thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  tbody tr{display:block;padding:12px 14px}
+  tbody tr + tr{border-top:1px solid var(--rule)}
+  tbody th,tbody td{display:block;width:auto;padding:0;border:none !important}
+  tbody th{margin-bottom:6px}
+  tbody td{padding-left:0;margin-top:6px;font-size:.86rem}
+  tbody td::before{
+    content:attr(data-l);display:block;
+    font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-3);margin-bottom:2px;
+  }
+}
+
+.karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.karte{
+  background:var(--panel);border:1px solid var(--rule);border-radius:14px;
+  padding:16px 18px;display:flex;flex-direction:column;gap:8px;
+}
+.karte h3{margin:0;font-size:.98rem;font-weight:600}
+.karte p{margin:0;font-family:var(--prose);font-size:.95rem;line-height:1.55;color:var(--ink-2)}
+.karte ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+.karte li{font-size:.9rem;color:var(--ink-2)}
+.karte li b{color:var(--ink);font-weight:600}
+
+.abfall{
+  background:var(--panel);border:1px solid var(--rule);border-radius:14px;
+  padding:16px 18px;display:flex;flex-direction:column;gap:10px;
+}
+.abfall ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+.abfall li{
+  display:flex;gap:10px;align-items:baseline;font-size:.9rem;color:var(--ink-2);
+  flex-wrap:wrap;
+}
+.abfall li .mono{color:var(--flag)}
+.abfall li em{font-style:normal;color:var(--ink-3);font-size:.84rem}
+
+.fuss{
+  border-top:1px solid var(--rule);padding-top:16px;
+  font-size:.84rem;color:var(--ink-3);max-width:62ch;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important;animation:none !important}
+}
+</style>
+
+<!-- Icon-Vorrat, dieselben Striche wie in der App -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="m-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.1 14.6a1.5 1.5 0 0 0 .3 1.7l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.5 1.5 0 0 0-1.7-.3 1.5 1.5 0 0 0-.9 1.4v.3a2 2 0 1 1-4 0v-.2a1.5 1.5 0 0 0-1-1.4 1.5 1.5 0 0 0-1.7.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.5 1.5 0 0 0 .3-1.7 1.5 1.5 0 0 0-1.4-.9H3a2 2 0 1 1 0-4h.2a1.5 1.5 0 0 0 1.4-1 1.5 1.5 0 0 0-.3-1.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.5 1.5 0 0 0 1.7.3H9a1.5 1.5 0 0 0 .9-1.4V3a2 2 0 1 1 4 0v.2a1.5 1.5 0 0 0 .9 1.4 1.5 1.5 0 0 0 1.7-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.5 1.5 0 0 0-.3 1.7V9a1.5 1.5 0 0 0 1.4.9h.3a2 2 0 1 1 0 4h-.2a1.5 1.5 0 0 0-1.4.9z"/></symbol>
+  <symbol id="m-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+  <symbol id="m-undo" viewBox="0 0 24 24"><path d="M4 10h10a5 5 0 1 1 0 10h-3M8 6l-4 4 4 4"/></symbol>
+  <symbol id="m-share" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/></symbol>
+  <symbol id="m-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6.5 7l.9 12a2 2 0 0 0 2 1.9h5.2a2 2 0 0 0 2-1.9L17.5 7"/></symbol>
+  <symbol id="m-zurueck" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
+  <symbol id="m-sparkle" viewBox="0 0 24 24"><path d="M11 3l1.7 4.8L17.5 9.5 12.7 11.2 11 16l-1.7-4.8L4.5 9.5l4.8-1.7z"/><path d="M18 15l.7 1.9 1.9.7-1.9.7L18 21l-.7-1.7-1.9-.7 1.9-.7z"/></symbol>
+  <symbol id="m-globus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.4 5.3 3.4 8.5s-1.2 6.2-3.4 8.5c-2.2-2.3-3.4-5.3-3.4-8.5S9.8 5.8 12 3.5z"/></symbol>
+  <symbol id="m-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+</svg>
+
+<div class="wrap">
+
+  <header class="kopf">
+    <p class="eyebrow">Entwurf &middot; nichts davon ist eingebaut</p>
+    <h1>Ein systemnäheres Layout für die Schreibhilfe</h1>
+    <p class="lead">Links steht die App, wie sie heute aussieht — nachgebaut aus
+    <span class="mono">online/css/style.css</span>. Rechts derselbe Bildschirm mit kühleren
+    Flächen, Systemschrift und den Formen, die Android und iOS heute selbst benutzen.
+    Der Aufbau bleibt in beiden Fassungen gleich: eine Ebene, ein Hauptknopf, alles in Daumenreichweite.</p>
+  </header>
+
+  <div class="board" id="board" data-mock="light" data-screen="schreiben">
+
+    <div class="controls">
+      <div class="ctl">
+        <span class="ctl__lbl">Bildschirm</span>
+        <div class="seg" role="group" aria-label="Bildschirm wählen">
+          <button type="button" data-screen="schreiben" aria-pressed="true">Schreiben</button>
+          <button type="button" data-screen="funde" aria-pressed="false">Nach dem Korrigieren</button>
+          <button type="button" data-screen="einstell" aria-pressed="false">Einstellungen</button>
+        </div>
+      </div>
+      <div class="ctl">
+        <span class="ctl__lbl">Ansicht</span>
+        <div class="seg" role="group" aria-label="Hell oder dunkel">
+          <button type="button" data-mock="light" aria-pressed="true">Hell</button>
+          <button type="button" data-mock="dark" aria-pressed="false">Dunkel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="frames">
+
+      <!-- ============ JETZT ============ -->
+      <figure class="col">
+        <figcaption class="col__head">
+          <span class="tag">Jetzt</span>
+          <span class="col__note">Papier, Petrol, 3&nbsp;px Ecken</span>
+        </figcaption>
+        <div class="phone"><div class="phone__screen"><div class="mock mock--alt">
+
+          <div class="scr" data-scr="schreiben">
+            <div class="a-top">
+              <span class="a-mark"><i>Schreib</i><b>hilfe</b></span>
+              <button class="a-icon" tabindex="-1" aria-hidden="true"><svg class="mi"><use href="#m-settings"></use></svg></button>
+            </div>
+            <div class="a-main">
+              <div class="a-feld">Sehr geehrte Damen und Herren,<br><br>ich möchte wiedersprechen das der Bescheid vom 3. März nicht richtig ist. Meine Miete ist <span class="marker">größer</span> wie im letzten Jahr und wir hat die Nachzahlung schon geleistet.</div>
+            </div>
+            <div class="a-leiste">
+              <button class="a-haupt" tabindex="-1"><svg class="mi"><use href="#m-check"></use></svg> Korrigieren</button>
+            </div>
+          </div>
+
+          <div class="scr" data-scr="funde">
+            <div class="a-top">
+              <span class="a-mark"><i>Schreib</i><b>hilfe</b></span>
+              <button class="a-icon" tabindex="-1" aria-hidden="true"><svg class="mi"><use href="#m-settings"></use></svg></button>
+            </div>
+            <div class="a-main">
+              <div class="a-feld">Sehr geehrte Damen und Herren,<br><br>ich möchte widersprechen, <span class="neu">dass</span> der Bescheid vom 3. März nicht richtig ist. Meine Miete ist größer <span class="neu">als</span> im letzten Jahr und wir <span class="neu">haben</span> die Nachzahlung schon geleistet.</div>
+              <p class="a-status a-status--gut">3 Stellen verbessert</p>
+              <div class="a-funde">
+                <div class="a-fund">
+                  <div class="a-fund__t">
+                    <div class="a-wort"><span class="a-falsch">das</span><span class="a-pfeil">→</span><span class="a-richtig">dass</span></div>
+                    <span class="a-grund">Nach „widersprechen" folgt ein Nebensatz.</span>
+                  </div>
+                  <button class="a-btn" tabindex="-1">Zurück</button>
+                </div>
+                <div class="a-fund">
+                  <div class="a-fund__t">
+                    <div class="a-wort"><span class="a-falsch">größer wie</span><span class="a-pfeil">→</span><span class="a-richtig">größer als</span></div>
+                    <span class="a-grund">Beim Vergleich steht „als".</span>
+                  </div>
+                  <button class="a-btn" tabindex="-1">Zurück</button>
+                </div>
+                <div class="a-fund a-fund--tipp">
+                  <div class="a-fund__t">
+                    <div class="a-stelle">„…und wir haben die Nachzahlung…"</div>
+                    <span class="a-grund">Langer Satz — hier ginge ein Punkt.</span>
+                  </div>
+                </div>
+                <div class="a-fund a-fund--werkzeug">
+                  <span class="a-wtitel">Weitere Werkzeuge</span>
+                  <div class="a-werkzeuge">
+                    <button class="a-werkzeug" tabindex="-1"><svg class="mi"><use href="#m-sparkle"></use></svg> KI-Korrektur</button>
+                    <button class="a-werkzeug" tabindex="-1"><svg class="mi"><use href="#m-globus"></use></svg> Übersetzen</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="a-leiste">
+              <button class="a-haupt" tabindex="-1"><svg class="mi"><use href="#m-undo"></use></svg> Zurückgeben</button>
+              <button class="a-haupt" tabindex="-1"><svg class="mi"><use href="#m-share"></use></svg> Teilen</button>
+              <div class="a-klein-reihe">
+                <button class="a-klein" tabindex="-1"><svg class="mi"><use href="#m-undo"></use></svg> Rückgängig</button>
+                <button class="a-klein" tabindex="-1"><svg class="mi"><use href="#m-trash"></use></svg> Löschen</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="scr" data-scr="einstell">
+            <div class="a-seitkopf">
+              <button class="a-icon" tabindex="-1" aria-hidden="true"><svg class="mi"><use href="#m-zurueck"></use></svg></button>
+              <h3>Einstellungen</h3>
+            </div>
+            <div class="a-form">
+              <label class="a-field">API-Schlüssel <em>für Korrigieren und Übersetzen</em>
+                <span class="a-input">••••••••••••••••</span>
+              </label>
+              <div class="a-zeile" style="margin-top:-7px">
+                <span class="a-grund">Gespeichert · endet auf …7fQa</span>
+                <span class="a-verweis">Schlüssel erstellen ↗</span>
+              </div>
+              <label class="a-field">KI-Modell
+                <span class="a-input">Beste Qualität · Opus 5</span>
+              </label>
+              <label class="a-field">Tonfall <em>wie die KI-Korrektur klingen soll</em>
+                <span class="a-input">Wie geschrieben</span>
+              </label>
+              <div class="a-zeile">
+                <span class="a-grund">Verbraucht: 0,42 € seit dem 1. August</span>
+                <span class="a-verweis">Guthaben aufladen ↗</span>
+              </div>
+              <label class="a-field">Gedächtnis <em>bleibt auf dem Gerät</em>
+                <div class="a-zeile">
+                  <span class="a-grund">3 Schreibweisen gelernt</span>
+                  <button class="a-btn" tabindex="-1" style="flex:none">vergessen</button>
+                </div>
+                <div class="a-reihe">
+                  <button class="a-btn" tabindex="-1">Sichern</button>
+                  <button class="a-btn" tabindex="-1">Einspielen</button>
+                </div>
+              </label>
+              <label class="a-field a-schalter">
+                <span class="a-box a-box--an"></span>
+                <span style="font-size:11px;font-weight:700">Wort hervorheben
+                  <em style="display:block;font-weight:400;font-size:9.5px">Ein farbiger Streifen zeigt beim Schreiben, wo du gerade bist.</em>
+                </span>
+              </label>
+              <label class="a-field a-schalter">
+                <span class="a-box"></span>
+                <span style="font-size:11px;font-weight:700">Farben vom System übernehmen
+                  <em style="display:block;font-weight:400;font-size:9.5px">Android 12 und neuer.</em>
+                </span>
+              </label>
+              <hr class="a-trenner">
+              <label class="a-field">Darstellung
+                <div class="a-reihe">
+                  <button class="a-btn" tabindex="-1">A− kleiner</button>
+                  <button class="a-btn" tabindex="-1">A+ größer</button>
+                  <button class="a-btn" tabindex="-1">Hell/Dunkel</button>
+                </div>
+              </label>
+              <label class="a-field">Weitere Werkzeuge <em>brauchen den Schlüssel und Internet</em>
+                <div class="a-reihe">
+                  <span class="a-input" style="flex:1;font-size:11px;padding:6px 7px">Deutsch</span>
+                  <button class="a-btn" tabindex="-1"><svg class="mi"><use href="#m-globus"></use></svg> Übersetzen</button>
+                </div>
+              </label>
+              <div class="a-actions">
+                <button class="a-ghost" tabindex="-1">Schlüssel löschen</button>
+                <button class="a-primary" tabindex="-1">Speichern</button>
+              </div>
+            </div>
+          </div>
+
+        </div></div></div>
+      </figure>
+
+      <!-- ============ ENTWURF ============ -->
+      <figure class="col">
+        <figcaption class="col__head">
+          <span class="tag tag--neu">Entwurf</span>
+          <span class="col__note">kühle Karten, Systemschrift, runde Knöpfe</span>
+        </figcaption>
+        <div class="phone"><div class="phone__screen"><div class="mock mock--neu">
+
+          <div class="scr" data-scr="schreiben">
+            <div class="n-top">
+              <h2 class="n-title">Schreibhilfe</h2>
+              <button class="n-icon" tabindex="-1" aria-hidden="true"><svg class="mi"><use href="#m-settings"></use></svg></button>
+            </div>
+            <div class="n-main">
+              <div class="n-feld">Sehr geehrte Damen und Herren,<br><br>ich möchte wiedersprechen das der Bescheid vom 3. März nicht richtig ist. Meine Miete ist <span class="marker">größer</span> wie im letzten Jahr und wir hat die Nachzahlung schon geleistet.</div>
+            </div>
+            <div class="n-leiste">
+              <button class="n-haupt" tabindex="-1"><svg class="mi"><use href="#m-check"></use></svg> Korrigieren</button>
+            </div>
+          </div>
+
+          <div class="scr" data-scr="funde">
+            <div class="n-top">
+              <h2 class="n-title">Schreibhilfe</h2>
+              <button class="n-icon" tabindex="-1" aria-hidden="true"><svg class="mi"><use href="#m-settings"></use></svg></button>
+            </div>
+            <div class="n-main">
+              <div class="n-feld" style="flex:0 1 auto">Sehr geehrte Damen und Herren, ich möchte widersprechen, <span class="neu">dass</span> der Bescheid vom 3. März nicht richtig ist. Meine Miete ist größer <span class="neu">als</span> im letzten Jahr und wir <span class="neu">haben</span> die Nachzahlung schon geleistet.</div>
+              <p class="n-status"><b>3 Stellen verbessert</b></p>
+              <div class="n-funde">
+                <div class="n-fund">
+                  <div class="n-fund__kopf">
+                    <span class="n-chip">Sicher falsch</span>
+                    <span class="n-fund__stelle">„…widersprechen das der…"</span>
+                  </div>
+                  <div class="n-fund__zeile">
+                    <div class="n-wort">
+                      <span class="n-falsch">das</span><span class="n-pfeil">→</span><span class="n-richtig">dass</span>
+                      <span class="n-grund">Nach „widersprechen" folgt ein Nebensatz.</span>
+                    </div>
+                    <button class="n-tonal" tabindex="-1">Zurück</button>
+                  </div>
+                </div>
+                <div class="n-fund">
+                  <div class="n-fund__kopf">
+                    <span class="n-chip">Sicher falsch</span>
+                    <span class="n-fund__stelle">„…ist größer wie im…"</span>
+                  </div>
+                  <div class="n-fund__zeile">
+                    <div class="n-wort">
+                      <span class="n-falsch">größer wie</span><span class="n-pfeil">→</span><span class="n-richtig">größer als</span>
+                      <span class="n-grund">Beim Vergleich steht „als".</span>
+                    </div>
+                    <button class="n-tonal" tabindex="-1">Zurück</button>
+                  </div>
+                </div>
+                <div class="n-fund">
+                  <div class="n-fund__kopf">
+                    <span class="n-chip n-chip--tipp">Zum Nachdenken</span>
+                  </div>
+                  <div class="n-wort" style="font-size:12px">Langer Satz — hier ginge ein Punkt.
+                    <span class="n-grund">„…und wir haben die Nachzahlung schon geleistet."</span>
+                  </div>
+                </div>
+                <div class="n-fund">
+                  <div class="n-fund__kopf"><span class="n-chip n-chip--ki">Braucht Internet</span></div>
+                  <div class="n-werkzeuge">
+                    <button class="n-werkzeug" tabindex="-1"><svg class="mi"><use href="#m-sparkle"></use></svg> KI-Korrektur</button>
+                    <button class="n-werkzeug" tabindex="-1"><svg class="mi"><use href="#m-globus"></use></svg> Übersetzen</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="n-leiste">
+              <button class="n-haupt" tabindex="-1"><svg class="mi"><use href="#m-undo"></use></svg> Zurückgeben</button>
+              <div class="n-text-reihe">
+                <button class="n-text" tabindex="-1"><svg class="mi"><use href="#m-share"></use></svg> Teilen</button>
+                <button class="n-text" tabindex="-1"><svg class="mi"><use href="#m-undo"></use></svg> Rückgängig</button>
+                <button class="n-text n-text--warn" tabindex="-1"><svg class="mi"><use href="#m-trash"></use></svg> Löschen</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="scr" data-scr="einstell">
+            <div class="n-seitkopf">
+              <button class="n-icon" tabindex="-1" aria-hidden="true"><svg class="mi"><use href="#m-zurueck"></use></svg></button>
+              <h3>Einstellungen</h3>
+            </div>
+            <div class="n-liste">
+              <div class="n-gruppe">
+                <span class="n-gruppe__titel">KI-Werkzeuge</span>
+                <div class="n-karte">
+                  <div class="n-row">
+                    <div class="n-row__t"><b>API-Schlüssel</b><span>Gespeichert · endet auf …7fQa</span></div>
+                    <span class="n-row__wert"><svg class="mi"><use href="#m-chevron"></use></svg></span>
+                  </div>
+                  <div class="n-row">
+                    <div class="n-row__t"><b>Modell</b></div>
+                    <span class="n-row__wert">Opus 5 <svg class="mi"><use href="#m-chevron"></use></svg></span>
+                  </div>
+                  <div class="n-row">
+                    <div class="n-row__t"><b>Tonfall</b></div>
+                    <span class="n-row__wert">Wie geschrieben <svg class="mi"><use href="#m-chevron"></use></svg></span>
+                  </div>
+                  <div class="n-row">
+                    <div class="n-row__t"><b>Verbraucht</b><span>0,42 € seit dem 1. August</span></div>
+                    <span class="n-row__wert"><svg class="mi"><use href="#m-chevron"></use></svg></span>
+                  </div>
+                </div>
+              </div>
+              <div class="n-gruppe">
+                <span class="n-gruppe__titel">Beim Schreiben</span>
+                <div class="n-karte">
+                  <div class="n-row">
+                    <div class="n-row__t"><b>Wort hervorheben</b><span>Zeigt, wo du gerade bist</span></div>
+                    <span class="n-switch n-switch--an"></span>
+                  </div>
+                  <div class="n-row">
+                    <div class="n-row__t"><b>Farben vom System</b><span>Android 12 und neuer</span></div>
+                    <span class="n-switch"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="n-gruppe">
+                <span class="n-gruppe__titel">Darstellung</span>
+                <div class="n-karte">
+                  <div class="n-row">
+                    <div class="n-row__t"><b>Schriftgröße</b></div>
+                    <span class="n-seg"><span>A−</span><span class="an">A</span><span>A+</span></span>
+                  </div>
+                  <div class="n-row">
+                    <div class="n-row__t"><b>Hell / Dunkel</b></div>
+                    <span class="n-row__wert">Automatisch <svg class="mi"><use href="#m-chevron"></use></svg></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="n-fuss">
+              <button class="n-text" style="flex:none" tabindex="-1">Schlüssel löschen</button>
+              <button class="n-haupt" style="width:auto;padding:11px 22px;font-size:13px" tabindex="-1">Speichern</button>
+            </div>
+          </div>
+
+        </div></div></div>
+      </figure>
+
+    </div>
+  </div>
+
+  <section class="sektion">
+    <h2>Was sich ändert</h2>
+    <p>Nichts davon betrifft den Ablauf. Es geht um Form, Abstand und Farbe — und darum,
+    dass es dafür künftig <em>ein</em> Regelwerk gibt statt zwei gewachsener nebeneinander.</p>
+    <div class="tabelle-huelle">
+      <table>
+        <thead>
+          <tr><th scope="col">Merkmal</th><th scope="col">Jetzt</th><th scope="col">Entwurf</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Ecken</th>
+            <td class="ist" data-l="Jetzt"><code>--radius: 3px</code> — überall gleich, auch am großen Knopf</td>
+            <td class="neu" data-l="Entwurf">16 px an Karten, volle Pille am Hauptknopf, 999 px an Chips</td>
+          </tr>
+          <tr>
+            <th scope="row">Flächen</th>
+            <td class="ist" data-l="Jetzt">1-px-Linien auf Papierfarbe <code>#EDECE5</code></td>
+            <td class="neu" data-l="Entwurf">Karten mit weichem Schatten auf kühlem Grau <code>#F4F5F7</code></td>
+          </tr>
+          <tr>
+            <th scope="row">Knöpfe</th>
+            <td class="ist" data-l="Jetzt">zwei Systeme nebeneinander: <code>.btn</code> und <code>.knopf</code></td>
+            <td class="neu" data-l="Entwurf">eins mit drei Stufen: gefüllt, tonal, Text</td>
+          </tr>
+          <tr>
+            <th scope="row">Abstände</th>
+            <td class="ist" data-l="Jetzt">handverlesen — <code>.25</code>, <code>.35</code>, <code>.45</code>, <code>.55</code>, <code>.7</code>, <code>1.05rem</code></td>
+            <td class="neu" data-l="Entwurf">eine Skala: 4 / 8 / 12 / 16 / 24 px</td>
+          </tr>
+          <tr>
+            <th scope="row">Schrift</th>
+            <td class="ist" data-l="Jetzt">Serifen-Wortmarke, Systemschrift im Rest</td>
+            <td class="neu" data-l="Entwurf">Systemschrift durchgehend, Titel 19 px statt 1,05 rem Serife</td>
+          </tr>
+          <tr>
+            <th scope="row">Funde</th>
+            <td class="ist" data-l="Jetzt">3-px-Balken links, Farbe sagt die Sorte</td>
+            <td class="neu" data-l="Entwurf">Kärtchen mit beschriftetem Chip — die Sorte steht als Wort da</td>
+          </tr>
+          <tr>
+            <th scope="row">Schalter</th>
+            <td class="ist" data-l="Jetzt">eckige Ankreuzkästchen</td>
+            <td class="neu" data-l="Entwurf">Schiebeschalter, wie das System sie zeigt</td>
+          </tr>
+          <tr>
+            <th scope="row">Einstellungen</th>
+            <td class="ist" data-l="Jetzt">eine lange Liste, alles gleich gewichtet</td>
+            <td class="neu" data-l="Entwurf">Gruppen mit Überschrift, Werte rechts in der Zeile</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sektion">
+    <h2>Was bleibt</h2>
+    <div class="karten">
+      <div class="karte">
+        <h3>Der Aufbau</h3>
+        <p>Kopf, Schreibfeld, Leiste. Einstellungen als eigener Bildschirm, nicht als Fenster im Fenster — die Zurück-Taste tut weiter, was man erwartet.</p>
+      </div>
+      <div class="karte">
+        <h3>Ein Hauptknopf</h3>
+        <p>„Korrigieren" bleibt der eine große Knopf, und was danach zu tun ist, erscheint erst danach. Der Entwurf macht ihn runder, nicht kleiner.</p>
+      </div>
+      <div class="karte">
+        <h3>Daumenreichweite</h3>
+        <ul>
+          <li>Jede Trefferfläche <b>mindestens 48 px</b></li>
+          <li>Alles Wichtige <b>unten</b>, nicht oben rechts</li>
+          <li><code>env(safe-area-inset-bottom)</code> bleibt</li>
+        </ul>
+      </div>
+      <div class="karte">
+        <h3>Der Zwilling hinterm Feld</h3>
+        <p>Der Streifen hinter dem Wort, an dem gerade geschrieben wird, funktioniert unverändert — er bekommt nur eine kühlere Farbe.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sektion">
+    <h2>Was beim Umbau nebenbei wegfällt</h2>
+    <p>Beim Nachbauen ist aufgefallen, dass in <span class="mono">style.css</span> Regeln stehen,
+    zu denen es im HTML und im JavaScript nichts mehr gibt. Die brauchen im neuen Regelwerk keine Entsprechung:</p>
+    <div class="abfall">
+      <ul>
+        <li><span class="mono">.ki-reihe</span> <em>— null Treffer in index.html und app.js</em></li>
+        <li><span class="mono">.leiste__rechts</span> <em>— null Treffer</em></li>
+        <li><span class="mono">.baunummer</span> <em>— null Treffer</em></li>
+        <li><span class="mono">.aktionen</span> <em>— null Treffer</em></li>
+        <li><span class="mono">.btn--breit</span>, <span class="mono">.btn--icon</span> <em>— null Treffer</em></li>
+        <li><span class="mono">.leiste</span> <em>— zweimal definiert (Zeile 255 als Reihe, Zeile 407 als Spalte, die die erste wieder aufhebt)</em></li>
+      </ul>
+    </div>
+  </section>
+
+  <p class="fuss">Beide Rahmen sind Nachbauten in reinem HTML und CSS — kein Code der App läuft hier.
+  Die Werte der linken Spalte stammen aus <span class="mono">online/css/style.css</span>, damit der
+  Vergleich ehrlich ist. Die Seite liegt unter <span class="mono">entwurf/layout-entwurf.html</span> und
+  wird von GitHub Pages nicht ausgeliefert — der Ablauf veröffentlicht nur <span class="mono">online/</span>.</p>
+
+</div>
+
+<script>
+(function(){
+  var board = document.getElementById('board');
+  board.querySelectorAll('.seg button').forEach(function(b){
+    b.addEventListener('click', function(){
+      var art = b.dataset.screen ? 'screen' : 'mock';
+      var wert = b.dataset.screen || b.dataset.mock;
+      board.dataset[art] = wert;
+      b.parentElement.querySelectorAll('button').forEach(function(g){
+        g.setAttribute('aria-pressed', String(g === b));
+      });
+    });
+  });
+})();
+</script>
