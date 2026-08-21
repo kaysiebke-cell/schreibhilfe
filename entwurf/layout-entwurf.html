@@ -168,7 +168,7 @@ h1{
 .board[data-screen="einstell"]  .scr[data-scr="einstell"]{display:flex}
 .mock__body{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
 
-/* ---------- JETZT: Werte 1:1 aus online/css/style.css ---------- */
+/* ---------- VORHER: Werte 1:1 aus der alten online/css/style.css ---------- */
 .mock--alt{
   --paper:#EDECE5; --raised:#F7F6F1; --surface:#ffffff;
   --ink:#232930; --ink-soft:#565f68; --line:#d8d6cc;
@@ -305,7 +305,7 @@ h1{
 }
 .board[data-mock="dark"] .a-primary{color:#101418}
 
-/* ---------- ENTWURF: kühl, systemnah ---------- */
+/* ---------- JETZT: kühl, systemnah — so ist die App gebaut ---------- */
 .mock--neu{
   --bg:#F4F5F7; --surface:#FFFFFF; --surface-2:#ECEEF1; --surface-3:#E3E6EA;
   --ink:#1B1E22; --ink-2:#626A73; --ink-3:#98A0A8; --line:#E2E5E9;
@@ -518,12 +518,12 @@ td code,.mono{font-family:var(--mono);font-size:.82em;background:var(--panel-2);
 <div class="wrap">
 
   <header class="kopf">
-    <p class="eyebrow">Entwurf &middot; nichts davon ist eingebaut</p>
+    <p class="eyebrow">Vorher und nachher &middot; der Entwurf ist eingebaut</p>
     <h1>Ein systemnäheres Layout für die Schreibhilfe</h1>
-    <p class="lead">Links steht die App, wie sie heute aussieht — nachgebaut aus
-    <span class="mono">online/css/style.css</span>. Rechts derselbe Bildschirm mit kühleren
-    Flächen, Systemschrift und den Formen, die Android und iOS heute selbst benutzen.
-    Der Aufbau bleibt in beiden Fassungen gleich: eine Ebene, ein Hauptknopf, alles in Daumenreichweite.</p>
+    <p class="lead">Links steht die App, wie sie vor dem Umbau aussah — nachgebaut aus der
+    damaligen <span class="mono">online/css/style.css</span>. Rechts, wie sie jetzt aussieht:
+    kühlere Flächen, Systemschrift und die Formen, die Android und iOS selbst benutzen.
+    Der Aufbau ist derselbe geblieben: eine Ebene, ein Hauptknopf, alles in Daumenreichweite.</p>
   </header>
 
   <div class="board" id="board" data-mock="light" data-screen="schreiben">
@@ -548,10 +548,10 @@ td code,.mono{font-family:var(--mono);font-size:.82em;background:var(--panel-2);
 
     <div class="frames">
 
-      <!-- ============ JETZT ============ -->
+      <!-- ============ VORHER ============ -->
       <figure class="col">
         <figcaption class="col__head">
-          <span class="tag">Jetzt</span>
+          <span class="tag">Vorher</span>
           <span class="col__note">Papier, Petrol, 3&nbsp;px Ecken</span>
         </figcaption>
         <div class="phone"><div class="phone__screen"><div class="mock mock--alt">
@@ -686,10 +686,10 @@ td code,.mono{font-family:var(--mono);font-size:.82em;background:var(--panel-2);
         </div></div></div>
       </figure>
 
-      <!-- ============ ENTWURF ============ -->
+      <!-- ============ JETZT ============ -->
       <figure class="col">
         <figcaption class="col__head">
-          <span class="tag tag--neu">Entwurf</span>
+          <span class="tag tag--neu">Jetzt</span>
           <span class="col__note">kühle Karten, Systemschrift, runde Knöpfe</span>
         </figcaption>
         <div class="phone"><div class="phone__screen"><div class="mock mock--neu">
@@ -836,54 +836,54 @@ td code,.mono{font-family:var(--mono);font-size:.82em;background:var(--panel-2);
   </div>
 
   <section class="sektion">
-    <h2>Was sich ändert</h2>
-    <p>Nichts davon betrifft den Ablauf. Es geht um Form, Abstand und Farbe — und darum,
-    dass es dafür künftig <em>ein</em> Regelwerk gibt statt zwei gewachsener nebeneinander.</p>
+    <h2>Was sich geändert hat</h2>
+    <p>Nichts davon betrifft den Ablauf. Es ging um Form, Abstand und Farbe — und darum,
+    dass es dafür jetzt <em>ein</em> Regelwerk gibt statt zwei gewachsener nebeneinander.</p>
     <div class="tabelle-huelle">
       <table>
         <thead>
-          <tr><th scope="col">Merkmal</th><th scope="col">Jetzt</th><th scope="col">Entwurf</th></tr>
+          <tr><th scope="col">Merkmal</th><th scope="col">Vorher</th><th scope="col">Jetzt</th></tr>
         </thead>
         <tbody>
           <tr>
             <th scope="row">Ecken</th>
-            <td class="ist" data-l="Jetzt"><code>--radius: 3px</code> — überall gleich, auch am großen Knopf</td>
-            <td class="neu" data-l="Entwurf">16 px an Karten, volle Pille am Hauptknopf, 999 px an Chips</td>
+            <td class="ist" data-l="Vorher"><code>--radius: 3px</code> — überall gleich, auch am großen Knopf</td>
+            <td class="neu" data-l="Jetzt">16 px an Karten, volle Pille am Hauptknopf, 999 px an Chips</td>
           </tr>
           <tr>
             <th scope="row">Flächen</th>
-            <td class="ist" data-l="Jetzt">1-px-Linien auf Papierfarbe <code>#EDECE5</code></td>
-            <td class="neu" data-l="Entwurf">Karten mit weichem Schatten auf kühlem Grau <code>#F4F5F7</code></td>
+            <td class="ist" data-l="Vorher">1-px-Linien auf Papierfarbe <code>#EDECE5</code></td>
+            <td class="neu" data-l="Jetzt">Karten mit weichem Schatten auf kühlem Grau <code>#F4F5F7</code></td>
           </tr>
           <tr>
             <th scope="row">Knöpfe</th>
-            <td class="ist" data-l="Jetzt">zwei Systeme nebeneinander: <code>.btn</code> und <code>.knopf</code></td>
-            <td class="neu" data-l="Entwurf">eins mit drei Stufen: gefüllt, tonal, Text</td>
+            <td class="ist" data-l="Vorher">zwei Systeme nebeneinander: <code>.btn</code> und <code>.knopf</code></td>
+            <td class="neu" data-l="Jetzt">eins mit drei Stufen: gefüllt, tonal, Text</td>
           </tr>
           <tr>
             <th scope="row">Abstände</th>
-            <td class="ist" data-l="Jetzt">handverlesen — <code>.25</code>, <code>.35</code>, <code>.45</code>, <code>.55</code>, <code>.7</code>, <code>1.05rem</code></td>
-            <td class="neu" data-l="Entwurf">eine Skala: 4 / 8 / 12 / 16 / 24 px</td>
+            <td class="ist" data-l="Vorher">handverlesen — <code>.25</code>, <code>.35</code>, <code>.45</code>, <code>.55</code>, <code>.7</code>, <code>1.05rem</code></td>
+            <td class="neu" data-l="Jetzt">eine Skala: 4 / 8 / 12 / 16 / 24 px</td>
           </tr>
           <tr>
             <th scope="row">Schrift</th>
-            <td class="ist" data-l="Jetzt">Serifen-Wortmarke, Systemschrift im Rest</td>
-            <td class="neu" data-l="Entwurf">Systemschrift durchgehend, Titel 19 px statt 1,05 rem Serife</td>
+            <td class="ist" data-l="Vorher">Serifen-Wortmarke, Systemschrift im Rest</td>
+            <td class="neu" data-l="Jetzt">Systemschrift durchgehend, Titel 19 px statt 1,05 rem Serife</td>
           </tr>
           <tr>
             <th scope="row">Funde</th>
-            <td class="ist" data-l="Jetzt">3-px-Balken links, Farbe sagt die Sorte</td>
-            <td class="neu" data-l="Entwurf">Kärtchen mit beschriftetem Chip — die Sorte steht als Wort da</td>
+            <td class="ist" data-l="Vorher">3-px-Balken links, Farbe sagt die Sorte</td>
+            <td class="neu" data-l="Jetzt">Kärtchen mit beschriftetem Chip — die Sorte steht als Wort da</td>
           </tr>
           <tr>
             <th scope="row">Schalter</th>
-            <td class="ist" data-l="Jetzt">eckige Ankreuzkästchen</td>
-            <td class="neu" data-l="Entwurf">Schiebeschalter, wie das System sie zeigt</td>
+            <td class="ist" data-l="Vorher">eckige Ankreuzkästchen</td>
+            <td class="neu" data-l="Jetzt">Schiebeschalter, wie das System sie zeigt</td>
           </tr>
           <tr>
             <th scope="row">Einstellungen</th>
-            <td class="ist" data-l="Jetzt">eine lange Liste, alles gleich gewichtet</td>
-            <td class="neu" data-l="Entwurf">Gruppen mit Überschrift, Werte rechts in der Zeile</td>
+            <td class="ist" data-l="Vorher">eine lange Liste, alles gleich gewichtet</td>
+            <td class="neu" data-l="Jetzt">Gruppen mit Überschrift, Werte rechts in der Zeile</td>
           </tr>
         </tbody>
       </table>
@@ -917,9 +917,9 @@ td code,.mono{font-family:var(--mono);font-size:.82em;background:var(--panel-2);
   </section>
 
   <section class="sektion">
-    <h2>Was beim Umbau nebenbei wegfällt</h2>
-    <p>Beim Nachbauen ist aufgefallen, dass in <span class="mono">style.css</span> Regeln stehen,
-    zu denen es im HTML und im JavaScript nichts mehr gibt. Die brauchen im neuen Regelwerk keine Entsprechung:</p>
+    <h2>Was beim Umbau nebenbei weggefallen ist</h2>
+    <p>Beim Nachbauen war aufgefallen, dass in der alten <span class="mono">style.css</span> Regeln
+    standen, zu denen es im HTML und im JavaScript nichts mehr gab. Sie sind mit dem Umbau verschwunden:</p>
     <div class="abfall">
       <ul>
         <li><span class="mono">.ki-reihe</span> <em>— null Treffer in index.html und app.js</em></li>
@@ -933,9 +933,10 @@ td code,.mono{font-family:var(--mono);font-size:.82em;background:var(--panel-2);
   </section>
 
   <p class="fuss">Beide Rahmen sind Nachbauten in reinem HTML und CSS — kein Code der App läuft hier.
-  Die Werte der linken Spalte stammen aus <span class="mono">online/css/style.css</span>, damit der
-  Vergleich ehrlich ist. Die Seite liegt unter <span class="mono">entwurf/layout-entwurf.html</span> und
-  wird von GitHub Pages nicht ausgeliefert — der Ablauf veröffentlicht nur <span class="mono">online/</span>.</p>
+  Die Werte der linken Spalte stammen aus der Fassung vor dem Umbau, damit der Vergleich ehrlich ist;
+  die echte App steht seither auf der rechten. Die Seite liegt unter
+  <span class="mono">entwurf/layout-entwurf.html</span> und wird von GitHub Pages nicht ausgeliefert —
+  der Ablauf veröffentlicht nur <span class="mono">online/</span>.</p>
 
 </div>
 

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Dieselben Farben wie die dunkle Fassung der Web-App. Ohne diese Datei
-         blieben Status- und Navigationsleiste im Dunkelmodus hell cremefarben,
-         während die App darunter dunkel ist. -->
-    <color name="paper">#1A1C20</color>
-    <color name="paper_raised">#24272D</color>
-    <color name="petrol">#6AA3BD</color>
-    <color name="petrol_deep">#A4C7D8</color>
+         blieben Status- und Navigationsleiste im Dunkelmodus hell, während die
+         App darunter dunkel ist. -->
+    <color name="paper">#121316</color>
+    <color name="paper_raised">#121316</color>
+    <color name="petrol">#8AB4F8</color>
+    <color name="petrol_deep">#B3CEFB</color>
 </resources>

@@ -279,8 +279,8 @@ function themaAnwenden() {
    stehen, sobald die Wahl in der App vom System abweicht. */
 function meldeLeisten(dunkel) {
   const stil = getComputedStyle(document.documentElement);
-  const oben  = stil.getPropertyValue('--paper-raised').trim() || '#F7F6F1';
-  const unten = stil.getPropertyValue('--paper').trim()        || '#EDECE5';
+  const oben  = stil.getPropertyValue('--paper-raised').trim() || '#F4F5F7';
+  const unten = stil.getPropertyValue('--paper').trim()        || '#F4F5F7';
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', oben);
   if (typeof window.AndroidBridge?.leisten === 'function') {
     try { window.AndroidBridge.leisten(dunkel, oben, unten); } catch {}
@@ -350,38 +350,14 @@ themaAnwenden();
 systemfarbenAnwenden();
 
 /* ------------------------------------------------------------
-   Die Knopfleiste soll auf eine Zeile passen.
+   Hier stand eine Messung, die der Knopfleiste bei Platznot die Wörter hinter
+   den Sinnbildern wegnahm. Sie gehörte zu der Zeit, als die Knöpfe in EINER
+   Reihe nebeneinander standen und die Reihe umbrechen konnte.
 
-   Wie breit ein Wort wirklich wird, hängt am Gerät: Bildschirmbreite,
-   Systemschriftgröße, Schriftart. Ein fester Wert im Stylesheet trifft das
-   nicht. Also misst die App nach: bricht die Reihe um, fallen die Wörter
-   hinter den Sinnbildern weg. Ist wieder Platz — etwa wenn das Handy quer
-   gedreht wird —, kommen sie zurück.
+   Seit jeder Knopf seine eigene Zeile über die volle Breite hat, gibt es nichts
+   mehr zu messen und nichts wegzunehmen. Mit ihr sind die Klassen
+   .leiste--eng und .leiste--sehr-eng verschwunden.
    ------------------------------------------------------------ */
-const leiste = document.querySelector('.leiste');
-
-function zeilenInDerLeiste() {
-  const oben = new Set();
-  for (const knopf of leiste.querySelectorAll('button')) {
-    if (!knopf.hidden) oben.add(Math.round(knopf.getBoundingClientRect().top));
-  }
-  return oben.size;
-}
-
-/* In zwei Stufen, damit das wichtigste Wort am längsten bleibt:
-   erst gehen „Teilen“ und „Kopieren“ (Pfeil und Doppelblatt kennt man),
-   und erst wenn es dann immer noch nicht reicht, auch „KI“. */
-function leisteAnpassen() {
-  // Erst mit allen Wörtern messen: Vielleicht ist inzwischen wieder Platz.
-  leiste.classList.remove('leiste--eng', 'leiste--sehr-eng');
-  if (zeilenInDerLeiste() === 1) return;
-  leiste.classList.add('leiste--eng');
-  if (zeilenInDerLeiste() === 1) return;
-  leiste.classList.add('leiste--sehr-eng');
-}
-
-addEventListener('resize', leisteAnpassen);
-leisteAnpassen();
 
 let schriftgroesse = Speicher.lies('schrift', 1.05);
 function setzeSchrift(wert) {
@@ -390,7 +366,6 @@ function setzeSchrift(wert) {
   Speicher.schreib('schrift', schriftgroesse);
   // Andere Schriftgröße heißt anderer Zeilenfall — der Streifen muss mit.
   if (el.spiegel) markiereWort();
-  if (typeof leiste !== 'undefined' && leiste) leisteAnpassen();
 }
 setzeSchrift(schriftgroesse);
 el.btnGroesser.addEventListener('click', () => setzeSchrift(schriftgroesse + 0.1));
@@ -1371,6 +1346,11 @@ function zeigeWerkzeugKasten() {
   const karte = document.createElement('div');
   karte.className = 'fund fund--werkzeug';
 
+  const sorte = document.createElement('span');
+  sorte.className = 'fund__sorte';
+  sorte.textContent = 'Braucht Internet';
+  karte.appendChild(sorte);
+
   const inhalt = document.createElement('div');
   inhalt.className = 'fund__text';
 
@@ -1551,11 +1531,29 @@ function uebernimm(fund) {
   zeigeDanachWennFertig();
 }
 
+/* Was für ein Fund das ist, stand bisher nur in der Farbe des Balkens links.
+   Eine Farbe muss man erst gelernt haben — und wer die App gegen Lesestress
+   benutzt, soll nicht auch noch einen Farbschlüssel lernen müssen. Deshalb
+   steht die Sorte jetzt als Wort auf der Karte. Die Farbe bleibt, sie trägt
+   es nur nicht mehr allein. */
+const SORTEN = {
+  tipp:      'Kommt drauf an',
+  hinweis:   'Zum Nachdenken',
+  vorschlag: 'Vorschlag',
+};
+
 function zeichneFunde(funde) {
   el.funde.innerHTML = '';
   for (const fund of funde) {
     const karte = document.createElement('div');
     karte.className = 'fund fund--' + fund.art;
+
+    const sorte = document.createElement('span');
+    sorte.className = 'fund__sorte';
+    // Ohne eigene Sorte ist es einer der eindeutigen Fälle: „wir hat", der
+    // kleine Satzanfang, das doppelte Wort.
+    sorte.textContent = SORTEN[fund.art] || 'Sicher falsch';
+    karte.appendChild(sorte);
 
     const beschreibung = document.createElement('div');
     beschreibung.className = 'fund__text';
@@ -1888,8 +1886,6 @@ function zeigeKosten() {
 function kiVerfuegbar() {
   const vorhanden = !!Speicher.lies('apiKey', '');
   el.btnKi.hidden = !vorhanden;
-  // Ein Knopf mehr in der Reihe: Passt sie noch auf eine Zeile?
-  leisteAnpassen();
   return vorhanden;
 }
 
