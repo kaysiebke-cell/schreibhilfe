@@ -114,23 +114,59 @@ jobs:
       # Ein früherer Versuch lief grün durch und lieferte trotzdem eine APK OHNE
       # Web-App — die App wäre auf dem Handy weiß geblieben. Deshalb hier eine
       # harte Kontrolle, bevor irgendetwas veröffentlicht wird.
-      - name: Prüfen, ob die Web-App wirklich in der APK steckt
+      #
+      # Sie prüft nicht nur, ob die Dateien DA sind, sondern ob sie DIESELBEN
+      # sind: Byte für Byte gegen online/. Vorhandensein allein sagt nichts —
+      # eine APK mit einer veralteten style.css bestünde die Prüfung, und auf
+      # dem Handy änderte sich nach dem Update nichts. Genau das ist der Fehler,
+      # den man am schwersten bemerkt.
+      - name: Prüfen, ob die Web-App aktuell in der APK steckt
         run: |
           python3 - <<'PY'
-          import sys, zipfile
-          noetig = [
-              "assets/www/index.html",
-              "assets/www/css/style.css",
-              "assets/www/js/app.js",
-          ]
-          drin = set(zipfile.ZipFile("out/schreibhilfe.apk").namelist())
+          import sys, zipfile, hashlib, os
+
+          apk = zipfile.ZipFile("out/schreibhilfe.apk")
+          drin = {n for n in apk.namelist() if n.startswith("assets/www/")}
+
+          noetig = ["assets/www/index.html", "assets/www/css/style.css",
+                    "assets/www/js/app.js", "assets/www/sw.js"]
           fehlt = [d for d in noetig if d not in drin]
           if fehlt:
               print("::error::Die APK enthält die Web-App nicht: " + ", ".join(fehlt))
               sys.exit(1)
-          print("Web-App vollständig in der APK:")
-          for d in sorted(x for x in drin if x.startswith("assets/www")):
-              print("  " + d)
+
+          # Jede mitgelieferte Datei muss Byte für Byte der Quelle entsprechen.
+          abweichend = []
+          for name in sorted(drin):
+              quelle = os.path.join("online", name[len("assets/www/"):])
+              if not os.path.isfile(quelle):
+                  abweichend.append(name + " (keine Quelle in online/)")
+                  continue
+              a = hashlib.sha256(open(quelle, "rb").read()).hexdigest()
+              b = hashlib.sha256(apk.read(name)).hexdigest()
+              if a != b:
+                  abweichend.append(name + " (Inhalt weicht von online/ ab)")
+              else:
+                  print("  gleich: " + name)
+
+          if abweichend:
+              for a in abweichend:
+                  print("::error::" + a)
+              print("::error::Die APK trägt eine andere Fassung der Web-App als online/.")
+              sys.exit(1)
+
+          # Kein Abbruch: Nicht alles in online/ gehört in die APK (die
+          # Kopierregel in build.gradle lässt etwa icon-maskable.svg aus).
+          # Aber sichtbar sein soll es, falls jemand eine neue Datei anlegt
+          # und die Regel vergisst.
+          for pfad, _, dateien in os.walk("online"):
+              for d in dateien:
+                  lokal = os.path.join(pfad, d)
+                  erwartet = "assets/www/" + os.path.relpath(lokal, "online")
+                  if erwartet not in drin:
+                      print("::notice::nicht in der APK: " + erwartet
+                            + " — falls gewollt, ist alles gut; sonst fehlt eine"
+                            + " include-Zeile in android/app/build.gradle")
           PY
 
       - name: Schlüssel wieder entfernen
