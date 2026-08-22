@@ -47,11 +47,14 @@
   /* Eine Abstandsskala statt handverlesener Werte. */
   --s1:.25rem; --s2:.5rem; --s3:.75rem; --s4:1rem; --s5:1.5rem;
 
-  /* Ecken: Karten rund, Knöpfe ganz rund. */
-  --r-karte:  16px;
-  --r-feld:   18px;
-  --r-klein:  12px;
-  --r-pille:  999px;
+  /* Ecken: gebrochen, nicht rund. Vier Zahlen, mehr braucht es nicht —
+     wer die Form ändern will, ändert sie hier und nirgends sonst. */
+  --r-feld:   12px;   /* das Schreibfeld, die größte Fläche */
+  --r-karte:  10px;   /* Fundkarten, Einstellungsgruppen */
+  --r-knopf:  10px;   /* Knöpfe — vorher volle Pillen (999px) */
+  --r-klein:   8px;   /* Eingabefelder, Chips */
+  --r-rund:  999px;   /* nur noch da, wo etwas wirklich rund sein MUSS:
+                         der Schiebeschalter und sein Knopf */
 
   /* Höhe statt Linien: Was oben liegt, wirft einen weichen Schatten. */
   --e1: 0 1px 2px rgba(16,20,26,.07), 0 1px 3px rgba(16,20,26,.05);
@@ -164,7 +167,7 @@ body{
   color:var(--ink-soft);
   display:inline-flex;align-items:center;justify-content:center;
   width:3rem;height:3rem;padding:0;
-  border-radius:var(--r-pille);line-height:1;
+  border-radius:var(--r-knopf);line-height:1;
   transition:background .15s, color .15s;
 }
 .topbar__icon:hover{background:var(--surface-2);color:var(--ink)}
@@ -284,7 +287,7 @@ textarea#text:focus{outline:none}
   justify-self:start;
   font-size:.6875rem;font-weight:600;
   letter-spacing:.04em;text-transform:uppercase;
-  padding:.2rem .6rem;border-radius:var(--r-pille);
+  padding:.2rem .6rem;border-radius:var(--r-klein);
   background:var(--warn-container);color:var(--warn);
 }
 .fund--tipp    .fund__sorte,
@@ -394,7 +397,7 @@ textarea#text:focus{outline:none}
 .btn,.werkzeug{
   font-family:var(--sys);font-size:.875rem;font-weight:600;
   display:inline-flex;align-items:center;justify-content:center;gap:.4em;
-  border:none;border-radius:var(--r-pille);
+  border:none;border-radius:var(--r-knopf);
   padding:.7rem 1.1rem;min-height:3rem;
   cursor:pointer;
   background:var(--surface-2);color:var(--ink);
@@ -567,14 +570,14 @@ body.seite-offen > .leiste{ display:none !important; }
   appearance:none;-webkit-appearance:none;
   flex:none;position:relative;
   width:2.75rem;height:1.625rem;margin:0;
-  border-radius:var(--r-pille);
+  border-radius:var(--r-rund);
   background:var(--surface-3);
   cursor:pointer;
   transition:background .15s ease;
 }
 .field--schalter input::after{
   content:"";position:absolute;top:3px;left:3px;
-  width:1.125rem;height:1.125rem;border-radius:var(--r-pille);
+  width:1.125rem;height:1.125rem;border-radius:var(--r-rund);
   background:var(--surface);box-shadow:var(--e1);
   transition:transform .15s ease;
 }
