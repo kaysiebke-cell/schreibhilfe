@@ -322,7 +322,10 @@ kann kannst will muss soll mag darf
 und oder aber denn weil wenn dass ob als wie wo wann warum wer
 nicht noch schon auch nur mal sehr ganz gar doch dann jetzt hier da
 in im am um auf aus bei mit nach von vor zu zum zur über unter
-hallo danke bitte ja nein guten liebe lieber viele""".split())
+hallo danke bitte ja nein guten liebe lieber viele
+mein meine meinen meinem meiner kein keine keinen keinem keiner
+vielen viel herzlichen freundlichen geehrte geehrter geehrten
+ihre ihren ihrem ihrer unser unsere""".split())
 
 ABC = 'abcdefghijklmnopqrstuvwxyzäöüß'
 
@@ -359,11 +362,20 @@ def trenne_zusammen(wort):
     w = wort.lower()
     if len(w) < 6 or w in woerter:
         return None
-    for i in range(3, len(w) - 2):
+    # Ab dem ZWEITEN Zeichen — sonst bleiben „ambesten“, „esgibt“, „zuviel“
+    # liegen. Zwei-Zeichen-Teile nur aus TRENN_KURZ, die große Liste wäre
+    # hier zu großzügig. (Gleiche Regel wie in online/js/app.js.)
+    for i in range(2, len(w) - 1):
         vorn, hinten = w[:i], w[i:]
-        if vorn in woerter and hinten in woerter \
-                and (vorn in TRENN_KURZ or hinten in TRENN_KURZ):
-            return vorn + ' ' + hinten
+        if vorn not in woerter or hinten not in woerter:
+            continue
+        if len(vorn) < 3 and vorn not in TRENN_KURZ:
+            continue
+        if len(hinten) < 3 and hinten not in TRENN_KURZ:
+            continue
+        if vorn not in TRENN_KURZ and hinten not in TRENN_KURZ:
+            continue
+        return vorn + ' ' + hinten
     return None
 
 

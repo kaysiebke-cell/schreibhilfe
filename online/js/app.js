@@ -1055,7 +1055,16 @@ function ohneUeberschneidung(funde) {
         „Bürgergeldbescheid“, das im Wörterbuch fehlt, in zwei richtige
         Wörter zerlegt.
 
-   Gegen die vollständige Liste geprüft: null Fehlalarme.
+   Hier stand „gegen die vollständige Liste geprüft: null Fehlalarme“. Das
+   war zu schön: Bedingung 1 schützt jedes Wort, das in der Liste STEHT — an
+   denen kann sich nichts zeigen. Gefährlich sind die Wörter außerhalb der
+   Liste, und dort trennt auch diese Fassung gelegentlich falsch
+   („Untermietvertrag“ → „unter mietvertrag“).
+
+   Ehrlich gemessen, an 1308 Wörtern aus den Texten dieses Projekts und an
+   41 Behörden-Zusammensetzungen wie „Bürgergeldbescheid“:
+     3 bzw. 1 Fehlalarm — vor wie nach der Lockerung unten dieselben.
+   Von 23 typisch zusammengetippten Wörtern werden 21 erkannt (vorher 14).
    ------------------------------------------------------------ */
 const TRENN_KURZ = new Set(`der die das den dem des ein eine einen einem einer eines
 ich du er sie es wir ihr mir dir uns euch mich dich sich man
@@ -1064,7 +1073,10 @@ kann kannst will muss soll mag darf
 und oder aber denn weil wenn dass ob als wie wo wann warum wer
 nicht noch schon auch nur mal sehr ganz gar doch dann jetzt hier da
 in im am um auf aus bei mit nach von vor zu zum zur über unter
-hallo danke bitte ja nein guten liebe lieber viele`.split(/\s+/));
+hallo danke bitte ja nein guten liebe lieber viele
+mein meine meinen meinem meiner kein keine keinen keinem keiner
+vielen viel herzlichen freundlichen geehrte geehrter geehrten
+ihre ihren ihrem ihrer unser unsere`.split(/\s+/));
 
 /** Wird beim Start im Hintergrund geladen; bis dahin wird nicht getrennt. */
 let WOERTERBUCH_GROSS = null;
@@ -1081,13 +1093,18 @@ function trenneZusammen(wort) {
   if (!WOERTERBUCH_GROSS) return null;
   const w = wort.toLowerCase();
   if (w.length < 6 || WOERTERBUCH_GROSS.has(w)) return null;
-  for (let i = 3; i < w.length - 2; i++) {
+  /* Ab dem ZWEITEN Zeichen, nicht erst ab dem dritten: Sonst bleiben genau die
+     Fälle liegen, die beim Tippen am häufigsten entstehen — „ambesten",
+     „esgibt", „zuviel", „imanhang". Ein Teil mit nur zwei Zeichen muss dafür
+     aus TRENN_KURZ stammen; die große Liste allein wäre hier zu großzügig. */
+  for (let i = 2; i <= w.length - 2; i++) {
     const vorn = w.slice(0, i);
     const hinten = w.slice(i);
-    if (WOERTERBUCH_GROSS.has(vorn) && WOERTERBUCH_GROSS.has(hinten)
-        && (TRENN_KURZ.has(vorn) || TRENN_KURZ.has(hinten))) {
-      return vorn + ' ' + hinten;
-    }
+    if (!WOERTERBUCH_GROSS.has(vorn) || !WOERTERBUCH_GROSS.has(hinten)) continue;
+    if (vorn.length < 3 && !TRENN_KURZ.has(vorn)) continue;
+    if (hinten.length < 3 && !TRENN_KURZ.has(hinten)) continue;
+    if (!TRENN_KURZ.has(vorn) && !TRENN_KURZ.has(hinten)) continue;
+    return vorn + ' ' + hinten;
   }
   return null;
 }
