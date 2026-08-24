@@ -158,6 +158,11 @@ const Gelernt = {
     if (!this.wortEbene(fund)) return;
     const wort = fund.alt.toLowerCase();
     if (WOERTERBUCH_GROSS && WOERTERBUCH_GROSS.has(wort)) return;
+    /* Was mit dem Wort nichts zu tun hat, war nie eine Korrektur — und darf
+       schon gar nicht für immer gelten. Ein einziges Antippen von „Ändern"
+       reichte sonst, um „Zahnriemenspanner-Kettenrolle → Unannehmlichkeiten"
+       dauerhaft ins Gedächtnis zu schreiben. */
+    if (!istKorrektur(wort, fund.neu)) return;
 
     const g = this.lies();
     g.woerter[wort] = fund.neu;
@@ -187,7 +192,22 @@ const Gelernt = {
 
   /** Die eigene Schreibweise für ein Wort — oder nichts. */
   wort(wort) {
-    return this.lies().woerter[String(wort).toLowerCase()] || null;
+    const w = String(wort).toLowerCase();
+    const gemerkt = this.lies().woerter[w];
+    if (!gemerkt) return null;
+    /* Aus der Zeit, als jeder Vorschlag lernbar war, können unsinnige Paare
+       im Gedächtnis liegen. Sie hier still zu übergehen räumt sie auf, ohne
+       dass jemand das ganze Gedächtnis leeren muss. */
+    if (!istKorrektur(w, gemerkt)) { this.vergissWort(w); return null; }
+    return gemerkt;
+  },
+
+  /** Ein einzelnes Paar wieder vergessen. */
+  vergissWort(wort) {
+    const g = this.lies();
+    if (!(wort in g.woerter)) return;
+    delete g.woerter[wort];
+    this.schreib(g);
   },
 
   /** Soll dieses Wort in Ruhe gelassen werden? */
@@ -581,6 +601,55 @@ const WOERTERBUCH = {
   'tip':'Tipp', 'tips':'Tipps', 'email':'E-Mail', 'emails':'E-Mails',
 };
 
+/* ------------------------------------------------------------
+   Ist das überhaupt eine Korrektur?
+
+   Eine Rechtschreibkorrektur sieht dem falschen Wort ähnlich: „vieleicht" →
+   „vielleicht", „Termien" → „Termin". Androids Prüfer liefert aber auch dann
+   einen Vorschlag, wenn er ein Wort schlicht nicht kennt — und dann rät er.
+   Für „Zahnriemenspanner-Kettenrolle" schlug er „Unannehmlichkeiten" vor:
+   kein gemeinsamer Buchstabe, nichts. Das ist kein Verschreiber, das ist ein
+   fremdes Wort.
+
+   Gemessen wird der Abstand (ein Buchstabe weg, dazu, ersetzt) im Verhältnis
+   zur Wortlänge. Ein Drittel darf abweichen, mindestens aber ein Buchstabe —
+   sonst fielen kurze Wörter wie „seid" → „seit" durch.
+   ------------------------------------------------------------ */
+/* Zwei vertauschte Buchstaben zählen als EIN Handgriff — „shcon" ist ein
+   Vertipper, kein anderes Wort. Genau so zählt es auch die Tippfehler-Regel
+   weiter unten; zwei verschiedene Maßstäbe in einer App wären ein Fehler in
+   sich. */
+function wortAbstand(a, b) {
+  const zeilen = [Array.from({ length: b.length + 1 }, (_, i) => i)];
+  for (let i = 1; i <= a.length; i++) {
+    const zeile = new Array(b.length + 1);
+    zeile[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const kosten = a[i - 1] === b[j - 1] ? 0 : 1;
+      zeile[j] = Math.min(
+        zeilen[i - 1][j] + 1,            // Buchstabe weg
+        zeile[j - 1] + 1,                // Buchstabe dazu
+        zeilen[i - 1][j - 1] + kosten,   // ersetzt
+      );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        zeile[j] = Math.min(zeile[j], zeilen[i - 2][j - 2] + 1);   // vertauscht
+      }
+    }
+    zeilen.push(zeile);
+  }
+  return zeilen[a.length][b.length];
+}
+
+function istKorrektur(falsch, richtig) {
+  const a = String(falsch).toLowerCase();
+  const b = String(richtig).toLowerCase();
+  if (!a || !b || a === b) return false;
+  /* Zwei Handgriffe sind immer erlaubt — „Halloch“ → „Hallo“ ist eine
+     richtige Korrektur, und die wäre bei einem sonst durchgefallen. */
+  const erlaubt = Math.max(2, Math.floor(Math.min(a.length, b.length) / 3));
+  return wortAbstand(a, b) <= erlaubt;
+}
+
 /* Wörter inklusive Umlauten, ß und Bindestrich */
 const WORT_MUSTER = /[A-Za-zÄÖÜäöüß]+(?:-[A-Za-zÄÖÜäöüß]+)*/g;
 
@@ -640,12 +709,23 @@ function pruefeWoerter(text, funde) {
     /* Erst die mitgelieferte Liste, dann die selbst gelernte. Was dieser
        Mensch schon einmal richtiggestellt hat, steht beim nächsten Mal sofort
        da — ohne KI, ohne Internet. */
-    const richtig = WOERTERBUCH[wort.toLowerCase()] || Gelernt.wort(wort);
+    const ausListe = WOERTERBUCH[wort.toLowerCase()];
+    const gelernt = ausListe ? null : Gelernt.wort(wort);
+    const richtig = ausListe || gelernt;
     if (!richtig) continue;
+    // Selbst Gelerntes muss dem Wort ähnlich sehen, sonst war es nie eine
+    // Korrektur — siehe istKorrektur() weiter oben.
+    if (gelernt && !istKorrektur(wort, gelernt)) continue;
     const ersatz = uebernimmSchreibweise(wort, richtig);
     if (ersatz === wort) continue;
+    /* Was aus der mitgelieferten Liste kommt, ist sicher falsch. Was dieser
+       Mensch der App selbst beigebracht hat, kam aus EINEM Antippen — das ist
+       ein guter Hinweis, aber keine Gewissheit. Deshalb steht es als Tipp da
+       und sagt auch, woher es stammt. */
     funde.push(machFund(treffer.index, treffer.index + wort.length,
-                        wort, ersatz, 'Schreibweise', 'fehler'));
+                        wort, ersatz,
+                        gelernt ? 'So hast du es schon einmal geändert' : 'Schreibweise',
+                        gelernt ? 'tipp' : 'fehler'));
   }
 }
 
@@ -1482,6 +1562,16 @@ async function ergaenzeDurchAndroid(text, eigene) {
   for (const stelle of antwort.funde) {
     const vorschlag = stelle.vorschlaege[0];
     if (!vorschlag || vorschlag === stelle.wort) continue;
+    /* Steht das Wort in unserer eigenen Liste, ist es richtig geschrieben.
+       Was Android dann noch vorschlägt, ist keine Rechtschreibkorrektur mehr,
+       sondern eine Vermutung über den Satzbau — „großartiges" → „großartiger"
+       in einem völlig richtigen Satz. Grammatik nach Gefühl macht diese App
+       bewusst nicht. */
+    if (WOERTERBUCH_GROSS && WOERTERBUCH_GROSS.has(stelle.wort.toLowerCase())) continue;
+    /* Und wenn der Vorschlag mit dem Wort nichts gemein hat, kennt Android das
+       Wort einfach nicht: Produktnamen, Fachwörter, Nachnamen. Dann ist
+       Schweigen die richtige Antwort. */
+    if (!istKorrektur(stelle.wort, vorschlag)) continue;
     // Wörter auf der Ruhe-Liste sind so gewollt — auch Android schweigt dazu.
     if (Gelernt.inRuhe(stelle.wort) && !Gelernt.wort(stelle.wort)) continue;
     if (besetzt.some((f) => ueberlappt(f, stelle))) continue;

@@ -470,18 +470,58 @@ def pruefe_tippfehler(text, funde, gelernt=None):
                                'Tippfehler? Ein Buchstabe daneben', 'tipp'))
 
 
+def wort_abstand(a, b):
+    """Wie viele Handgriffe liegen zwischen zwei Wörtern? Zwei vertauschte
+    Buchstaben zählen als EINER — „shcon“ ist ein Vertipper, kein anderes
+    Wort. (Gleiches Maß wie wortAbstand() in online/js/app.js.)"""
+    zeilen = [list(range(len(b) + 1))]
+    for i in range(1, len(a) + 1):
+        zeile = [i] + [0] * len(b)
+        for j in range(1, len(b) + 1):
+            kosten = 0 if a[i - 1] == b[j - 1] else 1
+            zeile[j] = min(zeilen[i - 1][j] + 1,
+                           zeile[j - 1] + 1,
+                           zeilen[i - 1][j - 1] + kosten)
+            if i > 1 and j > 1 and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
+                zeile[j] = min(zeile[j], zeilen[i - 2][j - 2] + 1)
+        zeilen.append(zeile)
+    return zeilen[len(a)][len(b)]
+
+
+def ist_korrektur(falsch, richtig):
+    """Sieht die Verbesserung dem Wort überhaupt ähnlich? Ein Rechtschreib-
+    prüfer, der ein Wort nicht kennt, rät — und dann kommt für
+    „Zahnriemenspanner-Kettenrolle“ eben „Unannehmlichkeiten“ heraus."""
+    a, b = str(falsch).lower(), str(richtig).lower()
+    if not a or not b or a == b:
+        return False
+    erlaubt = max(2, min(len(a), len(b)) // 3)
+    return wort_abstand(a, b) <= erlaubt
+
+
 def pruefe_woerter(text, funde, gelernt=None):
     eigene = (gelernt or {}).get('woerter', {})
     for m in WORT_MUSTER.finditer(text):
         wort = m.group(0)
-        richtig = WOERTERBUCH.get(wort.lower()) or eigene.get(wort.lower())
+        aus_liste = WOERTERBUCH.get(wort.lower())
+        selbst = None if aus_liste else eigene.get(wort.lower())
+        richtig = aus_liste or selbst
         if not richtig:
+            continue
+        # Selbst Gelerntes muss dem Wort ähnlich sehen, sonst war es nie eine
+        # Korrektur.
+        if selbst and not ist_korrektur(wort, selbst):
             continue
         ersatz = uebernimm_schreibweise(wort, richtig)
         if ersatz == wort:
             continue
-        funde.append(mach_fund(m.start(), m.start() + len(wort), wort, ersatz,
-                               'Schreibweise', 'fehler'))
+        # Was aus der mitgelieferten Liste kommt, ist sicher falsch. Was dieser
+        # Mensch selbst beigebracht hat, kam aus EINEM Antippen — ein guter
+        # Hinweis, keine Gewissheit.
+        funde.append(mach_fund(
+            m.start(), m.start() + len(wort), wort, ersatz,
+            'So hast du es schon einmal geändert' if selbst else 'Schreibweise',
+            'tipp' if selbst else 'fehler'))
 
 
 def pruefe_satzende(text, funde):
