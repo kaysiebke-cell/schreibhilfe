@@ -183,6 +183,8 @@ die Claude-App, nicht für den API-Zugang.
 online/index.html             Aufbau der Seite
 online/css/style.css          Gestaltung (Papier-Optik, hell und dunkel)
 online/js/app.js              Prüfen, KI, Teilen, Einstellungen
+online/daten/regeln.js        der Wortschatz der Prüfung — dieselbe Datei
+                              liest die LibreOffice-Erweiterung
 sw.js                         Offline-Betrieb im Browser (in der App abgeschaltet)
 manifest.webmanifest          Angaben für den Startbildschirm
 icon.svg                      App-Symbol (Quelle)

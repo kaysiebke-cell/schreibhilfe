@@ -7,34 +7,98 @@ Muster, dieselbe Reihenfolge, dieselben Begründungen. Beide Fassungen werden
 gegeneinander geprüft (siehe libreoffice/vergleiche.py); was hier anders
 herauskäme, wäre ein Fehler.
 
+Den Wortschatz trägt diese Datei nicht mehr selbst: Er steht einmal in
+online/daten/regeln.js und wird von dort gelesen — von hier wie von app.js.
+Eine Abschrift kann auseinanderlaufen, eine Datei nicht. Was hier bleibt, sind
+die Regeln selbst; die tragen Baustücke als Code und lassen sich nicht als
+Daten hinschreiben.
+
 Wo JavaScript und Python auseinandergehen, steht es im Kommentar dabei.
 """
 
+import json
 import os
 import re
+
+_HIER = os.path.dirname(os.path.abspath(__file__))
+
+
+def _ohne_kommentare(text):
+    """Nimmt /* … */ und // … aus JavaScript heraus — Zeichenketten bleiben heil.
+
+    Ein grobes Suchen-und-Ersetzen ginge irgendwann schief, sobald einmal ein
+    Schrägstrich in einem Wort steht. Deshalb Zeichen für Zeichen, mit Blick
+    darauf, ob wir gerade mitten in einer Zeichenkette stehen.
+    """
+    raus, i, n, in_kette = [], 0, len(text), False
+    while i < n:
+        z = text[i]
+        if in_kette:
+            raus.append(z)
+            if z == '\\' and i + 1 < n:
+                raus.append(text[i + 1])
+                i += 2
+                continue
+            if z == '"':
+                in_kette = False
+            i += 1
+            continue
+        if z == '"':
+            in_kette = True
+            raus.append(z)
+            i += 1
+            continue
+        if z == '/' and i + 1 < n and text[i + 1] == '*':
+            ende = text.find('*/', i + 2)
+            i = n if ende < 0 else ende + 2
+            raus.append(' ')
+            continue
+        if z == '/' and i + 1 < n and text[i + 1] == '/':
+            ende = text.find('\n', i)
+            i = n if ende < 0 else ende
+            continue
+        raus.append(z)
+        i += 1
+    return ''.join(raus)
+
+
+def _lies_regeln():
+    """Holt den gemeinsamen Wortschatz aus regeln.js.
+
+    Zwei Orte: gepackt liegt die Datei neben dieser hier (bauen.sh kopiert sie
+    hinein), im Arbeitsbaum unter online/daten/. Fehlt sie an beiden, bricht das
+    Laden ab — LAUT. Ein stilles Ausweichen auf leere Listen ließe die Prüfung
+    scheinbar laufen und einfach nichts mehr finden; genau so eine stille
+    Notlösung hat schon einmal einen grünen, aber wertlosen Vergleich erzeugt.
+    """
+    kandidaten = [os.path.join(_HIER, 'regeln.js'),
+                  os.path.join(_HIER, '..', '..', 'online', 'daten', 'regeln.js')]
+    for k in kandidaten:
+        if not os.path.exists(k):
+            continue
+        with open(k, 'r', encoding='utf-8') as datei:
+            text = datei.read()
+        marke = text.find('REGELDATEN')
+        anfang = text.find('{', marke) if marke >= 0 else -1
+        ende = text.rfind('}')
+        if anfang < 0 or ende < anfang:
+            raise ValueError('%s enthält kein REGELDATEN-Objekt.' % k)
+        return json.loads(_ohne_kommentare(text[anfang:ende + 1]))
+    raise IOError('Der gemeinsame Wortschatz fehlt. Gesucht wurde in:\n  %s'
+                  % '\n  '.join(kandidaten))
+
+
+_REGELN = _lies_regeln()
 
 # --------------------------------------------------------------------------
 # a) Wörter, die ein Rechtschreibprüfer NICHT finden kann
 #    — weil beide Schreibweisen für sich genommen richtig sind.
+#
+# Die Wörter stehen in online/daten/regeln.js, zusammen mit dem übrigen
+# Wortschatz und der Begründung zu jedem Eintrag.
 # --------------------------------------------------------------------------
 
-WOERTERBUCH = {
-    'wiederspiegeln': 'widerspiegeln', 'wiederspiegelt': 'widerspiegelt',
-    'wiedersprechen': 'widersprechen', 'wiederspricht': 'widerspricht',
-    'wiederspruch': 'Widerspruch', 'wiederstand': 'Widerstand',
-    'widerholen': 'wiederholen', 'widerholt': 'wiederholt',
-    'widersehen': 'Wiedersehen',
-    'weiss': 'weiß', 'gross': 'groß',
-    'garnicht': 'gar nicht', 'garnichts': 'gar nichts',
-    'garkein': 'gar kein', 'garkeine': 'gar keine',
-    'aufjedenfall': 'auf jeden Fall', 'aufeinmal': 'auf einmal',
-    'ausversehen': 'aus Versehen', 'zumbeispiel': 'zum Beispiel',
-    'immoment': 'im Moment', 'inordnung': 'in Ordnung', 'imgrunde': 'im Grunde',
-    'vorallem': 'vor allem', 'desweiteren': 'des Weiteren',
-    'nachwievor': 'nach wie vor', 'zumindestens': 'zumindest',
-    'zumteil': 'zum Teil', 'jedesmal': 'jedes Mal', 'garkeinen': 'gar keinen',
-    'tip': 'Tipp', 'tips': 'Tipps', 'email': 'E-Mail', 'emails': 'E-Mails',
-}
+WOERTERBUCH = _REGELN['WOERTERBUCH']
 
 WORT_MUSTER = re.compile(r'[A-Za-zÄÖÜäöüß]+(?:-[A-Za-zÄÖÜäöüß]+)*')
 GROSS_ANFANG = re.compile(r'^[A-ZÄÖÜ]')
@@ -59,69 +123,19 @@ def mach_fund(von, bis, alt, neu, grund, art, wort_ebene=False):
 # b) Wortgruppen für die Regeln
 # --------------------------------------------------------------------------
 
-FUERWOERTER = 'ich|du|er|sie|es|wir|ihr|man'
+_kette = lambda name: '|'.join(_REGELN[name])
 
-DENK_ZEITWOERTER = (
-    'denke|denkst|denkt|dachte|dachtest|dachten|glaube|glaubst|glaubt|glaubte|glaubten|'
-    'hoffe|hoffst|hofft|hoffte|meine|meinst|meint|meinte|finde|findest|findet|fand|'
-    'weiß|weißt|wissen|wusste|wusstest|wussten|sage|sagst|sagt|sagte|sagten|'
-    'erzähle|erzählst|erzählt|erzählte|verstehe|verstehst|versteht|vermute|vermutest|vermutet|'
-    'fürchte|fürchtest|fürchtet|bedeutet|heißt|hieß|merke|merkst|merkt|merkte|'
-    'sehe|siehst|sieht|höre|hörst|hört|schreibe|schreibst|schreibt|schrieb|'
-    'verspreche|versprichst|verspricht|bemerke|bemerkt|entschuldige')
+FUERWOERTER = _kette('FUERWOERTER')
+DENK_ZEITWOERTER = _kette('DENK_ZEITWOERTER')
+DENK_ZEITWOERTER_ENG = _kette('DENK_ZEITWOERTER_ENG')
+DASS_EIGENSCHAFTEN = _kette('DASS_EIGENSCHAFTEN')
+ZEITANGABEN = _kette('ZEITANGABEN')
+STEIGERUNGEN = _kette('STEIGERUNGEN')
+FOLGT_NEBENSATZ = FUERWOERTER + '|' + _kette('FOLGT_NEBENSATZ_ZUSAETZLICH')
 
-DENK_ZEITWOERTER_ENG = (
-    'glaube|glaubst|glaubt|glaubte|denke|denkst|denkt|dachte|meine|meinst|meint|meinte|'
-    'hoffe|hoffst|hofft|hoffte|weiß|weißt|wusste|vermute|vermutet|fürchte|fürchtet|'
-    'verstehe|versteht|bedeutet|heißt')
-
-DASS_EIGENSCHAFTEN = (
-    'wichtig|wichtiger|gut|schön|schade|klar|froh|sicher|möglich|schlimm|toll|'
-    'blöd|traurig|nett|richtig|falsch|schlecht|logisch|normal|selten')
-
-ZEITANGABEN = (
-    'einem|einer|dem|der|den|ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|'
-    'vielen|mehreren|einigen|kurzem|langem|längerem|geraumer|damals|gestern|heute|'
-    'neuestem|jeher|wann|Jahren?|Monaten?|Wochen?|Tagen?|Stunden?|Minuten?|'
-    'Jahrzehnten?|Ewigkeiten|Anfang|Beginn|Montag|Dienstag|Mittwoch|Donnerstag|'
-    'Freitag|Samstag|Sonntag')
-
-STEIGERUNGEN = (
-    'größer|kleiner|besser|schlechter|schneller|langsamer|älter|jünger|höher|tiefer|'
-    'länger|kürzer|stärker|schwächer|lieber|teurer|billiger|schöner|hässlicher|'
-    'einfacher|leichter|schwerer|öfter|näher|dicker|dünner|wärmer|kälter|klüger|'
-    'dümmer|lauter|leiser|glücklicher|müder|wichtiger|schlimmer|ruhiger|netter|'
-    'freundlicher|klarer|heller|dunkler|weicher|härter|süßer|gesünder|reicher|'
-    'ärmer|sicherer|genauer|deutlicher|häufiger|seltener|breiter|schmaler|'
-    'hübscher|mehr|weniger|anders')
-
-FOLGT_NEBENSATZ = (FUERWOERTER +
-                   '|die|der|den|dem|kein|keine|keinen|mein|meine|dein|deine|'
-                   'sein|seine|unser|unsere|alle|alles|viele|manche|jemand|niemand')
-
-NEBENSATZ_WOERTER = [
-    ('dass', False), ('weil', False), ('obwohl', False), ('sodass', False),
-    ('sobald', False), ('solange', False), ('bevor', False), ('nachdem', False),
-    ('falls', False), ('sofern', False), ('indem', False), ('wenn', False),
-    ('ob', False), ('damit', True), ('während', True),
-]
-
-KEIN_KOMMA_DAVOR = {
-    'und', 'oder', 'aber', 'sondern', 'denn', 'so', 'als', 'auch', 'selbst',
-    'sogar', 'außer', 'nur', 'immer', 'je', 'erst', 'schon', 'gerade', 'eben',
-    'besonders', 'allem', 'dann', 'noch', 'kaum', 'wie', 'egal', 'ganz', 'vor',
-    'doch', 'geschweige',
-}
-
-KEIN_HAUPTWORT = {
-    'einen', 'anderen', 'ersten', 'zweiten', 'dritten', 'vierten', 'letzten',
-    'meisten', 'wenigsten', 'besten', 'ganzen', 'großen', 'kleinen', 'neuen',
-    'alten', 'guten', 'schönen', 'gleichen', 'selben', 'vergangenen', 'nächsten',
-    'kommenden', 'langen', 'kurzen', 'jungen', 'hohen', 'tiefen', 'warmen',
-    'kalten', 'richtigen', 'falschen', 'eigenen', 'beiden', 'vielen', 'wenigen',
-    'allen', 'keinen', 'solchen', 'diesen', 'jenen', 'meinen', 'deinen',
-    'seinen', 'ihren', 'unseren', 'euren', 'teuren',
-}
+NEBENSATZ_WOERTER = [tuple(e) for e in _REGELN['NEBENSATZ_WOERTER']]
+KEIN_KOMMA_DAVOR = set(_REGELN['KEIN_KOMMA_DAVOR'])
+KEIN_HAUPTWORT = set(_REGELN['KEIN_HAUPTWORT'])
 
 ABKUERZUNG = re.compile(
     r'(?:^|[\s(„"])(?:[A-Za-zÄÖÜäöüß]|ca|bzw|usw|evtl|ggf|inkl|exkl|vgl|bspw|'
@@ -267,17 +281,8 @@ KOMMA_REGELN = [
 # d) Zeitwort und Fürwort müssen zueinander passen
 # --------------------------------------------------------------------------
 
-ZEITWOERTER = [
-    {'ich': 'bin',   'du': 'bist',   'er': 'ist',  'wir': 'sind'},
-    {'ich': 'habe',  'du': 'hast',   'er': 'hat',  'wir': 'haben'},
-    {'ich': 'werde', 'du': 'wirst',  'er': 'wird', 'wir': 'werden'},
-    {'ich': 'kann',  'du': 'kannst', 'er': 'kann', 'wir': 'können'},
-    {'ich': 'muss',  'du': 'musst',  'er': 'muss', 'wir': 'müssen'},
-    {'ich': 'will',  'du': 'willst', 'er': 'will', 'wir': 'wollen'},
-    {'ich': 'soll',  'du': 'sollst', 'er': 'soll', 'wir': 'sollen'},
-    {'ich': 'darf',  'du': 'darfst', 'er': 'darf', 'wir': 'dürfen'},
-]
-SPALTE = {'ich': 'ich', 'du': 'du', 'er': 'er', 'man': 'er', 'wir': 'wir'}
+ZEITWOERTER = _REGELN['ZEITWOERTER']
+SPALTE = _REGELN['SPALTE']
 FORM_ZU_ZEITWORT = {}
 for _zeile in ZEITWOERTER:
     for _form in _zeile.values():
@@ -315,17 +320,7 @@ def pruefe_kongruenz(text, funde):
 # e) Die große Wörterliste — für Trennen und Tippfehler
 # --------------------------------------------------------------------------
 
-TRENN_KURZ = set("""der die das den dem des ein eine einen einem einer eines
-ich du er sie es wir ihr mir dir uns euch mich dich sich man
-ist sind bin bist war warst hat hab habe haben hatte wird werden
-kann kannst will muss soll mag darf
-und oder aber denn weil wenn dass ob als wie wo wann warum wer
-nicht noch schon auch nur mal sehr ganz gar doch dann jetzt hier da
-in im am um auf aus bei mit nach von vor zu zum zur über unter
-hallo danke bitte ja nein guten liebe lieber viele
-mein meine meinen meinem meiner kein keine keinen keinem keiner
-vielen viel herzlichen freundlichen geehrte geehrter geehrten
-ihre ihren ihrem ihrer unser unsere""".split())
+TRENN_KURZ = set(_REGELN['TRENN_KURZ'])
 
 ABC = 'abcdefghijklmnopqrstuvwxyzäöüß'
 
