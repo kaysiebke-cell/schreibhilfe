@@ -14,9 +14,15 @@ const pfad = require('path');
 const wurzel = pfad.join(__dirname, '..');
 const quelle = fs.readFileSync(pfad.join(wurzel, 'online/js/app.js'), 'utf8');
 
+/* Der gemeinsame Wortschatz — dieselbe Datei, die auch pruefung.py liest.
+   Im Browser kommt sie über ein <script>-Element, hier über eine Funktion. */
+const REGELDATEN = new Function(
+  fs.readFileSync(pfad.join(wurzel, 'online/daten/regeln.js'), 'utf8') +
+  '\nreturn REGELDATEN;')();
+
 /* Denselben Bereich herausschneiden wie beim Prüfen von Hand: von der
    Wörterliste bis zum Ende von findeProbleme(). */
-const von = quelle.indexOf('const WOERTERBUCH = {');
+const von = quelle.indexOf('const WOERTERBUCH = REGELDATEN');
 let bis = quelle.indexOf('function findeProbleme');
 bis = quelle.indexOf('\n}\n', bis) + 3;
 const teil = quelle.slice(von, bis)
@@ -43,9 +49,9 @@ const WOERTERBUCH_GROSS = new Set(
   fs.readFileSync(pfad.join(wurzel, 'online/daten/woerter.txt'), 'utf8').split('\n')
 );
 
-const bauen = new Function('Gelernt', 'WOERTERBUCH_GROSS',
+const bauen = new Function('Gelernt', 'WOERTERBUCH_GROSS', 'REGELDATEN',
   teil + '\nreturn { findeProbleme };');
-const { findeProbleme } = bauen(Gelernt, WOERTERBUCH_GROSS);
+const { findeProbleme } = bauen(Gelernt, WOERTERBUCH_GROSS, REGELDATEN);
 
 const zeilen = fs.readFileSync(0, 'utf8').split('\n').filter((z) => z.length);
 for (const zeile of zeilen) {

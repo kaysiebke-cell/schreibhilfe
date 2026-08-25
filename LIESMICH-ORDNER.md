@@ -17,6 +17,7 @@ Handy und PC-Browser benutzen dieselben Dateien. Nichts davon liegt doppelt.
     online/sw.js                 damit die App ohne Internet startet
     online/manifest.webmanifest  Name und Symbole der App
     online/daten/woerter.txt     die deutsche Wörterliste — die EINE Quelle
+    online/daten/regeln.js       der Wortschatz der Prüfung — die EINE Quelle
 
 Dieser Ordner — und nur dieser — wird im Netz veröffentlicht, unter
 https://kaysiebke-cell.github.io/schreibhilfe/ . Dafür sorgt
@@ -39,21 +40,38 @@ zweites Mal.
     libreoffice/bauen.sh                       packt schreibhilfe.oxt
     libreoffice/vergleiche.py / .js            hält beide Prüfer gleich
 
-`bauen.sh` holt die Wörterliste beim Packen aus `online/daten/` und löscht
-sie danach wieder — ein Stand, keine Kopie.
+`bauen.sh` holt Wörterliste und Wortschatz beim Packen aus `online/daten/`
+und löscht sie danach wieder — ein Stand, keine Kopie.
 
-## Vorsicht: der Prüfer steht doppelt da
+## Vorsicht: der Prüfer steht halb doppelt da
 
-Einmal als JavaScript in `online/js/app.js`, einmal als Python in
-`libreoffice/schreibhilfe/pruefung.py`. LibreOffice führt kein JavaScript
-aus, deshalb geht es nicht anders. Auch die KI-Anweisungen und die
-Tonfälle gibt es zweimal.
+**Der Wortschatz nicht mehr.** Wörterbuch, Wortgruppen, Nebensatzwörter,
+Zeitwortformen — alles steht einmal in `online/daten/regeln.js`, und beide
+Seiten lesen von dort. JavaScript über ein `<script>`-Element, Python über
+`json.loads`. Wer ein Wort hinzufügt, fügt es einmal hinzu.
 
-**Wer eine Regel ändert, muss sie an BEIDEN Stellen ändern.**
+Dass das nötig war, hat sich gezeigt, als die beiden Abschriften verglichen
+wurden: `FOLGT_NEBENSATZ` stand in Python mit dreizehn Wörtern mehr da als in
+JavaScript — seit dem Tag, an dem die Übersetzung angelegt wurde. Über 7183
+Prüfsätze gemessen waren das 1644 Sätze, in denen die beiden Fassungen etwas
+anderes fanden. `vergleiche.py` lief die ganze Zeit grün durch, weil keiner
+seiner 56 Sätze diese Wörter benutzte.
+
+**Die Regeln selbst stehen weiter doppelt da** — einmal als JavaScript in
+`online/js/app.js`, einmal als Python in `libreoffice/schreibhilfe/pruefung.py`.
+Sie tragen Baustücke und Prüfungen als Code und lassen sich nicht als Daten
+hinschreiben. LibreOffice führt kein JavaScript aus, deshalb geht es nicht
+anders. Auch die KI-Anweisungen und die Tonfälle gibt es zweimal.
+
+**Wer eine REGEL ändert, muss sie an BEIDEN Stellen ändern.**
 
 Danach prüfen, ob beide noch dasselbe finden:
 
     cd libreoffice && python3 vergleiche.py
+
+Und daran denken, was der Fund oben zeigt: Grün heißt nur, dass die 56 Sätze
+nichts gemerkt haben. Wer eine Regel anfasst, legt einen Satz dazu, der sie
+auch trifft.
 
 ## Auf dem PC, außerhalb dieses Ordners
 

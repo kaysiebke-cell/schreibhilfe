@@ -574,32 +574,14 @@ el.btnZurueck.addEventListener('click', holeZurueck);
    Beginnt die Verbesserung mit einem Großbuchstaben, wird sie genau so
    übernommen (Hauptwörter). Sonst richtet sie sich nach dem Original.
    ------------------------------------------------------------ */
-const WOERTERBUCH = {
-  /* wider (= gegen) und wieder (= noch einmal): beide Wörter gibt es.
-     Der Rechtschreibprüfer sieht hier nichts Falsches. */
-  'wiederspiegeln':'widerspiegeln', 'wiederspiegelt':'widerspiegelt',
-  'wiedersprechen':'widersprechen', 'wiederspricht':'widerspricht',
-  'wiederspruch':'Widerspruch', 'wiederstand':'Widerstand',
-  'widerholen':'wiederholen', 'widerholt':'wiederholt', 'widersehen':'Wiedersehen',
+/* ------------------------------------------------------------
+   a) Wörter, die ein Rechtschreibprüfer NICHT finden kann
 
-  /* ss statt ß, wo die falsche Form ebenfalls ein gültiges Wort ist.
-     Nicht aufgenommen: masse/Maße und busse/Buße – „Masse“ und „Busse“
-     sind selbst richtige Wörter, das gäbe falsche Treffer. */
-  'weiss':'weiß', 'gross':'groß',
-
-  /* Zusammengeschrieben: die Tastatur meckert, kennt aber die Trennstelle nicht. */
-  'garnicht':'gar nicht', 'garnichts':'gar nichts',
-  'garkein':'gar kein', 'garkeine':'gar keine',
-  'aufjedenfall':'auf jeden Fall', 'aufeinmal':'auf einmal',
-  'ausversehen':'aus Versehen', 'zumbeispiel':'zum Beispiel',
-  'immoment':'im Moment', 'inordnung':'in Ordnung', 'imgrunde':'im Grunde',
-  'vorallem':'vor allem', 'desweiteren':'des Weiteren',
-  'nachwievor':'nach wie vor', 'zumindestens':'zumindest',
-  'zumteil':'zum Teil', 'jedesmal':'jedes Mal', 'garkeinen':'gar keinen',
-
-  /* Englisch/Deutsch-Dubletten, die als Wort durchgehen. */
-  'tip':'Tipp', 'tips':'Tipps', 'email':'E-Mail', 'emails':'E-Mails',
-};
+   Die Wörter selbst stehen in daten/regeln.js — zusammen mit dem übrigen
+   Wortschatz der Prüfung, und dort auch die Begründung, warum welches Wort
+   drin steht und welches mit Absicht fehlt. Diese Datei liest ihn nur.
+   ------------------------------------------------------------ */
+const WOERTERBUCH = REGELDATEN.WOERTERBUCH;
 
 /* ------------------------------------------------------------
    Ist das überhaupt eine Korrektur?
@@ -780,17 +762,7 @@ const ZEICHEN_REGELN = [
    c) Großschreibung
    ------------------------------------------------------------ */
 
-/* Nach „beim/zum/vom“ wird aus dem Tunwort ein Hauptwort: „beim Schreiben“.
-   Diese Wörter sehen genauso aus, sind aber keine Hauptwörter — sie stehen
-   vor einem Hauptwort oder bilden eine feste Wendung („zum einen“). */
-const KEIN_HAUPTWORT = new Set([
-  'einen','anderen','ersten','zweiten','dritten','vierten','letzten','meisten',
-  'wenigsten','besten','ganzen','großen','kleinen','neuen','alten','guten',
-  'schönen','gleichen','selben','vergangenen','nächsten','kommenden','langen',
-  'kurzen','jungen','hohen','tiefen','warmen','kalten','richtigen','falschen',
-  'eigenen','beiden','vielen','wenigen','allen','keinen','solchen','diesen',
-  'jenen','meinen','deinen','seinen','ihren','unseren','euren','teuren',
-]);
+const KEIN_HAUPTWORT = new Set(REGELDATEN.KEIN_HAUPTWORT);
 
 const GROSS_REGELN = [
   // Der allererste Buchstabe
@@ -824,55 +796,14 @@ const GROSS_REGELN = [
    d) Grammatik: die Verwechslungen, die kein Rechtschreibprüfer sieht
    ------------------------------------------------------------ */
 
-const FUERWOERTER = 'ich|du|er|sie|es|wir|ihr|man';
-
-/* Zeitwörter, nach denen „dass“ folgt. Absichtlich nur die gebeugten Formen:
-   nach einem Mittelwort („das Buch gelesen, das ich …“) steht oft ein
-   Bezugswort, da wäre „das“ richtig. */
-const DENK_ZEITWOERTER =
-  'denke|denkst|denkt|dachte|dachtest|dachten|glaube|glaubst|glaubt|glaubte|glaubten|' +
-  'hoffe|hoffst|hofft|hoffte|meine|meinst|meint|meinte|finde|findest|findet|fand|' +
-  'weiß|weißt|wissen|wusste|wusstest|wussten|sage|sagst|sagt|sagte|sagten|' +
-  'erzähle|erzählst|erzählt|erzählte|verstehe|verstehst|versteht|vermute|vermutest|vermutet|' +
-  'fürchte|fürchtest|fürchtet|bedeutet|heißt|hieß|merke|merkst|merkt|merkte|' +
-  'sehe|siehst|sieht|höre|hörst|hört|schreibe|schreibst|schreibt|schrieb|' +
-  'verspreche|versprichst|verspricht|bemerke|bemerkt|entschuldige';
-
-/* Zeitangaben nach „seit“. */
-const ZEITANGABEN =
-  'einem|einer|dem|der|den|ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|' +
-  'vielen|mehreren|einigen|kurzem|langem|längerem|geraumer|damals|gestern|heute|' +
-  'neuestem|jeher|wann|Jahren?|Monaten?|Wochen?|Tagen?|Stunden?|Minuten?|' +
-  'Jahrzehnten?|Ewigkeiten|Anfang|Beginn|Montag|Dienstag|Mittwoch|Donnerstag|' +
-  'Freitag|Samstag|Sonntag';
-
-/* Steigerungsformen. Danach heißt es „als“, nie „wie“. Bewusst als Liste und
-   nicht als Endung „-er“: sonst geriete jedes „der wie …“ in die Fänge. */
-const STEIGERUNGEN =
-  'größer|kleiner|besser|schlechter|schneller|langsamer|älter|jünger|höher|tiefer|' +
-  'länger|kürzer|stärker|schwächer|lieber|teurer|billiger|schöner|hässlicher|' +
-  'einfacher|leichter|schwerer|öfter|näher|dicker|dünner|wärmer|kälter|klüger|' +
-  'dümmer|lauter|leiser|glücklicher|müder|wichtiger|schlimmer|ruhiger|netter|' +
-  'freundlicher|klarer|heller|dunkler|weicher|härter|süßer|gesünder|reicher|' +
-  'ärmer|sicherer|genauer|deutlicher|häufiger|seltener|breiter|schmaler|' +
-  'hübscher|mehr|weniger|anders';
-
-/* Zeitwörter ohne Wem-Fall: „Ich glaube, dass der Zug kommt“. Nach „sagen“ oder
-   „schreiben“ darf hinter dem „das“ auch ein Wem-Fall stehen („Ich schreibe das
-   der Firma“) — deshalb stehen die hier nicht mit drin. */
-const DENK_ZEITWOERTER_ENG =
-  'glaube|glaubst|glaubt|glaubte|denke|denkst|denkt|dachte|meine|meinst|meint|meinte|' +
-  'hoffe|hoffst|hofft|hoffte|weiß|weißt|wusste|vermute|vermutet|fürchte|fürchtet|' +
-  'verstehe|versteht|bedeutet|heißt';
-
-/* Eigenschaftswörter, nach denen ein „dass“-Satz folgt: „Es ist gut, dass …“ */
-const DASS_EIGENSCHAFTEN =
-  'wichtig|wichtiger|gut|schön|schade|klar|froh|sicher|möglich|schlimm|toll|' +
-  'blöd|traurig|nett|richtig|falsch|schlecht|logisch|normal|selten';
-
-/* Was hinter dem „dass“ stehen darf, ohne dass es ein Bezugswort sein könnte.
-   „ein/eine“ fehlt mit Absicht: „das eine Auto“ ist richtig so. */
-const FOLGT_NEBENSATZ = FUERWOERTER + '|die|der|den|dem|kein|keine|keinen';
+const FUERWOERTER          = REGELDATEN.FUERWOERTER.join('|');
+const DENK_ZEITWOERTER     = REGELDATEN.DENK_ZEITWOERTER.join('|');
+const DENK_ZEITWOERTER_ENG = REGELDATEN.DENK_ZEITWOERTER_ENG.join('|');
+const DASS_EIGENSCHAFTEN   = REGELDATEN.DASS_EIGENSCHAFTEN.join('|');
+const ZEITANGABEN          = REGELDATEN.ZEITANGABEN.join('|');
+const STEIGERUNGEN         = REGELDATEN.STEIGERUNGEN.join('|');
+const FOLGT_NEBENSATZ =
+  FUERWOERTER + '|' + REGELDATEN.FOLGT_NEBENSATZ_ZUSAETZLICH.join('|');
 
 const GRAMMATIK_REGELN = [
   /* das/dass nach einem Zeitwort des Denkens und Sagens. Fehlt auch noch das
@@ -923,23 +854,8 @@ const GRAMMATIK_REGELN = [
    e) Komma vor dem Nebensatz
    ------------------------------------------------------------ */
 
-/* Nach diesen Wörtern folgt kein Komma: „auch wenn“, „und weil“, „so dass“
-   gehören zusammen, das Komma stünde davor. */
-const KEIN_KOMMA_DAVOR = new Set([
-  'und','oder','aber','sondern','denn','so','als','auch','selbst','sogar','außer',
-  'nur','immer','je','erst','schon','gerade','eben','besonders','allem','dann',
-  'noch','kaum','wie','egal','ganz','vor','doch','geschweige',
-]);
-
-/* Wort → braucht es ein Fürwort dahinter, damit es sicher ein Nebensatz ist?
-   „damit“ und „während“ gibt es auch ohne Nebensatz („damit bin ich zufrieden“,
-   „während des Essens“) — da wäre ein Komma falsch. */
-const NEBENSATZ_WOERTER = [
-  ['dass', false], ['weil', false], ['obwohl', false], ['sodass', false],
-  ['sobald', false], ['solange', false], ['bevor', false], ['nachdem', false],
-  ['falls', false], ['sofern', false], ['indem', false], ['wenn', false],
-  ['ob', false], ['damit', true], ['während', true],
-];
+const KEIN_KOMMA_DAVOR = new Set(REGELDATEN.KEIN_KOMMA_DAVOR);
+const NEBENSATZ_WOERTER = REGELDATEN.NEBENSATZ_WOERTER;
 
 const KOMMA_REGELN = NEBENSATZ_WOERTER.map(([wort, nurVorFuerwort]) => ({
   muster: new RegExp('\\b([A-Za-zÄÖÜäöüß]{2,})([ \\t]+)(' + wort + ')\\b' +
@@ -962,23 +878,11 @@ const KOMMA_REGELN = NEBENSATZ_WOERTER.map(([wort, nurVorFuerwort]) => ({
 /* ------------------------------------------------------------
    f) Passt das Zeitwort zum Fürwort?
 
-   „ich habe“, „du hast“, „er hat“ — wer da durcheinanderkommt, hört es beim
-   eigenen Lesen oft nicht. Geprüft werden die acht häufigsten Zeitwörter und
-   nur die Fürwörter, die eindeutig sind: „sie“, „ihr“ und „es“ bleiben außen
-   vor, weil dort beide Formen richtig sein können („sie ist“ und „sie sind“,
-   „ihr ist kalt“, „es sind viele gekommen“).
+   Die Formen stehen in daten/regeln.js; dort steht auch, warum nur acht
+   Zeitwörter geprüft werden und warum „sie“, „ihr“ und „es“ fehlen.
    ------------------------------------------------------------ */
-const ZEITWOERTER = [
-  { ich:'bin',   du:'bist',   er:'ist',  wir:'sind'   },
-  { ich:'habe',  du:'hast',   er:'hat',  wir:'haben'  },
-  { ich:'werde', du:'wirst',  er:'wird', wir:'werden' },
-  { ich:'kann',  du:'kannst', er:'kann', wir:'können' },
-  { ich:'muss',  du:'musst',  er:'muss', wir:'müssen' },
-  { ich:'will',  du:'willst', er:'will', wir:'wollen' },
-  { ich:'soll',  du:'sollst', er:'soll', wir:'sollen' },
-  { ich:'darf',  du:'darfst', er:'darf', wir:'dürfen' },
-];
-const SPALTE = { ich:'ich', du:'du', er:'er', man:'er', wir:'wir' };
+const ZEITWOERTER = REGELDATEN.ZEITWOERTER;
+const SPALTE = REGELDATEN.SPALTE;
 const FORM_ZU_ZEITWORT = new Map();
 for (const zeile of ZEITWOERTER) {
   for (const form of Object.values(zeile)) FORM_ZU_ZEITWORT.set(form, zeile);
@@ -1146,17 +1050,7 @@ function ohneUeberschneidung(funde) {
      3 bzw. 1 Fehlalarm — vor wie nach der Lockerung unten dieselben.
    Von 23 typisch zusammengetippten Wörtern werden 21 erkannt (vorher 14).
    ------------------------------------------------------------ */
-const TRENN_KURZ = new Set(`der die das den dem des ein eine einen einem einer eines
-ich du er sie es wir ihr mir dir uns euch mich dich sich man
-ist sind bin bist war warst hat hab habe haben hatte wird werden
-kann kannst will muss soll mag darf
-und oder aber denn weil wenn dass ob als wie wo wann warum wer
-nicht noch schon auch nur mal sehr ganz gar doch dann jetzt hier da
-in im am um auf aus bei mit nach von vor zu zum zur über unter
-hallo danke bitte ja nein guten liebe lieber viele
-mein meine meinen meinem meiner kein keine keinen keinem keiner
-vielen viel herzlichen freundlichen geehrte geehrter geehrten
-ihre ihren ihrem ihrer unser unsere`.split(/\s+/));
+const TRENN_KURZ = new Set(REGELDATEN.TRENN_KURZ);
 
 /** Wird beim Start im Hintergrund geladen; bis dahin wird nicht getrennt. */
 let WOERTERBUCH_GROSS = null;
