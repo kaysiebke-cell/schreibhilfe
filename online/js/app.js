@@ -6,6 +6,22 @@
 
 'use strict';
 
+/* Der Wortschatz kommt aus daten/regeln.js und wird von index.html VOR dieser
+   Datei geladen. Fehlt er, stünde hier sonst ein nacktes „REGELDATEN is not
+   defined“ in der Konsole und die Seite bliebe stumm — beim Zwischenspeicher
+   des Service Workers ist genau das der Fall, den man am schwersten erkennt.
+   Deshalb ein Satz, der sagt, was zu tun ist. */
+if (typeof REGELDATEN === 'undefined') {
+  const meldung = 'Die Schreibhilfe konnte den Wortschatz (daten/regeln.js) '
+                + 'nicht laden. Meist hilft: Seite neu laden. Bleibt es dabei, '
+                + 'im Browser die Daten dieser Seite löschen.';
+  console.error(meldung);
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body.textContent = meldung;
+  });
+  throw new Error('daten/regeln.js fehlt');
+}
+
 /* Beim Aufräumen sind Schaltflächen weggefallen, deren Verdrahtung weiter
    unten noch steht. Fehlt ein Element, liefert $ einen stillen Platzhalter
    statt null — sonst risse eine einzige entfernte Schaltfläche die ganze

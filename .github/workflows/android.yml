@@ -128,8 +128,12 @@ jobs:
           apk = zipfile.ZipFile("out/schreibhilfe.apk")
           drin = {n for n in apk.namelist() if n.startswith("assets/www/")}
 
+          # daten/regeln.js steht mit in der Liste: Ohne diese Datei bricht
+          # app.js schon in der ersten Zeile ab, die App ist dann nicht
+          # eingeschränkt, sondern tot. Ein ::notice:: wäre dafür zu leise.
           noetig = ["assets/www/index.html", "assets/www/css/style.css",
-                    "assets/www/js/app.js", "assets/www/sw.js"]
+                    "assets/www/js/app.js", "assets/www/sw.js",
+                    "assets/www/daten/regeln.js"]
           fehlt = [d for d in noetig if d not in drin]
           if fehlt:
               print("::error::Die APK enthält die Web-App nicht: " + ", ".join(fehlt))
