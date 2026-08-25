@@ -746,6 +746,33 @@ const istAdresse = (text, stelle) =>
 const grossDahinter = (treffer, text) =>
   /^[ \t]+[A-ZÄÖÜ]/.test(text.slice(treffer.index + treffer[0].length));
 
+/* ------------------------------------------------------------
+   Wortgrenzen, die Umlaute kennen
+
+   „\b“ kennt in JavaScript nur ASCII. Zwischen einem Leerzeichen und „ä“
+   sieht es deshalb KEINE Wortgrenze, und /\bälter\b/ hat nie gegriffen —
+   /\bgrößer\b/ dagegen schon, weil „g“ ein ASCII-Buchstabe ist. In Python
+   gibt es das Problem nicht, dort ist \b von Haus aus Unicode-tauglich.
+
+   Die beiden Prüfer standen damit auseinander: „älter wie“, „öfter wie“ und
+   „ärmer wie“ rügte nur LibreOffice, der Browser ließ sie durch. Aufgefallen
+   ist es erst beim Vergleich über 7183 Sätze; die 56 Sätze in vergleiche.py
+   treffen keines der drei Wörter.
+
+   WG_VOR und WG_NACH tun dasselbe wie \b, kennen aber Umlaute und ß.
+   \p{L}\p{N}_ ist genau das, was Python unter \w versteht: jeder Buchstabe,
+   jede Ziffer, der Unterstrich. Eine ausgeschriebene Liste „A-Za-zÄÖÜäöüß“
+   täte es fast — aber eben nur fast: An „caféälter“ ginge sie auseinander,
+   weil „é“ darin fehlte und Python es mitzählt.
+
+   Dafür braucht es den Schalter „u“. Der bringt noch etwas mit, das hier
+   gerade recht kommt: Mit „u“ trifft „ß“ bei Kleinschreibung auch das große
+   „ẞ“ — so wie Python es tut, und anders als JavaScript ohne den Schalter.
+   ------------------------------------------------------------ */
+const WORTZEICHEN = '\\p{L}\\p{N}_';
+const WG_VOR  = '(?<![' + WORTZEICHEN + '])';   // wie \b, vor einem Wort
+const WG_NACH = '(?![' + WORTZEICHEN + '])';    // wie \b, hinter einem Wort
+
 const ZEICHEN_REGELN = [
   { muster:/ {2,}/g,                        bau:() => ' ', leer:true,
     grund:'Mehrere Leerzeichen hintereinander' },
@@ -766,10 +793,12 @@ const ZEICHEN_REGELN = [
     grund:'Das Komma steht doppelt da' },
   { muster:/([;:!?])\1+/g,                  bau:(m, z) => z,
     grund:'Das Satzzeichen steht doppelt da' },
-  { muster:/\b([A-Za-zÄÖÜäöüß]+)([ \t]+)\1\b/gi, bau:(m, w) => w,
+  { muster:new RegExp(WG_VOR + '([A-Za-zÄÖÜäöüß]+)([ \\t]+)\\1' + WG_NACH, 'giu'),
+    bau:(m, w) => w,
     grund:'Das Wort steht doppelt da' },
   /* „Peter's Auto“ – der Apostroph kommt aus dem Englischen. */
-  { muster:/\b([A-ZÄÖÜ][A-Za-zÄÖÜäöüß]{1,})['’´`]s\b/g, bau:(m, name) => name + 's',
+  { muster:new RegExp(WG_VOR + "([A-ZÄÖÜ][A-Za-zÄÖÜäöüß]{1,})['’´`]s" + WG_NACH, 'gu'),
+    bau:(m, name) => name + 's',
     art:'tipp',
     grund:'Vor dem Genitiv-s steht im Deutschen kein Apostroph.' },
 ];
@@ -798,7 +827,8 @@ const GROSS_REGELN = [
     grund:'Satzanfang großschreiben' },
   // „beim schreiben“ → „beim Schreiben“. Folgt ein großgeschriebenes Wort,
   // ist das -en-Wort ein Eigenschaftswort davor („zum neuen Haus“) — Finger weg.
-  { muster:/\b(beim|zum|vom|ans|aufs)([ \t]+)([a-zäöüß]{3,}en)\b/gi,
+  { muster:new RegExp(WG_VOR + '(beim|zum|vom|ans|aufs)([ \\t]+)([a-zäöüß]{3,}en)'
+                      + WG_NACH, 'giu'),
     gruppe:3,
     bau:(m, vor, l, wort) => wort[0].toUpperCase() + wort.slice(1),
     pruefe:(treffer, text) => !KEIN_HAUPTWORT.has(treffer[3].toLowerCase())
@@ -824,44 +854,46 @@ const FOLGT_NEBENSATZ =
 const GRAMMATIK_REGELN = [
   /* das/dass nach einem Zeitwort des Denkens und Sagens. Fehlt auch noch das
      Komma, kommt es gleich mit — beides gehört zusammen. */
-  { muster:new RegExp('\\b(' + DENK_ZEITWOERTER + ')(,?)([ \\t]+)das\\b' +
-                      '(?=[ \\t]+(?:' + FUERWOERTER + ')\\b)', 'gi'),
+  { muster:new RegExp(WG_VOR + '(' + DENK_ZEITWOERTER + ')(,?)([ \\t]+)das' + WG_NACH +
+                      '(?=[ \\t]+(?:' + FUERWOERTER + ')' + WG_NACH + ')', 'giu'),
     bau:(m, verb, komma, l) => verb + ',' + l + 'dass',
     art:'tipp',
     grund:'Hier leitet „dass“ den Nebensatz ein – mit Komma davor.' },
-  { muster:new RegExp('\\b(' + DENK_ZEITWOERTER_ENG + ')(,?)([ \\t]+)das\\b' +
-                      '(?=[ \\t]+(?:' + FOLGT_NEBENSATZ + ')\\b)', 'gi'),
+  { muster:new RegExp(WG_VOR + '(' + DENK_ZEITWOERTER_ENG + ')(,?)([ \\t]+)das' + WG_NACH +
+                      '(?=[ \\t]+(?:' + FOLGT_NEBENSATZ + ')' + WG_NACH + ')', 'giu'),
     bau:(m, verb, komma, l) => verb + ',' + l + 'dass',
     art:'tipp',
     grund:'Hier leitet „dass“ den Nebensatz ein – mit Komma davor.' },
-  { muster:new RegExp('\\b(' + DASS_EIGENSCHAFTEN + ')(,?)([ \\t]+)das\\b' +
-                      '(?=[ \\t]+(?:' + FOLGT_NEBENSATZ + ')\\b)', 'gi'),
+  { muster:new RegExp(WG_VOR + '(' + DASS_EIGENSCHAFTEN + ')(,?)([ \\t]+)das' + WG_NACH +
+                      '(?=[ \\t]+(?:' + FOLGT_NEBENSATZ + ')' + WG_NACH + ')', 'giu'),
     bau:(m, wort, komma, l) => wort + ',' + l + 'dass',
     art:'tipp',
     grund:'Hier leitet „dass“ den Nebensatz ein – mit Komma davor.' },
 
   /* seit/seid */
-  { muster:new RegExp('\\bseid([ \\t]+)(?=(?:' + ZEITANGABEN + ')\\b)', 'gi'),
+  { muster:new RegExp(WG_VOR + 'seid([ \\t]+)(?=(?:' + ZEITANGABEN + ')' + WG_NACH + ')', 'giu'),
     bau:(m, l) => 'seit' + l,
     grund:'Bei Zeitangaben heißt es „seit“ – „seid“ nur bei „ihr seid“.' },
   /* „Seit ihr das wisst …“ – aber „Seit ihr Vater gestorben ist“ bleibt stehen:
      folgt ein Hauptwort, gehört „ihr“ dazu und „seit“ ist richtig. */
-  { muster:/\bseit([ \t]+)ihr\b/gi,
+  { muster:new RegExp(WG_VOR + 'seit([ \\t]+)ihr' + WG_NACH, 'giu'),
     bau:(m, l) => 'seid' + l + 'ihr',
     pruefe:(treffer, text) => !grossDahinter(treffer, text),
     grund:'„ihr seid“ – hier gehört ein d ans Ende.' },
-  { muster:new RegExp('\\bihr([ \\t]+)seit\\b(?![ \\t]+(?:' + ZEITANGABEN + ')\\b)', 'gi'),
+  { muster:new RegExp(WG_VOR + 'ihr([ \\t]+)seit' + WG_NACH
+                      + '(?![ \\t]+(?:' + ZEITANGABEN + ')' + WG_NACH + ')', 'giu'),
     bau:(m, l) => 'ihr' + l + 'seid',
     grund:'„ihr seid“ – hier gehört ein d ans Ende.' },
-  { muster:/\bseit([ \t]+)(ruhig|still|nett|lieb|vorsichtig|ehrlich|froh|gegrüßt|willkommen|gespannt|unbesorgt|bereit)\b/gi,
+  { muster:new RegExp(WG_VOR + 'seit([ \\t]+)(ruhig|still|nett|lieb|vorsichtig|ehrlich|'
+                      + 'froh|gegrüßt|willkommen|gespannt|unbesorgt|bereit)' + WG_NACH, 'giu'),
     bau:(m, l, wort) => 'seid' + l + wort,
     grund:'Aufforderung an mehrere: „seid ruhig“ mit d.' },
 
   /* Vergleich: größer als, nicht größer wie */
-  { muster:new RegExp('\\b(' + STEIGERUNGEN + ')([ \\t]+)wie\\b', 'gi'),
+  { muster:new RegExp(WG_VOR + '(' + STEIGERUNGEN + ')([ \\t]+)wie' + WG_NACH, 'giu'),
     bau:(m, wort, l) => wort + l + 'als',
     grund:'Nach der Steigerung heißt es „als“: größer als, lieber als.' },
-  { muster:/\bals([ \t]+)wie\b/gi,
+  { muster:new RegExp(WG_VOR + 'als([ \\t]+)wie' + WG_NACH, 'giu'),
     bau:() => 'als',
     grund:'„als wie“ ist doppelt gemoppelt – „als“ reicht.' },
 ];
@@ -874,8 +906,8 @@ const KEIN_KOMMA_DAVOR = new Set(REGELDATEN.KEIN_KOMMA_DAVOR);
 const NEBENSATZ_WOERTER = REGELDATEN.NEBENSATZ_WOERTER;
 
 const KOMMA_REGELN = NEBENSATZ_WOERTER.map(([wort, nurVorFuerwort]) => ({
-  muster: new RegExp('\\b([A-Za-zÄÖÜäöüß]{2,})([ \\t]+)(' + wort + ')\\b' +
-                     (nurVorFuerwort ? '(?=[ \\t]+(?:' + FUERWOERTER + ')\\b)' : ''), 'gi'),
+  muster: new RegExp(WG_VOR + '([A-Za-zÄÖÜäöüß]{2,})([ \\t]+)(' + wort + ')' + WG_NACH +
+                     (nurVorFuerwort ? '(?=[ \\t]+(?:' + FUERWOERTER + ')' + WG_NACH + ')' : ''), 'giu'),
   bau: (m, davor, l, schluessel) => davor + ',' + l + schluessel,
   pruefe: (treffer) => !KEIN_KOMMA_DAVOR.has(treffer[1].toLowerCase()),
   art: 'tipp',
@@ -883,8 +915,8 @@ const KOMMA_REGELN = NEBENSATZ_WOERTER.map(([wort, nurVorFuerwort]) => ({
 })).concat([
   /* „aber/sondern/denn“ verbinden zwei Sätze — dann steht ein Komma davor.
      Nur mit Fürwort dahinter, sonst gerät „Das ist aber schön“ mit hinein. */
-  { muster:new RegExp('\\b([A-Za-zÄÖÜäöüß]{2,})([ \\t]+)(aber|sondern|denn)\\b' +
-                      '(?=[ \\t]+(?:' + FUERWOERTER + ')\\b)', 'gi'),
+  { muster:new RegExp(WG_VOR + '([A-Za-zÄÖÜäöüß]{2,})([ \\t]+)(aber|sondern|denn)' + WG_NACH +
+                      '(?=[ \\t]+(?:' + FUERWOERTER + ')' + WG_NACH + ')', 'giu'),
     bau:(m, davor, l, wort) => davor + ',' + l + wort,
     pruefe:(treffer) => !KEIN_KOMMA_DAVOR.has(treffer[1].toLowerCase()),
     art:'tipp',
@@ -906,9 +938,11 @@ for (const zeile of ZEITWOERTER) {
 
 const KONGRUENZ_MUSTER = [
   // „wir hat“
-  { muster:/\b(ich|du|er|man|wir)([ \t]+)([a-zäöüß]+)\b/gi, fuerwort:1, form:3 },
+  { muster:new RegExp(WG_VOR + '(ich|du|er|man|wir)([ \\t]+)([a-zäöüß]+)' + WG_NACH, 'giu'),
+    fuerwort:1, form:3 },
   // „hat wir“ — in Fragen und nach vorangestelltem Satzteil
-  { muster:/\b([a-zäöüß]+)([ \t]+)(ich|du|er|man|wir)\b/gi, fuerwort:3, form:1 },
+  { muster:new RegExp(WG_VOR + '([a-zäöüß]+)([ \\t]+)(ich|du|er|man|wir)' + WG_NACH, 'giu'),
+    fuerwort:3, form:1 },
 ];
 
 function pruefeKongruenz(text, funde) {

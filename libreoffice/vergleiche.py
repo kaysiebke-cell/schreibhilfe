@@ -107,6 +107,41 @@ SAETZE = [
     "",
     "   ",
 
+    # --- Wortgrenzen an Umlauten und ß ---
+    #
+    # Diese Gruppe gibt es, weil hier eine Abweichung ein Jahr lang unbemerkt
+    # blieb: „\b“ kennt in JavaScript nur ASCII, deshalb fand der Browser
+    # „größer wie“, „älter wie“ aber nicht. Keiner der Sätze oben trifft ein
+    # Wort mit Umlaut am Anfang oder ß am Ende — der Vergleich lief grün und
+    # bewies nichts. Wer eine Regel mit Wortgrenzen anfasst, prüft hier.
+    "Das ist älter wie vorher.",
+    "Das ist öfter wie vorher.",
+    "Das ist ärmer wie vorher.",
+    "Das ist größer wie vorher.",
+    "Der Fuß Fuß steht doppelt da.",
+    "Über Über ist auch doppelt.",
+    "Ein Gruß Gruß und ein süß süß.",
+    "Das ist Über's Auto und Käthe's Hut.",
+    "Der Ärger weil ich komme.",
+    "Über dass es regnet.",
+    "Beim Übernehmen und beim Ärgern.",
+    "Ich warte seid Ärger hier.",
+    "Also ich weiß heute nicht.",
+    "Warum müssen wir das?",
+    # Ziffer und Unterstrich zählen wie Buchstaben — „3älter“ ist ein Wort,
+    # kein „älter“ mit etwas davor. Beide Seiten lassen es deshalb liegen.
+    "Das ist 3älter wie vorher.",
+    "Das ist _älter wie vorher.",
+    "Das ist älter3 wie vorher.",
+    # Fremde Buchstaben zählen auch als Buchstaben: „caféälter“ ist EIN Wort.
+    # Eine ausgeschriebene Liste „A-Za-zÄÖÜäöüß“ ginge hier auseinander,
+    # \p{L} nicht.
+    "Das ist caféälter wie vorher.",
+    "Das ist café älter wie vorher.",
+    # Großes ẞ: Python trifft es bei Kleinschreibung, JavaScript nur mit „u“.
+    "Ein GRUẞ GRUẞ steht doppelt da.",
+    "Das ist GROẞ und WEIẞ.",
+
     # --- Adressen und Abkürzungen in Ruhe lassen ---
     "Schreib mir an test@example.de oder auf www.beispiel.de",
     "Das kostet ca. 10 Euro bzw. etwas mehr.",
