@@ -379,9 +379,12 @@ textarea#text:focus{outline:none}
 }
 /* Was nach dem Korrigieren zu tun ist, erscheint erst danach. */
 .danach{display:flex;flex-direction:column;gap:var(--s2)}
-/* Die kleinen Wege teilen sich eine Zeile zu gleichen Teilen. */
-.danach__klein{display:flex;gap:var(--s1)}
-.danach__klein > .btn{flex:1 1 0;min-width:0}
+/* Die kleinen Wege teilen sich eine Zeile zu gleichen Teilen. Die Zeile steht
+   außerhalb von „danach": Der Mülleimer wird gebraucht, bevor irgendetwas
+   korrigiert wurde. Steht nur einer der beiden Knöpfe da, nimmt er die ganze
+   Breite — eine halbe leere Zeile sähe nach einem Fehler aus. */
+.leiste__klein{display:flex;gap:var(--s1)}
+.leiste__klein > .btn{flex:1 1 0;min-width:0}
 
 /* ------------------------------------------------------------
    EIN Knopf-System, drei Stufen:

@@ -50,6 +50,7 @@ const el = {
   status:        $('status'),
   funde:         $('funde'),
   danach:        $('danach'),
+  kleinReihe:    $('klein'),
   ergebnis:      $('ergebnis'),
   btnTeilen:     $('btn-teilen'),
   btnKopieren:   $('btn-kopieren'),
@@ -97,6 +98,12 @@ const el = {
     Steht bewusst weit oben: markiereWort() läuft schon beim Start und fragt
     danach — eine Deklaration weiter unten wäre zu spät und bräche die Datei ab. */
 let gruenStellen = null;
+
+/** Der Stand von vor der letzten Änderung, und ob der Mülleimer ihn zurückholt.
+    Stehen aus demselben Grund hier oben wie gruenStellen: zeigeEimerAls() läuft
+    schon beim Start mit — weiter unten deklariert, bräche die Datei ab. */
+let vorherigerText = null;
+let zurueckImEimer = false;
 
 const Speicher = {
   lies(schluessel, ersatz) {
@@ -421,6 +428,8 @@ function textGeaendert() {
   // Auch wenn die App den Text selbst setzt (Löschen, Ändern, KI), muss der
   // Zwilling dahinter wieder stimmen.
   markiereWort();
+  // Leeres Feld, nichts zu löschen: dann steht dort auch kein Eimer.
+  zeigeEimerAls();
   if (typeof zeigeEinfuegen === 'function') zeigeEinfuegen();
 }
 /* Nur echtes Tippen löst „input“ aus. Setzt die App den Text selbst (Löschen,
@@ -520,13 +529,10 @@ el.btnLeeren.addEventListener('click', () => {
 
    Nach einer Korrektur (KI oder „Ändern“) geht das nicht — dort wäre der
    Mülleimer weiterhin der Löschknopf, und wer löschen will, holte
-   versehentlich den alten Text zurück. Dafür ist der beschriftete Knopf über
-   der Leiste da. Er ist auch der wichtigere Fall: Einen gelöschten Text tippt
+   versehentlich den alten Text zurück. Dafür steht „Rückgängig" als eigener
+   Knopf daneben. Er ist auch der wichtigere Fall: Einen gelöschten Text tippt
    man neu, die eigene Formulierung von vor der KI-Korrektur nicht.
    ------------------------------------------------------------ */
-let vorherigerText = null;
-let zurueckImEimer = false;
-
 function merkeFuerZurueck(t, aufDemEimer = false) {
   vorherigerText = t;
   zurueckImEimer = aufDemEimer;
@@ -534,13 +540,18 @@ function merkeFuerZurueck(t, aufDemEimer = false) {
   zeigeEimerAls();
 }
 
-/* Das Bild im Knopf muss sagen, was das Tippen tut. */
+/* Das Bild im Knopf muss sagen, was das Tippen tut — und ob er überhaupt
+   dasteht. Bei leerem Feld gibt es nichts zu löschen; der Eimer bleibt nur,
+   solange er der Rückholpfeil ist, sonst wäre der gelöschte Text mit ihm weg. */
 function zeigeEimerAls() {
   const pfeil = zurueckImEimer && vorherigerText !== null;
-  el.btnLeeren.querySelector('use').setAttribute('href', pfeil ? '#i-undo' : '#i-trash');
+  el.btnLeeren.querySelector('use')?.setAttribute('href', pfeil ? '#i-undo' : '#i-trash');
   const was = pfeil ? 'Text zurückholen' : 'Text löschen';
   el.btnLeeren.title = was;
   el.btnLeeren.setAttribute('aria-label', was);
+  el.btnLeeren.hidden = !el.text.value && !pfeil;
+  // Zwei versteckte Knöpfe hinterlassen sonst eine leere Zeile samt Abstand.
+  el.kleinReihe.hidden = el.btnLeeren.hidden && el.btnZurueck.hidden;
 }
 
 function holeZurueck() {
