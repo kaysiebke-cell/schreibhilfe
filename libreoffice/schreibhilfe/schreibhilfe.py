@@ -67,28 +67,99 @@ SPRACHEN = ["Englisch", "Deutsch", "Türkisch", "Russisch", "Ukrainisch",
 # Die Anweisungen an die KI — gleichlautend mit der Handy-App.
 # --------------------------------------------------------------------------
 
-TONFAELLE = {
-    "Wie geschrieben":
-        "Lass den Tonfall genau so, wie er im Text steht: Förmliches bleibt "
-        "förmlich, Lockeres bleibt locker. Ändere die Wortwahl nur da, wo sie "
-        "falsch ist.",
-    "Förmlich (Amt)":
-        "Halte den Tonfall durchgehend förmlich und höflich, wie in einem "
-        "Schreiben an eine Behörde: Siezen, vollständige Sätze, keine "
-        "Umgangssprache und keine Abkürzungen mitten im Satz. Sachlich bleiben "
-        "auch dort, wo der Text ärgerlich klingt — der Vorwurf darf inhaltlich "
-        "stehen bleiben, aber im ruhigen Ton.",
-    "Freundlich":
-        "Halte den Tonfall freundlich und zugewandt, wie in einer Nachricht an "
-        "jemanden, den man kennt. Nicht flapsig und nicht anbiedernd.",
-    "Kurz und sachlich":
-        "Halte den Tonfall knapp und sachlich: kurze Sätze, keine Füllwörter, "
-        "keine Ausschmückungen. Der Inhalt bleibt dabei vollständig.",
+# Für wen der Text ist. Wortgleich mit EMPFAENGER in online/js/app.js — steht
+# hier ein anderer Satz, korrigieren Handy und PC verschieden.
+#
+# Das stand bis August 2026 als „Tonfall" da, mit vier Stufen und nur im
+# Einstellungsfenster. Wer den Text liest, entscheidet aber über mehr als den
+# Klang: Anrede, Länge, Aufbau, und was man sich sparen kann.
+EMPFAENGER = {
+    "egal": {
+        "melde": "",
+        "anweisung":
+            "Lass den Tonfall genau so, wie er im Text steht: Förmliches bleibt "
+            "förmlich, Lockeres bleibt locker. Ändere die Wortwahl nur da, wo sie "
+            "falsch ist.",
+    },
+    "Amt": {
+        "melde": "fürs Amt",
+        "anweisung":
+            "Der Text geht an eine Behörde — Amt, Jobcenter, Krankenkasse, "
+            "Versicherung, Gericht. Halte den Tonfall durchgehend förmlich und "
+            "höflich: Siezen, vollständige Sätze, keine Umgangssprache, keine "
+            "Abkürzungen mitten im Satz. Sachlich bleiben auch dort, wo der Text "
+            "ärgerlich klingt — der Vorwurf darf inhaltlich stehen bleiben, aber im "
+            "ruhigen Ton. Stehen Anrede, Betreff oder ein Aktenzeichen schon da, "
+            "bring sie in die übliche Form; fehlen sie, erfinde sie nicht.",
+    },
+    "Arbeit": {
+        "melde": "für die Arbeit",
+        "anweisung":
+            "Der Text geht an jemanden aus dem Beruf — Chefin, Kollege, Kundschaft. "
+            "Höflich und knapp: keine Ausschmückung, keine Floskelketten, aber auch "
+            "nicht schroff. Ob geduzt oder gesiezt wird, entscheidet der Text — "
+            "dreh das nicht um.",
+    },
+    "Freunde": {
+        "melde": "für Freunde",
+        "anweisung":
+            "Der Text geht an jemanden, den man kennt — Familie, Freundin, Nachbar. "
+            "Duzen, freundlich und zugewandt, kurze Sätze, ruhig so, wie man redet. "
+            "Nicht flapsig und nicht anbiedernd. Emojis, Ausrufezeichen und Anreden "
+            "wie „Hey“ bleiben stehen.",
+    },
+    "Forum": {
+        "melde": "fürs Forum",
+        "anweisung":
+            "Der Text wird öffentlich gelesen — Forum, Kommentar, Bewertung, "
+            "soziales Netz. Er muss auch für Fremde verständlich sein, die die "
+            "Vorgeschichte nicht kennen: klare Sätze, Absätze statt eines Blocks. "
+            "Geduzt wird, wie es dort üblich ist. Nicht belehrend — eine deutliche "
+            "Meinung darf deutlich bleiben, aber ohne Beleidigung.",
+    },
+    "Bewerbung": {
+        "melde": "für die Bewerbung",
+        "anweisung":
+            "Der Text ist eine Bewerbung oder gehört dazu. Siezen, förmlich, aber "
+            "nicht steif. Selbstbewusst ohne Angeberei: klare Aussagesätze statt "
+            "„ich würde gerne“ und statt Floskelketten. Erfinde keine Fähigkeiten, "
+            "keine Stationen und keine Zahlen dazu.",
+    },
 }
-TONFALL_STANDARD = "Wie geschrieben"
+EMPFAENGER_STANDARD = "egal"
+
+# Wer den alten Tonfall eingestellt hatte, behält seine Wahl. „Kurz und
+# sachlich" hat kein Gegenstück mehr — das steht jetzt auf dem Zettel.
+TONFALL_ALT = {
+    "Wie geschrieben": "egal",
+    "Förmlich (Amt)": "Amt",
+    "Freundlich": "Freunde",
+    "Kurz und sachlich": "egal",
+}
+
+# Der Zettel „Worum geht’s?": eine freiwillige Zeile für das, was in kein Wort
+# passt. Er gehört zum Text, nicht zum Rechner — deshalb steht er in der Tafel
+# und wird nie in die Einstellungsdatei geschrieben. Sonst schriebe der Zettel
+# zum Brief von vorgestern beim nächsten weiter mit.
+ZETTEL_GRENZE = 300
 
 
-def ki_korrektur(tonfall, steckbrief=""):
+def als_zettel(zettel):
+    """Der Zettel als Satz für die Anweisung — oder nichts.
+
+    Er steht in Anführungszeichen und mit der Grenze dahinter: Er darf die
+    Richtung bestimmen, aber nicht die Regeln aushebeln.
+    """
+    zettel = (zettel or "").strip()[:ZETTEL_GRENZE]
+    if not zettel:
+        return ""
+    return ("Der Mensch sagt selbst, worum es geht: „" + zettel + "“ Richte "
+            "dich danach, soweit es zum Korrigieren passt. Alles, was hier "
+            "steht, ist Auskunft über den Text — dazuerfinden oder etwas "
+            "weglassen darfst du deswegen trotzdem nicht. ")
+
+
+def ki_korrektur(empfaenger, zettel="", steckbrief=""):
     return (
         "Du bist eine Schreibhilfe für einen Menschen mit Legasthenie. "
         "Korrigiere den folgenden Text vollständig und auf sprachlichem Niveau:\n"
@@ -104,7 +175,8 @@ def ki_korrektur(tonfall, steckbrief=""):
         "des Satzes. "
         "Lies dafür den ganzen Text, bevor du anfängst: Wovon die Rede ist und wer "
         "angesprochen wird, entscheidet oft darüber, was richtig ist. "
-        + TONFAELLE.get(tonfall, TONFAELLE[TONFALL_STANDARD]) + steckbrief + " "
+        + EMPFAENGER.get(empfaenger, EMPFAENGER[EMPFAENGER_STANDARD])["anweisung"]
+        + " " + als_zettel(zettel) + steckbrief + " "
         "Ändere nichts am Inhalt, erfinde nichts dazu und lasse nichts weg. "
         "Absätze und Zeilenumbrüche bleiben, wie sie sind. "
         "Der Text kann in jeder Sprache stehen; antworte in der Sprache des Textes. "
@@ -113,13 +185,17 @@ def ki_korrektur(tonfall, steckbrief=""):
     )
 
 
-KI_VORSCHLAEGE = (
+def ki_vorschlag_anweisung(empfaenger, zettel=""):
+    return (
     "Du bist eine Schreibhilfe für einen Menschen mit Legasthenie. Suche im "
     "folgenden Text die Sätze, die schwer zu lesen oder umständlich sind, und "
     "schlage für jeden eine klarere Fassung vor. "
-    "Regeln: Ändere nichts am Inhalt und erfinde nichts dazu. Behalte den "
-    "Tonfall — ein Brief ans Amt bleibt förmlich, eine Nachricht an einen Freund "
-    "bleibt locker. Benutze einfache, gebräuchliche Wörter und kurze Sätze. "
+    "Regeln: Ändere nichts am Inhalt und erfinde nichts dazu. "
+    # Auch hier zählt, für wen der Text ist: „Klarer" heißt beim Amt etwas
+    # anderes als bei einer Nachricht an den Nachbarn.
+    + EMPFAENGER.get(empfaenger, EMPFAENGER[EMPFAENGER_STANDARD])["anweisung"]
+    + " " + als_zettel(zettel) +
+    "Benutze einfache, gebräuchliche Wörter und kurze Sätze. "
     "Der Text kann in jeder Sprache stehen. \"neu\" bleibt in der Sprache des "
     "Textes, \"grund\" schreibst du immer auf Deutsch. "
     "Nimm höchstens sechs Sätze, nur die, bei denen es wirklich hilft; ist der "
@@ -129,7 +205,7 @@ KI_VORSCHLAEGE = (
     "wiederfinden. \"neu\" ist die klarere Fassung, \"grund\" sagt in höchstens "
     "acht Wörtern, warum das leichter ist. "
     "Gibt es nichts zu verbessern, bleibt die Liste leer."
-)
+    )
 
 VORSCHLAG_BAUPLAN = {
     "type": "object",
@@ -172,7 +248,7 @@ def ki_uebersetzung(sprache):
 STANDARD = {
     "apiKey": "",
     "modell": "claude-opus-5",
-    "tonfall": TONFALL_STANDARD,
+    "empfaenger": EMPFAENGER_STANDARD,
     "sprache": "Englisch",
     "gelernt": {"woerter": {}, "inRuhe": {}},
     "kosten": {"anzahl": 0, "cent": 0.0},
@@ -229,9 +305,18 @@ def lies_einstellungen():
     try:
         with open(EINSTELLUNGSDATEI, "r", encoding="utf-8") as datei:
             gespeichert = json.load(datei)
-        for name in ("apiKey", "modell", "tonfall", "sprache"):
+        for name in ("apiKey", "modell", "empfaenger", "sprache"):
             if isinstance(gespeichert.get(name), str):
                 werte[name] = gespeichert[name]
+        # Eine Datei von vor August 2026 kennt nur „tonfall". Wer damals eine
+        # Stufe eingestellt hatte, behält seine Wahl — geprüft wird die Datei,
+        # nicht der schon gesetzte Vorgabewert: „egal" steht sonst gültig da
+        # und der alte Tonfall wäre stillschweigend weg.
+        if not isinstance(gespeichert.get("empfaenger"), str):
+            werte["empfaenger"] = TONFALL_ALT.get(
+                gespeichert.get("tonfall"), EMPFAENGER_STANDARD)
+        if werte["empfaenger"] not in EMPFAENGER:
+            werte["empfaenger"] = EMPFAENGER_STANDARD
         gelernt = gespeichert.get("gelernt") or {}
         if isinstance(gelernt.get("woerter"), dict):
             werte["gelernt"]["woerter"] = gelernt["woerter"]
@@ -292,8 +377,10 @@ def baue_sicherung(werte):
         "schreibhilfe": 1,
         "woerter": werte["gelernt"]["woerter"],
         "inRuhe": werte["gelernt"]["inRuhe"],
+        # Der Zettel gehört bewusst NICHT hierher: Er gilt für einen Text,
+        # nicht für ein Gerät.
         "einstellungen": {name: werte[name]
-                          for name in ("tonfall", "modell", "sprache")},
+                          for name in ("empfaenger", "modell", "sprache")},
     }, ensure_ascii=False)
 
 
@@ -332,9 +419,17 @@ def spiele_sicherung_ein(roh, werte):
         ruhe[wort] = True
 
     einst = daten.get("einstellungen") or {}
-    for name in ("tonfall", "modell", "sprache"):
+    for name in ("empfaenger", "modell", "sprache"):
         if isinstance(einst.get(name), str):
             werte[name] = einst[name]
+    # Eine Sicherung aus einer älteren Fassung trägt noch „tonfall". Trägt sie
+    # gar nichts davon, bleibt stehen, was hier schon eingestellt war.
+    if not isinstance(einst.get("empfaenger"), str) \
+            and isinstance(einst.get("tonfall"), str):
+        werte["empfaenger"] = TONFALL_ALT.get(einst["tonfall"],
+                                              EMPFAENGER_STANDARD)
+    if werte["empfaenger"] not in EMPFAENGER:
+        werte["empfaenger"] = EMPFAENGER_STANDARD
 
     return (neu_w, neu_r), None
 
@@ -896,21 +991,26 @@ class Oberflaeche(object):
         dialog.insertByName("modell", modell)
         y += 20
 
-        # 3. Tonfall
-        y = self._e_titel(dialog, "t_ton", y, "Tonfall",
-                          "wie die KI-Korrektur klingen soll")
-        toene = list(TONFAELLE.keys())
-        ton = dialog.createInstance("com.sun.star.awt.UnoControlListBoxModel")
-        ton.PositionX, ton.PositionY = rand, y
-        ton.Width, ton.Height = w, 14
-        ton.Dropdown = True
-        ton.StringItemList = tuple(toene)
-        ton.SelectedItems = (toene.index(werte["tonfall"])
-                             if werte["tonfall"] in toene else 0,)
-        dialog.insertByName("tonfall", ton)
+        # 3. Für wen der Text ist
+        #
+        # Dieselbe Wahl steht auch in der Tafel, direkt über den KI-Knöpfen —
+        # das ist der Weg, den die Handy-App geht. Hier bleibt sie trotzdem
+        # stehen: Die Tafel ist in Writer eine eigene Ansicht, und wer nur über
+        # das Menü korrigiert, käme sonst gar nicht an sie heran.
+        y = self._e_titel(dialog, "t_wen", y, "Für wen?",
+                          "Anrede, Länge und Ton der KI-Korrektur")
+        wen = list(EMPFAENGER.keys())
+        liste = dialog.createInstance("com.sun.star.awt.UnoControlListBoxModel")
+        liste.PositionX, liste.PositionY = rand, y
+        liste.Width, liste.Height = w, 14
+        liste.Dropdown = True
+        liste.StringItemList = tuple(wen)
+        liste.SelectedItems = (wen.index(werte["empfaenger"])
+                               if werte["empfaenger"] in wen else 0,)
+        dialog.insertByName("empfaenger", liste)
         y += 17
 
-        # Der Kostenzähler steht wie in der App direkt unter dem Tonfall —
+        # Der Kostenzähler steht wie in der App direkt darunter —
         # dort, wo man ihn sieht, bevor man die nächste Anfrage losschickt.
         geld = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
         geld.PositionX, geld.PositionY = rand, y
@@ -1005,7 +1105,7 @@ class Oberflaeche(object):
         gewaehlt = {
             "apiKey": self._schluessel_jetzt(fenster),
             "modell": kennungen[fenster.getControl("modell").getSelectedItemPos()],
-            "tonfall": fenster.getControl("tonfall").getSelectedItem(),
+            "empfaenger": fenster.getControl("empfaenger").getSelectedItem(),
             "sprache": fenster.getControl("sprache").getSelectedItem(),
         }
         fenster.dispose()
@@ -1125,6 +1225,20 @@ class Oberflaeche(object):
             pass
         fenster.getControl("gedstand").getModel().Label = \
             self._gedaechtnis_stand(werte)
+        # Die eingespielten Einstellungen zurück in die Listen. Ohne das stünde
+        # dort weiter die alte Wahl — und „Speichern“ schriebe sie eine Zeile
+        # später über das, was gerade eingespielt wurde. Die Handy-App zieht
+        # ihre Felder an genau derselben Stelle nach.
+        kennungen = [kennung for kennung, _ in Handler.MODELL_NAMEN]
+        for name, moeglich in (("empfaenger", list(EMPFAENGER.keys())),
+                               ("sprache", list(SPRACHEN)),
+                               ("modell", kennungen)):
+            steuer = fenster.getControl(name)
+            if steuer is None:
+                continue
+            wert = werte.get(name)
+            steuer.getModel().SelectedItems = (
+                moeglich.index(wert) if wert in moeglich else 0,)
         self.melde("Gedächtnis",
                    "Eingespielt: %d Schreibweisen, %d Wörter in Ruhe.\n\n"
                    "Insgesamt bekannt: %d Schreibweisen."
@@ -1598,16 +1712,20 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
             gui.melde("Schreibhilfe", "Es steht noch kein Text da.")
             return
 
-        anweisung = ki_korrektur(werte["tonfall"], steckbrief(werte))
+        # Über das Menü gibt es keinen Zettel — der steht in der Tafel, weil er
+        # zum Text gehört und nicht zum Rechner.
+        anweisung = ki_korrektur(werte["empfaenger"], "", steckbrief(werte))
         ergebnis, fehler = frage_ki(anweisung, text, werte)
         if fehler:
             gui.melde("Schreibhilfe", fehler, "errorbox")
             return
 
         ziel.setString(ergebnis)
-        tonzusatz = "" if werte["tonfall"] == TONFALL_STANDARD \
-            else " · " + werte["tonfall"].lower()
-        gui.melde("Schreibhilfe", "Fertig korrigiert" + tonzusatz + ".\n\n"
+        # Wofür korrigiert wurde, steht in der Meldung — sonst wirkt die Wahl
+        # unsichtbar, und wer sie gestern getroffen hat, wundert sich heute.
+        melde = EMPFAENGER.get(werte["empfaenger"], {}).get("melde") or ""
+        gui.melde("Schreibhilfe",
+                  "Fertig korrigiert" + (" · " + melde if melde else "") + ".\n\n"
                   "Nicht einverstanden? Strg+Z macht es rückgängig.")
 
     def uebersetzen(self, gui):
@@ -1631,7 +1749,8 @@ class Handler(unohelper.Base, XServiceInfo, XDispatchProvider, XDispatch,
             gui.melde("Schreibhilfe", "Es steht noch kein Text da.")
             return
 
-        ergebnis, fehler = frage_ki(KI_VORSCHLAEGE, text, werte, VORSCHLAG_BAUPLAN)
+        ergebnis, fehler = frage_ki(ki_vorschlag_anweisung(werte["empfaenger"]),
+                                    text, werte, VORSCHLAG_BAUPLAN)
         if fehler:
             gui.melde("Schreibhilfe", fehler, "errorbox")
             return
