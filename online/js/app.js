@@ -2846,21 +2846,60 @@ async function trageLokaleModelleNach() {
     eintrag.textContent = name;
     el.modellLokal.appendChild(eintrag);
   }
-  el.modellLokal.hidden = namen.length === 0;
-  el.modell.value = gewaehlt;
 
-  zeigeModellHinweis();
+  /* Eine leere Gruppe einfach auszublenden war ein Fehler: Wer weiß, dass es
+     die Wahl gibt, sucht sie dann und findet nichts — und hält es für einen
+     Fehler im Programm. Also bleibt die Gruppe stehen und sagt, woran es
+     liegt. Der Eintrag ist gesperrt, er ist ja keine Wahl. */
+  if (namen.length === 0) {
+    const leer = document.createElement('option');
+    leer.disabled = true;
+    leer.textContent = ollamaAusNetzGesperrt()
+      ? 'von dieser Adresse aus gesperrt — siehe Hinweis unten'
+      : 'nichts gefunden — läuft Ollama?';
+    el.modellLokal.appendChild(leer);
+  }
+  el.modellLokal.hidden = false;
+  el.modellLokal.label = namen.length
+    ? 'Auf diesem Rechner — kostenlos, ohne Internet'
+    : 'Auf diesem Rechner — gerade nicht erreichbar';
+
+  el.modell.value = gewaehlt;
+  zeigeModellHinweis(namen.length === 0);
+}
+
+/* Chrome lässt eine Seite aus dem Internet nicht an einen Dienst auf dem
+   eigenen Rechner heran — eine Seite von „localhost" dagegen schon. Firefox
+   kennt die Sperre nicht. Woran es liegt, kann die Seite nicht messen; sie
+   kann nur sagen, wo sie selbst herkommt. */
+function ollamaAusNetzGesperrt() {
+  return location.protocol === 'https:' && location.hostname !== 'localhost';
 }
 
 /* Ein Satz unter der Liste, der sagt, was die Wahl bedeutet — Preis und
    Wartezeit sind der ganze Unterschied. */
-function zeigeModellHinweis() {
+function zeigeModellHinweis(nichtsGefunden) {
+  if (nichtsGefunden && ollamaAusNetzGesperrt()) {
+    el.modellHinweis.textContent =
+      'Diese App läuft aus dem Netz, und Chrome lässt Netz-Seiten nicht an '
+      + 'Dienste auf dem eigenen Rechner heran. Die Modelle von diesem Rechner '
+      + 'stehen deshalb nur zur Wahl, wenn die App vom eigenen Rechner geladen '
+      + 'wird — oder in Firefox, der diese Sperre nicht kennt. In LibreOffice '
+      + 'geht es immer.';
+    return;
+  }
+  if (nichtsGefunden) {
+    el.modellHinweis.textContent =
+      'Auf diesem Rechner wurde kein Modell gefunden. Läuft Ollama? '
+      + 'Im Terminal: ollama serve';
+    return;
+  }
   el.modellHinweis.textContent = istLokal(el.modell.value)
     ? 'Läuft auf diesem Rechner: kostenlos, ohne Internet, der Text bleibt hier. Dauert länger und korrigiert gröber als Claude.'
     : 'Läuft im Netz: braucht Schlüssel und Guthaben, dafür genauer und in Sekunden fertig.';
 }
 
-el.modell.addEventListener('change', zeigeModellHinweis);
+el.modell.addEventListener('change', () => zeigeModellHinweis(false));
 
 el.btnSettings.addEventListener('click', () => {
   el.apiKey.value = Speicher.lies('apiKey', '');
