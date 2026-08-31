@@ -72,6 +72,7 @@ const el = {
   modellHinweis: $('modell-hinweis'),
   btnSpeichern:  $('btn-speichern'),
   btnSchluesselWeg: $('btn-schluessel-weg'),
+  schriftstand:  $('schriftstand'),
   btnKleiner:    $('btn-kleiner'),
   btnGroesser:   $('btn-groesser'),
   btnTheme:      $('btn-theme'),
@@ -413,6 +414,12 @@ function setzeSchrift(wert) {
   schriftgroesse = Math.min(1.75, Math.max(0.9, Math.round(wert * 100) / 100));
   document.documentElement.style.setProperty('--schrift', schriftgroesse + 'rem');
   Speicher.schreib('schrift', schriftgroesse);
+  /* In Zahlen daneben: Am Rand der Skala passiert sonst gar nichts mehr, und
+     man drückt weiter, ohne zu verstehen, warum. */
+  const anteil = Math.round(schriftgroesse / 1.05 * 100);
+  el.schriftstand.textContent = 'Schriftgröße: ' + anteil + ' %'
+    + (schriftgroesse >= 1.75 ? ' — größer geht nicht'
+     : schriftgroesse <= 0.9  ? ' — kleiner geht nicht' : '');
   // Andere Schriftgröße heißt anderer Zeilenfall — der Streifen muss mit.
   if (el.spiegel) markiereWort();
 }

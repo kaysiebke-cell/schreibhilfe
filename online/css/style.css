@@ -197,6 +197,20 @@ body{
 
 /* Zeichen für Zeichen deckungsgleich: gleiche Schrift, gleiche Innenabstände,
    gleicher Zeilenfall. Weicht hier etwas ab, verrutscht der Streifen. */
+/* Die Probezeile im Zahnrad gehört mit in diese Reihe: Sie soll zeigen, was
+   die Knöpfe bewirken, also muss sie dieselbe Schrift tragen wie das
+   Schreibfeld — sonst zeigt sie etwas anderes, als sie verspricht. */
+.schriftprobe{
+  font-family:var(--sys);
+  font-size:var(--schrift);
+  margin:var(--s2) 0 0;
+  padding:var(--s2) var(--s3);
+  border:1px dashed var(--line);
+  border-radius:var(--r-feld,.5rem);
+  color:var(--ink);
+  font-weight:400;
+}
+
 #spiegel,textarea#text,.ergebnis{
   font-family:var(--sys);
   font-size:var(--schrift);

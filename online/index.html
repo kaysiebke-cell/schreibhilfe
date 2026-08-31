@@ -296,6 +296,12 @@
             <button class="btn btn--klein" id="btn-groesser" type="button"><span class="schriftknopf gross">A+</span> größer</button>
             <button class="btn btn--klein" id="btn-theme" type="button"><svg class="ic"><use href="#i-auto" id="theme-symbol"></use></svg> Hell/Dunkel</button>
           </div>
+          <!-- Die Knöpfe wirken auf das Schreibfeld — und das ist von hier aus
+               nicht zu sehen. Ohne diese Probezeile drückt man A+ und nichts
+               passiert; die Knöpfe wirken kaputt, obwohl sie tun, was sie
+               sollen. Die Zeile trägt dieselbe Schrift wie das Schreibfeld. -->
+          <p class="schriftprobe" id="schriftprobe">So groß schreibst du.</p>
+          <p class="hint" id="schriftstand"></p>
         </div>
       </div>
     </div>
