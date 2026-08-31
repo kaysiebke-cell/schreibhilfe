@@ -358,6 +358,45 @@ textarea#text:focus{outline:none}
   .werkzeuge{grid-template-columns:1fr}
 }
 
+/* „Für wen?" und der Zettel „Worum geht’s?" — die Richtung, in die der Text
+   gehen soll. Sie stehen im Werkzeug-Kasten über den drei Knöpfen: Wer sie
+   umstellt, drückt gleich danach. Im Zahnrad sah sie niemand.
+
+   Die Wörter dürfen umbrechen (anders als die drei Knöpfe darunter): Es sind
+   sechs, und „Bewerbung" ist doppelt so lang wie „Amt" — als Raster stünden
+   überall Lücken. */
+.ziel{margin-top:var(--s3)}
+.ziel__frage{
+  display:block;font-size:.78rem;color:var(--ink-soft);
+  margin-bottom:.3rem;
+}
+.ziel__wahl{display:flex;flex-wrap:wrap;gap:.35rem}
+.ziel__knopf{
+  font-family:var(--sys);font-size:.8125rem;font-weight:600;
+  border:1px solid var(--line);border-radius:var(--r-knopf);
+  padding:.45rem .7rem;min-height:2.25rem;
+  background:transparent;color:var(--ink-soft);
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+/* Der gewählte ist gefüllt, nicht nur umrandet — auf einen Blick erkennbar,
+   auch bei heller Sonne. „aria-pressed" trägt dieselbe Auskunft für die
+   Vorlesefunktion; die Farbe allein wäre für sie stumm. */
+.ziel__knopf[aria-pressed="true"]{
+  background:var(--petrol-container);color:var(--petrol-deep);
+  border-color:transparent;
+}
+.ziel__knopf:focus-visible{outline:2px solid var(--petrol);outline-offset:2px}
+
+.zettel{display:block;margin-top:var(--s3)}
+.zettel__feld{
+  font-family:var(--sys);font-size:.875rem;font-weight:400;
+  width:100%;padding:.55rem .7rem;
+  border:1px solid var(--line);border-radius:var(--r-klein);
+  background:var(--paper);color:var(--ink);
+}
+.zettel__feld:focus-visible{outline:2px solid var(--petrol);outline-offset:1px}
+
 .hint{margin:0;font-size:.8rem;color:var(--ink-soft);line-height:1.4;text-align:center}
 .hint:empty{display:none}
 /* Die Erfolgsmeldung gehört zum Ergebnis, nicht zur Bedienung. */
