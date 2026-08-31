@@ -68,6 +68,8 @@ const el = {
   btnSettingsZu: $('btn-settings-zu'),
   apiKey:        $('api-key'),
   modell:        $('modell'),
+  modellLokal:   $('modell-lokal'),
+  modellHinweis: $('modell-hinweis'),
   btnSpeichern:  $('btn-speichern'),
   btnSchluesselWeg: $('btn-schluessel-weg'),
   btnKleiner:    $('btn-kleiner'),
@@ -1471,14 +1473,19 @@ function zettelZeile() {
    drei Knöpfe, die nichts tun können.
    ------------------------------------------------------------ */
 function zeigeWerkzeugKasten() {
-  if (!Speicher.lies('apiKey', '')) return;
+  /* Dieselbe Frage wie beim KI-Knopf: Ist der gewählte Weg gangbar? Am
+     Schlüssel allein zu hängen hieße, den Kasten bei Ollama nie zu zeigen. */
+  const lokal = istLokal(modellJetzt());
+  if (!(lokal || Speicher.lies('apiKey', ''))) return;
 
   const karte = document.createElement('div');
   karte.className = 'fund fund--werkzeug';
 
   const sorte = document.createElement('span');
   sorte.className = 'fund__sorte';
-  sorte.textContent = 'Braucht Internet';
+  /* Der Hinweis muss stimmen: Über Ollama geht kein Wort ins Netz, und wer
+     das liest, soll sich darauf verlassen können. */
+  sorte.textContent = lokal ? 'Bleibt auf diesem Rechner' : 'Braucht Internet';
   karte.appendChild(sorte);
 
   const inhalt = document.createElement('div');
@@ -2121,8 +2128,40 @@ function zeigeKosten() {
   el.btnKostenWeg.hidden = anzahl === 0;
 }
 
+/* ------------------------------------------------------------
+   Ein Modell, eine Liste.
+
+   Die Wahl „woher?" gibt es bewusst nicht als eigene Frage: Wer „Opus 5"
+   wählt, hat damit schon gesagt, dass es ins Netz geht — und wer „qwen3:8b"
+   wählt, dass es hierbleibt. Zwei Fragen wären eine zu viel. Am Namen hängt
+   deshalb alles: Was mit „ollama:" anfängt, liegt auf diesem Rechner.
+   ------------------------------------------------------------ */
+const OLLAMA_ADRESSE = 'http://localhost:11434';
+const OLLAMA_MARKE = 'ollama:';
+
+/* Ohne Grafikkarte rechnet ein 8-Milliarden-Modell an einem Brief mehrere
+   Minuten. Die 90 Sekunden, die fürs Netz reichen, wären hier ein Abbruch
+   mitten in der Arbeit. */
+const OLLAMA_GEDULD = 600000;
+
+function modellJetzt() {
+  return Speicher.lies('modell', 'claude-opus-5');
+}
+
+function istLokal(modell) {
+  return String(modell || '').startsWith(OLLAMA_MARKE);
+}
+
+/* „ollama:qwen3:8b" → „qwen3:8b". Der Doppelpunkt gehört zum Modellnamen
+   dazu, deshalb wird nur die Marke vorne abgeschnitten, nicht gesplittet. */
+function lokalerName(modell) {
+  return String(modell || '').slice(OLLAMA_MARKE.length);
+}
+
 function kiVerfuegbar() {
-  const vorhanden = !!Speicher.lies('apiKey', '');
+  /* Ein lokales Modell braucht keinen Schlüssel — ohne diese Unterscheidung
+     bliebe der KI-Knopf dort für immer weg. */
+  const vorhanden = istLokal(modellJetzt()) || !!Speicher.lies('apiKey', '');
   el.btnKi.hidden = !vorhanden;
   return vorhanden;
 }
@@ -2134,6 +2173,12 @@ function kiVerfuegbar() {
    ist dasselbe.
    ------------------------------------------------------------ */
 async function kiAnfrage(anweisung, text, bauplan) {
+  return istLokal(modellJetzt())
+    ? ollamaAnfrage(anweisung, text, bauplan)
+    : claudeAnfrage(anweisung, text, bauplan);
+}
+
+async function claudeAnfrage(anweisung, text, bauplan) {
   const schluessel = Speicher.lies('apiKey', '');
   const modell = Speicher.lies('modell', 'claude-opus-5');
 
@@ -2229,6 +2274,131 @@ async function kiAnfrage(anweisung, text, bauplan) {
   } finally {
     clearTimeout(wecker);
   }
+}
+
+/* ------------------------------------------------------------
+   Dieselbe Anfrage, nur an den eigenen Rechner.
+
+   Ollama ist kein Programm mit Fenster, sondern ein Dienst im Hintergrund:
+   Er läuft mit dem Rechner an und wartet auf Port 11434. Kein Schlüssel,
+   keine Kosten, kein Internet — der Text verlässt das Gerät nicht. Bezahlt
+   wird in Wartezeit: Ohne Grafikkarte rechnet ein 8-Milliarden-Modell an
+   einem Brief mehrere Minuten, wo Claude Sekunden braucht.
+   ------------------------------------------------------------ */
+async function ollamaAnfrage(anweisung, text, bauplan) {
+  const modell  = lokalerName(modellJetzt());
+  const adresse = OLLAMA_ADRESSE;
+  if (!modell) return { fehler: 'Es ist noch kein Modell gewählt. Im Zahnrad nachholen.' };
+
+  const anfrage = {
+    model: modell,
+    /* Stückweise ankommen lassen bringt hier nichts: Die App setzt den Text
+       ohnehin erst am Stück ein. */
+    stream: false,
+    /* Die Anweisung steht als „system“, genau wie bei Claude — sonst
+       korrigierte der PC nach anderen Regeln als das Handy. */
+    messages: [
+      { role: 'system', content: anweisung },
+      { role: 'user',   content: text },
+    ],
+    /* Wenig Fantasie: Korrigieren ist kein Dichten. Ohne diese Zeile schreiben
+       die kleinen Modelle gern ganze Sätze um, nach denen niemand gefragt hat. */
+    options: { temperature: 0.2 },
+    /* Denkmodelle wie qwen3 grübeln sonst minutenlang vor sich hin, bevor das
+       erste Wort kommt — auf einem Rechner ohne Grafikkarte ist das der
+       Unterschied zwischen Warten und Aufgeben. Modelle, die gar nicht denken
+       können, lehnen die Zeile mit Fehler 400 ab; dann fragen wir gleich noch
+       einmal ohne sie. */
+    think: false,
+  };
+  /* „bauplan“ ist dasselbe JSON-Schema wie bei Claude. Ollama kennt es unter
+     dem Namen „format“ und hält sich daran. */
+  if (bauplan) anfrage.format = bauplan;
+
+  const abbruch = new AbortController();
+  const wecker = setTimeout(() => abbruch.abort(), OLLAMA_GEDULD);
+
+  const schicke = () => fetch(adresse + '/api/chat', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(anfrage),
+    signal: abbruch.signal,
+  });
+
+  try {
+    let antwort = await schicke();
+
+    if (antwort.status === 400) {
+      const grund = await antwort.text().catch(() => '');
+      if (/think/i.test(grund)) {
+        delete anfrage.think;
+        antwort = await schicke();
+      } else {
+        throw new Error('Ollama hat die Anfrage abgelehnt' + (grund ? ' (' + grund + ')' : '') + '.');
+      }
+    }
+
+    if (!antwort.ok) {
+      let grund = '';
+      try { grund = (await antwort.json())?.error || ''; } catch {}
+      if (antwort.status === 404) {
+        throw new Error('Das Modell „' + modell + '“ liegt nicht auf diesem Rechner. '
+          + 'Im Zahnrad ein anderes wählen — oder es im Terminal holen: ollama pull ' + modell);
+      }
+      throw new Error('Ollama meldet Fehler ' + antwort.status + (grund ? ' (' + grund + ')' : ''));
+    }
+
+    const daten = await antwort.json();
+    const ergebnis = ohneGruebeln(daten?.message?.content || '').trim();
+    /* Kein Preis, kein Zähler: Der eigene Rechner schickt keine Rechnung.
+       Ohne „cent“ zeigt der gemeinsame Ablauf gar keinen Betrag an. */
+    return ergebnis ? { ergebnis } : { fehler: 'Es kam keine Antwort zurück.' };
+
+  } catch (fehler) {
+    if (fehler.name === 'AbortError') {
+      return { fehler: 'Der eigene Rechner hat zu lange gebraucht. Ein kleineres Modell '
+        + 'im Zahnrad geht deutlich schneller.' };
+    }
+    /* Ein blockierter Aufruf kommt im Browser nicht als Fehlernummer zurück,
+       sondern gar nicht: „fetch“ wirft dann einen TypeError. Ob der Dienst
+       aus ist oder ob er dieser Seite bloß nicht antworten darf, sieht von
+       hier aus gleich aus — deshalb nennt die Meldung beide Ursachen. */
+    if (fehler instanceof TypeError) {
+      return { fehler: 'Ollama ist unter ' + adresse + ' nicht zu erreichen. '
+        + 'Läuft der Dienst — und darf diese Seite ihn fragen?' };
+    }
+    return { fehler: 'Es hat nicht geklappt: ' + fehler.message };
+  } finally {
+    clearTimeout(wecker);
+  }
+}
+
+/* Denkmodelle schreiben ihr Grübeln in <think>-Klammern mit. Ollama trennt es
+   sauber ab, sobald es vom Denken weiß — nur eben nicht bei jedem Modell und
+   nicht in jeder Fassung. Was durchrutscht, hat im Brief eines Menschen
+   nichts zu suchen. */
+function ohneGruebeln(roh) {
+  const ohne = String(roh).replace(/<think>[\s\S]*?<\/think>/gi, '');
+  /* Eine Klammer, die nur zugeht: Alles davor war Grübeln. */
+  return ohne.includes('</think>') ? ohne.slice(ohne.lastIndexOf('</think>') + 8) : ohne;
+}
+
+/* Welche Modelle liegen auf dem Rechner? Die Liste kommt vom Dienst selbst —
+   eine fest eingebaute wäre schon falsch, sobald jemand ein Modell holt. */
+async function ollamaModelle() {
+  const antwort = await fetch(OLLAMA_ADRESSE + '/api/tags', { headers: { accept: 'application/json' } });
+  if (!antwort.ok) throw new Error('Fehler ' + antwort.status);
+  const daten = await antwort.json();
+  return sortiereModelle((daten?.models || []).map((m) => m.name).filter(Boolean));
+}
+
+/* Alphabetisch allein wäre hier schädlich: „codellama" stünde ganz oben und
+   damit als Vorauswahl da — ein Modell für Programmcode, das an einem Brief
+   ans Amt nichts Gutes tut. Also sinken die Code-Modelle nach unten, der Rest
+   bleibt alphabetisch. */
+function sortiereModelle(namen) {
+  const fuerCode = (name) => /cod(e|er)/i.test(name);
+  return namen.sort((a, b) => (fuerCode(a) - fuerCode(b)) || a.localeCompare(b));
 }
 
 /* Der gemeinsame Ablauf: Text holen, Knopf sperren, Ergebnis einsetzen. */
@@ -2646,10 +2816,57 @@ window.zurueckTaste = () => {
   return true;
 };
 
+/* ------------------------------------------------------------
+   Was auf diesem Rechner liegt, weiß nur der Rechner.
+
+   Deshalb steht in der HTML-Datei nur die leere Gruppe, und die Einträge
+   kommen beim Öffnen des Zahnrads vom Dienst. Eine fest eingebaute Liste wäre
+   in dem Moment falsch, in dem jemand ein Modell holt oder löscht.
+   ------------------------------------------------------------ */
+async function trageLokaleModelleNach() {
+  const gewaehlt = modellJetzt();
+  el.modellLokal.innerHTML = '';
+
+  let namen = [];
+  try {
+    namen = await ollamaModelle();
+  } catch {
+    namen = [];
+  }
+
+  /* Steht die Wahl auf einem Modell, das gerade nicht zu erreichen ist, muss
+     es trotzdem in der Liste stehen — sonst springt die Auswahl beim bloßen
+     Nachsehen still auf etwas anderes. */
+  const eigener = istLokal(gewaehlt) ? lokalerName(gewaehlt) : '';
+  if (eigener && !namen.includes(eigener)) namen.unshift(eigener);
+
+  for (const name of namen) {
+    const eintrag = document.createElement('option');
+    eintrag.value = OLLAMA_MARKE + name;
+    eintrag.textContent = name;
+    el.modellLokal.appendChild(eintrag);
+  }
+  el.modellLokal.hidden = namen.length === 0;
+  el.modell.value = gewaehlt;
+
+  zeigeModellHinweis();
+}
+
+/* Ein Satz unter der Liste, der sagt, was die Wahl bedeutet — Preis und
+   Wartezeit sind der ganze Unterschied. */
+function zeigeModellHinweis() {
+  el.modellHinweis.textContent = istLokal(el.modell.value)
+    ? 'Läuft auf diesem Rechner: kostenlos, ohne Internet, der Text bleibt hier. Dauert länger und korrigiert gröber als Claude.'
+    : 'Läuft im Netz: braucht Schlüssel und Guthaben, dafür genauer und in Sekunden fertig.';
+}
+
+el.modell.addEventListener('change', zeigeModellHinweis);
+
 el.btnSettings.addEventListener('click', () => {
   el.apiKey.value = Speicher.lies('apiKey', '');
   zeigeSchluesselStand();
-  el.modell.value = Speicher.lies('modell', 'claude-opus-5');
+  el.modell.value = modellJetzt();
+  trageLokaleModelleNach();
   el.wortmarker.checked = hervorhebenAn();
   zeigeKosten();
   zeigeGelernt();

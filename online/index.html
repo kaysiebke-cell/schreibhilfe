@@ -153,7 +153,7 @@
       <span class="gruppe__titel">KI-Werkzeuge</span>
       <div class="karte">
 
-        <label class="field">
+        <label class="field" id="feld-api-key">
           API-Schlüssel <em>für Korrigieren und Übersetzen</em>
           <input id="api-key" type="password" placeholder="sk-ant-…" autocomplete="off">
           <!-- Das Feld zeigt Punkte statt Zeichen. Ohne diese Zeile sieht
@@ -178,13 +178,22 @@
           </div>
         </label>
 
-        <label class="field field--zeile">
-          <span>KI-Modell</span>
+        <!-- EINE Liste für alles. Oben die drei von Claude, darunter das,
+             was auf diesem Rechner liegt — die trägt app.js beim Öffnen nach,
+             denn was installiert ist, weiß nur der Rechner selbst. Zwei
+             getrennte Fragen („woher?" und „welches?") wären eine Frage zu
+             viel: Wer „Opus 5" wählt, hat damit schon gesagt, wohin es geht. -->
+        <label class="field" id="feld-modell">
+          KI-Modell
           <select id="modell">
-            <option value="claude-opus-5">Beste Qualität &middot; Opus 5</option>
-            <option value="claude-sonnet-5">Mittelweg &middot; Sonnet 5</option>
-            <option value="claude-haiku-4-5">Günstig &amp; schnell &middot; Haiku 4.5</option>
+            <optgroup label="Claude im Netz — braucht Schlüssel und Guthaben">
+              <option value="claude-opus-5">Beste Qualität &middot; Opus 5</option>
+              <option value="claude-sonnet-5">Mittelweg &middot; Sonnet 5</option>
+              <option value="claude-haiku-4-5">Günstig &amp; schnell &middot; Haiku 4.5</option>
+            </optgroup>
+            <optgroup label="Auf diesem Rechner — kostenlos, ohne Internet" id="modell-lokal"></optgroup>
           </select>
+          <em id="modell-hinweis"></em>
         </label>
 
         <!-- Der Tonfall stand bis hierher als Liste an dieser Stelle. Er ist

@@ -245,6 +245,18 @@ def ki_uebersetzung(sprache):
 # Sicherungs-Text von dort hier hineinpasst.
 # --------------------------------------------------------------------------
 
+# Ein Modell, eine Liste. Die Wahl „woher?" gibt es bewusst nicht als eigene
+# Frage: Wer „Opus 5" wählt, hat damit schon gesagt, dass es ins Netz geht —
+# und wer „qwen3:8b" wählt, dass es hierbleibt. Am Namen hängt deshalb alles.
+# Wortgleich mit der App, damit ein Sicherungs-Text nicht umgedeutet werden
+# muss.
+OLLAMA_MARKE = "ollama:"
+OLLAMA_ADRESSE = "http://localhost:11434"
+# Ohne Grafikkarte rechnet ein 8-Milliarden-Modell an einem Brief mehrere
+# Minuten. Die 180 Sekunden, die fürs Netz reichen, wären hier ein Abbruch
+# mitten in der Arbeit.
+OLLAMA_GEDULD = 600
+
 STANDARD = {
     "apiKey": "",
     "modell": "claude-opus-5",
@@ -455,7 +467,18 @@ def steckbrief(werte):
 # --------------------------------------------------------------------------
 
 def frage_ki(anweisung, text, werte, bauplan=None):
-    """Gibt (ergebnis, fehler) zurück — genau einer von beiden ist gesetzt."""
+    """Gibt (ergebnis, fehler) zurück — genau einer von beiden ist gesetzt.
+
+    Zwei Wege, dieselbe Anweisung: Anthropic übers Netz oder Ollama auf
+    diesem Rechner. Was gefragt wird, ist Wort für Wort dasselbe — sonst
+    korrigierte der eine Weg anders als der andere, und niemand wüsste warum.
+    """
+    if ist_lokal(werte.get("modell")):
+        return frage_ollama(anweisung, text, werte, bauplan)
+    return frage_claude(anweisung, text, werte, bauplan)
+
+
+def frage_claude(anweisung, text, werte, bauplan=None):
     if not werte["apiKey"]:
         return None, ("Es ist kein API-Schlüssel hinterlegt.\n\n"
                       "Menü „Schreibhilfe“ → „Einstellungen …“")
@@ -526,6 +549,136 @@ def frage_ki(anweisung, text, werte, bauplan=None):
     stuecke = [b.get("text", "") for b in daten.get("content", [])
                if b.get("type") == "text"]
     ergebnis = "".join(stuecke).strip()
+    return (ergebnis, None) if ergebnis else (None, "Es kam keine Antwort zurück.")
+
+
+def ist_lokal(modell):
+    """Läuft dieses Modell auf diesem Rechner?"""
+    return str(modell or "").startswith(OLLAMA_MARKE)
+
+
+def lokaler_name(modell):
+    """„ollama:qwen3:8b" → „qwen3:8b".
+
+    Der Doppelpunkt gehört zum Modellnamen dazu, deshalb wird nur die Marke
+    vorne abgeschnitten und nicht getrennt.
+    """
+    return str(modell or "")[len(OLLAMA_MARKE):]
+
+
+def ohne_gruebeln(roh):
+    """Denkmodelle schreiben ihr Grübeln in <think>-Klammern mit.
+
+    Ollama trennt es sauber ab, sobald es vom Denken weiß — nur eben nicht bei
+    jedem Modell und nicht in jeder Fassung. Was durchrutscht, hat im Brief
+    eines Menschen nichts zu suchen.
+    """
+    ohne = re.sub(r"<think>.*?</think>", "", str(roh), flags=re.S | re.I)
+    # Eine Klammer, die nur zugeht: Alles davor war Grübeln.
+    stelle = ohne.rfind("</think>")
+    return ohne[stelle + 8:] if stelle >= 0 else ohne
+
+
+def ollama_modelle(adresse=OLLAMA_ADRESSE):
+    """Welche Modelle auf dem Rechner liegen — der Dienst weiß es selbst.
+
+    Eine fest eingebaute Liste wäre in dem Moment falsch, in dem jemand ein
+    Modell holt oder löscht. Bei Unerreichbarkeit eine leere Liste: Das
+    Einstellungsfenster soll aufgehen, auch wenn Ollama gerade aus ist.
+    """
+    try:
+        bitte = urllib.request.Request(adresse.rstrip("/") + "/api/tags",
+                                       headers={"accept": "application/json"})
+        with urllib.request.urlopen(bitte, timeout=5) as antwort:
+            daten = json.loads(antwort.read().decode("utf-8"))
+        namen = [m["name"] for m in daten.get("models") or [] if m.get("name")]
+        # Alphabetisch allein wäre hier schädlich: „codellama" stünde ganz oben
+        # und damit als Vorauswahl da — ein Modell für Programmcode, das an
+        # einem Brief ans Amt nichts Gutes tut. Also sinken die Code-Modelle
+        # nach unten, der Rest bleibt alphabetisch.
+        return sorted(namen, key=lambda n: (bool(re.search(r"cod(e|er)", n, re.I)), n))
+    except Exception:                                   # noqa: BLE001
+        return []
+
+
+def frage_ollama(anweisung, text, werte, bauplan=None):
+    """Dieselbe Anfrage, nur an den eigenen Rechner.
+
+    Ollama ist kein Programm mit Fenster, sondern ein Dienst im Hintergrund:
+    Er läuft mit dem Rechner an und wartet auf Port 11434. Kein Schlüssel,
+    keine Kosten, kein Internet — der Text verlässt das Gerät nicht. Bezahlt
+    wird in Wartezeit.
+    """
+    modell = lokaler_name(werte.get("modell")).strip()
+    if not modell:
+        return None, ("Es ist noch kein Modell gewählt.\n\n"
+                      "Menü „Schreibhilfe“ → „Einstellungen …“")
+
+    adresse = OLLAMA_ADRESSE
+    anfrage = {
+        "model": modell,
+        # Stückweise ankommen lassen bringt hier nichts: Der Text wird ohnehin
+        # erst am Stück ins Dokument gesetzt.
+        "stream": False,
+        # Die Anweisung steht als „system“, genau wie bei Claude.
+        "messages": [
+            {"role": "system", "content": anweisung},
+            {"role": "user", "content": text},
+        ],
+        # Wenig Fantasie: Korrigieren ist kein Dichten.
+        "options": {"temperature": 0.2},
+        # Denkmodelle wie qwen3 grübeln sonst minutenlang vor sich hin — hier
+        # gemessen: drei Minuten mit, neunzehn Sekunden ohne, bei gleichem
+        # Ergebnis. Ältere Ollama-Fassungen lehnen die Zeile bei Modellen ohne
+        # Denken mit Fehler 400 ab; dann fragen wir gleich noch einmal ohne sie.
+        "think": False,
+    }
+    if bauplan:
+        # Derselbe Bauplan wie bei Claude. Ollama kennt ihn als „format".
+        anfrage["format"] = bauplan
+
+    def schicke(nutzlast):
+        """Gibt (daten, fehlercode, rumpf) zurück; daten ist None bei Fehler."""
+        bitte = urllib.request.Request(
+            adresse + "/api/chat",
+            data=json.dumps(nutzlast).encode("utf-8"),
+            headers={"content-type": "application/json"},
+            method="POST")
+        try:
+            with urllib.request.urlopen(bitte, timeout=OLLAMA_GEDULD) as antwort:
+                return json.loads(antwort.read().decode("utf-8")), None, ""
+        except urllib.error.HTTPError as fehler:
+            rumpf = ""
+            try:
+                rumpf = fehler.read().decode("utf-8", "replace")
+            except Exception:                           # noqa: BLE001
+                pass
+            return None, fehler.code, rumpf
+
+    try:
+        daten, code, rumpf = schicke(anfrage)
+        if code == 400 and "think" in rumpf.lower():
+            anfrage.pop("think", None)
+            daten, code, rumpf = schicke(anfrage)
+
+        if code == 404:
+            return None, ("Das Modell „%s“ liegt nicht auf diesem Rechner.\n\n"
+                          "Im Einstellungsfenster ein anderes wählen — oder es "
+                          "im Terminal holen:\n    ollama pull %s" % (modell, modell))
+        if code is not None:
+            kurz = rumpf.strip()[:200]
+            return None, "Ollama meldet Fehler %s%s" % (
+                code, (" (" + kurz + ")") if kurz else "")
+    except urllib.error.URLError as fehler:
+        return None, ("Ollama ist unter %s nicht zu erreichen.\n\n"
+                      "Läuft der Dienst? Im Terminal nachsehen:\n"
+                      "    systemctl status ollama\n\n(%s)"
+                      % (adresse, fehler.reason))
+    except Exception as fehler:                         # noqa: BLE001
+        return None, "Es hat nicht geklappt: %s" % (fehler,)
+
+    # Kein Preis, kein Zähler: Der eigene Rechner schickt keine Rechnung.
+    ergebnis = ohne_gruebeln((daten.get("message") or {}).get("content") or "").strip()
     return (ergebnis, None) if ergebnis else (None, "Es kam keine Antwort zurück.")
 
 
@@ -977,10 +1130,25 @@ class Oberflaeche(object):
                       (w - 6) // 2, "Kopieren")
         y += 22
 
-        # 2. KI-Modell
+        # 2. KI-Modell — EINE Liste
+        #
+        # Oben die drei von Claude, darunter, was auf diesem Rechner liegt.
+        # Zwei getrennte Fragen („woher?" und „welches?") wären eine zu viel:
+        # Wer „Opus 5" wählt, hat schon gesagt, dass es ins Netz geht.
+        # Was der Rechner hat, weiß nur er selbst — deshalb wird gefragt.
         y = self._e_titel(dialog, "t_modell", y, "KI-Modell")
-        namen = [name for _, name in Handler.MODELL_NAMEN]
-        kennungen = [kennung for kennung, _ in Handler.MODELL_NAMEN]
+        eintraege = list(Handler.MODELL_NAMEN)
+        for name in ollama_modelle():
+            eintraege.append((OLLAMA_MARKE + name, name + " · auf diesem Rechner"))
+        # Steht die Wahl auf einem Modell, das gerade nicht zu erreichen ist,
+        # muss es trotzdem in der Liste stehen — sonst springt die Auswahl beim
+        # bloßen Öffnen des Fensters still auf etwas anderes.
+        kennungen = [kennung for kennung, _ in eintraege]
+        if ist_lokal(werte["modell"]) and werte["modell"] not in kennungen:
+            eintraege.append((werte["modell"],
+                              lokaler_name(werte["modell"]) + " · nicht erreichbar"))
+            kennungen = [kennung for kennung, _ in eintraege]
+        namen = [name for _, name in eintraege]
         modell = dialog.createInstance("com.sun.star.awt.UnoControlListBoxModel")
         modell.PositionX, modell.PositionY = rand, y
         modell.Width, modell.Height = w, 14
@@ -989,7 +1157,19 @@ class Oberflaeche(object):
         modell.SelectedItems = (kennungen.index(werte["modell"])
                                 if werte["modell"] in kennungen else 0,)
         dialog.insertByName("modell", modell)
-        y += 20
+        y += 17
+
+        # Ein Satz darunter: Preis und Wartezeit sind der ganze Unterschied.
+        mstand = dialog.createInstance("com.sun.star.awt.UnoControlFixedTextModel")
+        mstand.PositionX, mstand.PositionY = rand, y
+        mstand.Width, mstand.Height = w, 10
+        mstand.Label = ("kostenlos, ohne Internet, dafür langsamer"
+                        if ist_lokal(werte["modell"])
+                        else "braucht Schlüssel und Guthaben")
+        mstand.TextColor = farbe["blass"]
+        mstand.FontHeight = SCHRIFT_GRUND
+        dialog.insertByName("modellstand", mstand)
+        y += 16
 
         # 3. Für wen der Text ist
         #

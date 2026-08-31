@@ -45,6 +45,34 @@ zweites Mal.
 `bauen.sh` holt Wörterliste und Wortschatz beim Packen aus `online/daten/`
 und löscht sie danach wieder — ein Stand, keine Kopie.
 
+## Zwei Wege zur KI, eine Anweisung
+
+Die drei KI-Knöpfe fragen wahlweise Anthropic übers Netz oder **Ollama** auf
+dem eigenen Rechner. Was gefragt wird, ist in beiden Fällen dasselbe: Die
+Weiche sitzt tief, in `frage_ki` (Python) und `kiAnfrage` (JavaScript), erst
+hinter dem Bauen der Anweisung. Wer eine Anweisung ändert, ändert damit beide
+Wege — und `vergleiche-anweisungen.py` prüft weiter nur die eine Frage, die
+zählt: ob PC und Handy dasselbe sagen.
+
+Was sich unterscheidet, steht in der jeweiligen Funktion:
+
+    frage_claude / claudeAnfrage    Schlüssel, output_config, Kostenzähler
+    frage_ollama / ollamaAnfrage    kein Schlüssel, „format", kein Preis
+
+Drei Eigenheiten von Ollama, die im Code begründet stehen:
+
+* **„think": false** — Denkmodelle grübeln sonst minutenlang. Gemessen: drei
+  Minuten mit, neunzehn Sekunden ohne, gleiches Ergebnis.
+* **Code-Modelle sinken in der Liste nach unten.** Alphabetisch stünde
+  `codellama` ganz oben und damit als Vorauswahl da.
+* **Die Modellliste kommt vom Dienst**, nie aus dem Code — sonst wäre sie
+  falsch, sobald jemand ein Modell holt oder löscht.
+
+Es gibt **keine** zweite Einstellung „woher kommt die KI?". Am Modellnamen
+hängt alles: Was mit `ollama:` anfängt, läuft hier. Eine eigene Frage wäre
+eine Frage zu viel — und zwei Einstellungen, die sich widersprechen können,
+sind eine Fehlerquelle mehr.
+
 ## Vorsicht: der Prüfer steht halb doppelt da
 
 **Der Wortschatz nicht mehr.** Wörterbuch, Wortgruppen, Nebensatzwörter,
@@ -95,6 +123,8 @@ ohne LibreOffice geht.
 
     ~/.config/schreibhilfe/einstellungen.json
         Schlüssel, Empfänger, Gedächtnis, Kostenzähler (nur du: Rechte 600)
+        „modell" trägt seit September 2026 auch lokale Modelle:
+        „ollama:qwen3:8b" heißt „läuft auf diesem Rechner".
         Der Zettel „Worum geht's?" steht NICHT darin — er gehört zum Text
         und lebt nur, solange die Tafel offen ist.
 

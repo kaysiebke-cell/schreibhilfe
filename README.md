@@ -211,12 +211,81 @@ ist, kann nichts über den geladenen Betrag hinaus anfallen — mehr Kontrolle
 als jedes Abo. Ein Claude-Pro-Abo hilft hier übrigens **nicht**: Das gilt für
 die Claude-App, nicht für den API-Zugang.
 
+## 💻 Statt Claude: die KI vom eigenen Rechner (Ollama)
+
+Am PC geht es auch ohne Schlüssel, ohne Guthaben und ohne Internet. **Ollama**
+ist ein Dienst, der Sprachmodelle auf dem eigenen Rechner laufen lässt. Ist er
+installiert, stehen seine Modelle **in derselben Liste wie Claude** — im
+Zahnrad unter *KI-Modell*, in Writer an derselben Stelle:
+
+    Beste Qualität · Opus 5
+    Mittelweg · Sonnet 5
+    Günstig & schnell · Haiku 4.5
+    qwen3:8b · auf diesem Rechner
+    llama3.1:8b · auf diesem Rechner
+
+Eine zweite Frage „woher kommt die KI?" gibt es bewusst nicht: Wer *Opus 5*
+wählt, hat damit schon gesagt, dass es ins Netz geht. Die Anweisungen sind in
+beiden Fällen dieselben; nur der Empfänger wechselt.
+
+Ollama hat kein Fenster. Es läuft im Hintergrund mit dem Rechner an und wartet
+auf `localhost:11434` — sichtbar wird es nur, wenn ein Programm es fragt.
+
+Der Unterschied in einem Satz: **Claude ist genauer, Ollama ist umsonst.**
+
+| | Claude im Netz | Ollama auf dem Rechner |
+|---|---|---|
+| Kosten | Guthaben, rund 0,24 Cent je Brief | nichts |
+| Internet | nötig | nicht nötig |
+| Der Text geht | an Anthropic | nirgendwohin |
+| Wartezeit | Sekunden | ohne Grafikkarte Minuten |
+| Qualität | deutlich besser | brauchbar, aber gröber |
+
+**Was die kleinen Modelle schlechter können.** Sie korrigieren Rechtschreibung
+und Grammatik ordentlich, formulieren aber gelegentlich um, wo nichts falsch
+war — aus „Ihr Schreiben" wird „Ihre Schrift". Bei den **Vorschlägen** trifft
+es sie härter: Die App kann einen Vorschlag nur einsetzen, wenn der alte Satz
+zeichengenau im Text steht, und kleine Modelle schreiben ihn beim Zitieren gern
+um. Dann bleibt die Liste leer. Fürs Korrigieren und Übersetzen taugt der
+lokale Weg; für Vorschläge ist Claude die bessere Wahl.
+
+**Einrichten**
+
+1. Ollama installieren (einmalig) und ein Modell holen:
+
+       curl -fsSL https://ollama.com/install.sh | sh
+       ollama pull qwen3:8b
+
+2. Im Zahnrad unter *KI-Modell* eines der Modelle mit dem Zusatz *auf diesem
+   Rechner* wählen. Die Liste kommt vom Dienst selbst — was da liegt, steht
+   drin. Modelle für Programmcode stehen bewusst unten: Sie taugen für Briefe
+   nicht.
+
+**Denkmodelle.** Modelle wie qwen3 grübeln, bevor sie antworten. Auf einem
+Rechner ohne Grafikkarte ist das der Unterschied zwischen Warten und Aufgeben —
+hier gemessen: **drei Minuten mit Grübeln, neunzehn Sekunden ohne**, bei
+praktisch gleichem Ergebnis. Die Schreibhilfe schaltet es deshalb ab.
+
+**Die Browser-Fassung aus dem Netz kommt nicht an Ollama heran.** Ollama
+antwortet nur Seiten, die es kennt, und das sind ab Werk nur die von
+`localhost`. Die Seite auf `kaysiebke-cell.github.io` wird abgewiesen (Fehler
+403). Zwei Wege: die App am PC selbst ausliefern (`python3 -m http.server 8321`
+im Ordner `online/`, dann <http://localhost:8321>) — oder Ollama die
+GitHub-Adresse erlauben. In Writer stellt sich die Frage nicht: Die Erweiterung
+ist keine Webseite und fragt direkt.
+
+Die Wahl steht als `modell` in denselben Einstellungen wie bisher, mit dem
+Zusatz `ollama:` davor — eine Sicherung vom Handy überschreibt sie also, und
+das ist richtig so: Ein Handy hat kein Ollama.
+
 ## 🔒 Datenschutz
 
 * Der Text wird nur auf dem Handy gespeichert, beim Tippen automatisch.
 * Ohne KI-Knopf verlässt **nichts** das Gerät.
 * Beim KI-Knopf geht der Text an die Anthropic-Schnittstelle und kommt
   korrigiert zurück. Sonst nirgendwohin.
+* Steht die KI auf **Ollama**, verlässt auch dabei nichts das Gerät: Gerechnet
+  wird auf dem eigenen Rechner.
 * „Löschen" räumt das Schreibfeld, das Zahnrad räumt den Schlüssel.
 
 ---
