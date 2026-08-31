@@ -3102,7 +3102,13 @@ kiVerfuegbar();
 
    Die App lädt über https (appassets.androidplatform.net) und nicht über
    file:// — deshalb greift der Service Worker dort überhaupt. */
-const inDerApp = typeof window.AndroidBridge !== 'undefined';
+/* „In der App" heißt: Die Dateien liegen schon auf dem Gerät, es gibt nichts
+   zwischenzuspeichern. Am Handy verrät das die Android-Brücke, am PC die
+   Kennung, die linux/schreibhilfe.py an den Browserausweis hängt. Beide Male
+   gilt dasselbe: Der Dienstarbeiter muss weg, sonst überlebt sein
+   Zwischenspeicher jedes Update und zeigt hartnäckig Gestriges. */
+const inDerApp = typeof window.AndroidBridge !== 'undefined'
+              || / Schreibhilfe\//.test(navigator.userAgent);
 
 async function zwischenspeicherAufraeumen() {
   try {

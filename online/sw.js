@@ -5,7 +5,7 @@
    und liefert die alte Fassung weiter aus — die neue Datei liegt auf dem Server
    und kommt trotzdem nie an. Beim Umbau auf das neue Layout ist genau das
    passiert: style.css, index.html und app.js waren neu, die Nummer nicht. */
-const LAGER = 'schreibhilfe-v47';
+const LAGER = 'schreibhilfe-v48';
 
 const DATEIEN = [
   './',

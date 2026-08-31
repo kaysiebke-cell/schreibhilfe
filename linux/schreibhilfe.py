@@ -97,6 +97,13 @@ def main():
     # keine Werkbank.
     einst.set_enable_developer_extras(False)
     einst.set_enable_write_console_messages_to_stdout(False)
+    # Damit die App merkt, dass sie in einem eigenen Fenster läuft und nicht
+    # im Browser. Sie schaltet dann den Dienstarbeiter ab — der ist hier nicht
+    # nur überflüssig (die Dateien liegen ja auf der Platte), sondern
+    # schädlich: Sein Zwischenspeicher überlebte jede Änderung am Ordner, und
+    # das Fenster zeigte tagelang eine alte Fassung. Genau dafür gibt es die
+    # Kennung schon in der Android-App.
+    einst.set_user_agent(einst.get_user_agent() + " Schreibhilfe/1.0")
 
     fenster = Gtk.Window(title="Schreibhilfe")
     fenster.set_default_size(1000, 780)
