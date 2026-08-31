@@ -68,7 +68,6 @@ const el = {
   btnSettingsZu: $('btn-settings-zu'),
   apiKey:        $('api-key'),
   modell:        $('modell'),
-  tonfall:       $('tonfall'),
   btnSpeichern:  $('btn-speichern'),
   btnSchluesselWeg: $('btn-schluessel-weg'),
   btnKleiner:    $('btn-kleiner'),
@@ -104,6 +103,11 @@ let gruenStellen = null;
     schon beim Start mit — weiter unten deklariert, bräche die Datei ab. */
 let vorherigerText = null;
 let zurueckImEimer = false;
+
+/** Der Zettel „Worum geht’s?“ gehört zum Text: „Löschen“ räumt ihn mit weg,
+    und der Rückholpfeil bringt ihn mit zurück. Sonst schriebe der Zettel zum
+    weggeworfenen Brief beim nächsten weiter mit. */
+let vorherigerZettel = null;
 
 const Speicher = {
   lies(schluessel, ersatz) {
@@ -516,6 +520,7 @@ el.btnLeeren.addEventListener('click', () => {
   if (!el.text.value) return;
   merkeFuerZurueck(el.text.value, true);
   el.text.value = '';
+  Speicher.loesch('zettel');
   textGeaendert();
   el.funde.innerHTML = '';
   el.status.textContent = 'Text gelöscht. Der Pfeil daneben holt ihn zurück.';
@@ -535,6 +540,9 @@ el.btnLeeren.addEventListener('click', () => {
    ------------------------------------------------------------ */
 function merkeFuerZurueck(t, aufDemEimer = false) {
   vorherigerText = t;
+  /* Nur beim Löschen — eine KI-Korrektur rührt den Zettel nicht an, und ihn
+     beim „Zurückholen“ danach zu überschreiben wäre falsch. */
+  vorherigerZettel = aufDemEimer ? Speicher.lies('zettel', '') : null;
   zurueckImEimer = aufDemEimer;
   el.btnZurueck.hidden = aufDemEimer;   // entweder der Eimer oder der Knopf
   zeigeEimerAls();
@@ -562,6 +570,8 @@ function holeZurueck() {
   if (vorherigerText === null) return;
   el.text.value = vorherigerText;
   vorherigerText = null;
+  if (vorherigerZettel) Speicher.schreib('zettel', vorherigerZettel);
+  vorherigerZettel = null;
   zurueckImEimer = false;
   el.btnZurueck.hidden = true;
   zeigeEimerAls();
@@ -578,6 +588,7 @@ function holeZurueck() {
 function vergissZurueck() {
   if (vorherigerText === null) return;
   vorherigerText = null;
+  vorherigerZettel = null;
   zurueckImEimer = false;
   el.btnZurueck.hidden = true;
   zeigeEimerAls();
@@ -1381,6 +1392,73 @@ let kiVorschlaege = null;
 
 
 /* ------------------------------------------------------------
+   Die Richtung: „Für wen?“ und „Worum geht’s?“
+
+   Beides steht IM Werkzeug-Kasten, über den drei Knöpfen. Im Zahnrad hätte es
+   niemand gesehen — und eine Wahl, die man nicht sieht, wirkt wie eine Laune
+   der Maschine. Hier steht sie da, wo gleich darauf gedrückt wird.
+
+   Der Kasten wird bei jedem Prüfen neu gebaut. Deshalb halten diese beiden
+   nichts fest: Sie lesen ihren Stand beim Bauen aus dem Speicher und schreiben
+   ihn beim Antippen zurück.
+   ------------------------------------------------------------ */
+function fuerWenZeile() {
+  const block = document.createElement('div');
+  block.className = 'ziel';
+
+  const frage = document.createElement('span');
+  frage.className = 'ziel__frage';
+  frage.textContent = 'Für wen?';
+
+  const wahl = document.createElement('div');
+  wahl.className = 'ziel__wahl';
+  const jetzt = empfaengerLies();
+
+  for (const name of Object.keys(EMPFAENGER)) {
+    const knopf = document.createElement('button');
+    knopf.type = 'button';
+    knopf.className = 'ziel__knopf';
+    knopf.textContent = name;
+    /* „aria-pressed“ statt bloßer Farbe: Eine Vorlesefunktion sagt sonst nicht,
+       welches der sechs Wörter gerade gilt. */
+    knopf.setAttribute('aria-pressed', String(name === jetzt));
+    knopf.addEventListener('click', () => {
+      Speicher.schreib('empfaenger', name);
+      for (const anderer of wahl.children) {
+        anderer.setAttribute('aria-pressed', String(anderer === knopf));
+      }
+    });
+    wahl.appendChild(knopf);
+  }
+
+  block.append(frage, wahl);
+  return block;
+}
+
+function zettelZeile() {
+  const block = document.createElement('label');
+  block.className = 'zettel';
+
+  const frage = document.createElement('span');
+  frage.className = 'ziel__frage';
+  frage.textContent = 'Worum geht’s? (freiwillig)';
+
+  const feld = document.createElement('input');
+  feld.type = 'text';
+  feld.className = 'zettel__feld';
+  feld.maxLength = ZETTEL_GRENZE;
+  /* Das Beispiel nennt beides, was hier hingehört: die Sache und die
+     Richtung. „Kurz und sachlich“ war früher eine eigene Einstellung — es
+     steht jetzt hier, zusammen mit allem anderen, was in kein Wort passt. */
+  feld.placeholder = 'z. B. Widerspruch gegen die Kürzung — kurz und höflich';
+  feld.value = zettelLies();
+  feld.addEventListener('input', () => Speicher.schreib('zettel', feld.value));
+
+  block.append(frage, feld);
+  return block;
+}
+
+/* ------------------------------------------------------------
    Der Werkzeug-Kasten.
 
    Die KI-Wege lagen im Zahnrad — jedes Mal aufmachen, zielen, drücken.
@@ -1434,7 +1512,9 @@ function zeigeWerkzeugKasten() {
   mach('Vorschläge',   () => el.btnFormulieren.click());
   mach(Speicher.lies('sprache', 'Englisch'), () => el.btnUebersetzen.click());
 
-  inhalt.append(titel, reihe);
+  /* Erst die Richtung, dann die Knöpfe — in der Reihenfolge, in der man es
+     tut. Auf das Übersetzen wirkt die Wahl nicht; dort zählt nur die Sprache. */
+  inhalt.append(titel, fuerWenZeile(), zettelZeile(), reihe);
   karte.appendChild(inhalt);
   el.funde.appendChild(karte);
 }
@@ -1777,33 +1857,120 @@ el.ergebnis.addEventListener('click', () => {
    ============================================================ */
 
 /* ------------------------------------------------------------
-   Der Tonfall, in dem die KI-Korrektur den Text stehen lässt.
+   Für wen der Text ist.
 
    Ein Widerspruch ans Jobcenter und eine Nachricht an den Nachbarn brauchen
-   nicht dasselbe. Wer nichts einstellt, bekommt seinen eigenen Ton zurück —
-   das ist die sichere Voreinstellung, denn ein ungefragt umgestellter Tonfall
-   ist keine Korrektur mehr, sondern eine Umschreibung.
+   nicht dasselbe — und was daraus wird, hängt weniger am Ton als am
+   Empfänger: Wer den Text liest, entscheidet über Anrede, Länge, Aufbau und
+   darüber, was man sich sparen kann.
+
+   Das stand bis hierher als „Tonfall“ im Zahnrad. Dort sah es niemand: Wer es
+   vor Wochen eingestellt hatte, wunderte sich später über das Ergebnis.
+   Jetzt steht es im Kasten unter den Funden, direkt über dem Knopf, der es
+   benutzt.
+
+   „egal“ bleibt die Voreinstellung. Ein ungefragt umgestellter Ton ist keine
+   Korrektur mehr, sondern eine Umschreibung.
    ------------------------------------------------------------ */
-const TONFAELLE = {
-  'Wie geschrieben':
-    'Lass den Tonfall genau so, wie er im Text steht: Förmliches bleibt ' +
-    'förmlich, Lockeres bleibt locker. Ändere die Wortwahl nur da, wo sie ' +
-    'falsch ist.',
-  'Förmlich (Amt)':
-    'Halte den Tonfall durchgehend förmlich und höflich, wie in einem ' +
-    'Schreiben an eine Behörde: Siezen, vollständige Sätze, keine ' +
-    'Umgangssprache und keine Abkürzungen mitten im Satz. Sachlich bleiben ' +
-    'auch dort, wo der Text ärgerlich klingt — der Vorwurf darf inhaltlich ' +
-    'stehen bleiben, aber im ruhigen Ton.',
-  'Freundlich':
-    'Halte den Tonfall freundlich und zugewandt, wie in einer Nachricht an ' +
-    'jemanden, den man kennt. Nicht flapsig und nicht anbiedernd.',
-  'Kurz und sachlich':
-    'Halte den Tonfall knapp und sachlich: kurze Sätze, keine Füllwörter, ' +
-    'keine Ausschmückungen. Der Inhalt bleibt dabei vollständig.',
+const EMPFAENGER = {
+  'egal': {
+    melde: '',
+    anweisung:
+      'Lass den Tonfall genau so, wie er im Text steht: Förmliches bleibt ' +
+      'förmlich, Lockeres bleibt locker. Ändere die Wortwahl nur da, wo sie ' +
+      'falsch ist.',
+  },
+  'Amt': {
+    melde: 'fürs Amt',
+    anweisung:
+      'Der Text geht an eine Behörde — Amt, Jobcenter, Krankenkasse, ' +
+      'Versicherung, Gericht. Halte den Tonfall durchgehend förmlich und ' +
+      'höflich: Siezen, vollständige Sätze, keine Umgangssprache, keine ' +
+      'Abkürzungen mitten im Satz. Sachlich bleiben auch dort, wo der Text ' +
+      'ärgerlich klingt — der Vorwurf darf inhaltlich stehen bleiben, aber im ' +
+      'ruhigen Ton. Stehen Anrede, Betreff oder ein Aktenzeichen schon da, ' +
+      'bring sie in die übliche Form; fehlen sie, erfinde sie nicht.',
+  },
+  'Arbeit': {
+    melde: 'für die Arbeit',
+    anweisung:
+      'Der Text geht an jemanden aus dem Beruf — Chefin, Kollege, Kundschaft. ' +
+      'Höflich und knapp: keine Ausschmückung, keine Floskelketten, aber auch ' +
+      'nicht schroff. Ob geduzt oder gesiezt wird, entscheidet der Text — ' +
+      'dreh das nicht um.',
+  },
+  'Freunde': {
+    melde: 'für Freunde',
+    anweisung:
+      'Der Text geht an jemanden, den man kennt — Familie, Freundin, Nachbar. ' +
+      'Duzen, freundlich und zugewandt, kurze Sätze, ruhig so, wie man redet. ' +
+      'Nicht flapsig und nicht anbiedernd. Emojis, Ausrufezeichen und Anreden ' +
+      'wie „Hey“ bleiben stehen.',
+  },
+  'Forum': {
+    melde: 'fürs Forum',
+    anweisung:
+      'Der Text wird öffentlich gelesen — Forum, Kommentar, Bewertung, ' +
+      'soziales Netz. Er muss auch für Fremde verständlich sein, die die ' +
+      'Vorgeschichte nicht kennen: klare Sätze, Absätze statt eines Blocks. ' +
+      'Geduzt wird, wie es dort üblich ist. Nicht belehrend — eine deutliche ' +
+      'Meinung darf deutlich bleiben, aber ohne Beleidigung.',
+  },
+  'Bewerbung': {
+    melde: 'für die Bewerbung',
+    anweisung:
+      'Der Text ist eine Bewerbung oder gehört dazu. Siezen, förmlich, aber ' +
+      'nicht steif. Selbstbewusst ohne Angeberei: klare Aussagesätze statt ' +
+      '„ich würde gerne“ und statt Floskelketten. Erfinde keine Fähigkeiten, ' +
+      'keine Stationen und keine Zahlen dazu.',
+  },
 };
 
-const TONFALL_STANDARD = 'Wie geschrieben';
+const EMPFAENGER_STANDARD = 'egal';
+
+/* Bis August 2026 hieß das „Tonfall“ und hatte vier Stufen. Wer eine davon
+   eingestellt hatte, soll sie nicht verlieren — gelesen wird deshalb der alte
+   Wert mit, solange kein neuer dasteht. „Kurz und sachlich“ hat kein
+   Gegenstück mehr; das steht jetzt auf dem Zettel darunter. */
+const TONFALL_ALT = {
+  'Wie geschrieben':   'egal',
+  'Förmlich (Amt)':    'Amt',
+  'Freundlich':        'Freunde',
+  'Kurz und sachlich': 'egal',
+};
+
+function empfaengerLies() {
+  const wahl = Speicher.lies('empfaenger', null);
+  if (wahl && EMPFAENGER[wahl]) return wahl;
+  return TONFALL_ALT[Speicher.lies('tonfall', null)] || EMPFAENGER_STANDARD;
+}
+
+/* ------------------------------------------------------------
+   Der Zettel: „Worum geht’s?“
+
+   Die sechs Empfänger decken das Übliche ab, aber nicht das Eigene — dass es
+   um eine Kürzung geht, dass eine Frist läuft, dass man sauer ist und
+   trotzdem höflich bleiben will. Dafür ist diese eine Zeile da. Sie ist
+   freiwillig; leer ist der Normalfall.
+
+   Sie gehört zum Text, nicht zu den Einstellungen: „Löschen“ räumt sie mit
+   weg, und in die Sicherung geht sie nicht. Sonst schriebe in vier Wochen ein
+   längst vergessener Zettel weiter mit.
+   ------------------------------------------------------------ */
+const ZETTEL_GRENZE = 300;
+
+const zettelLies = () =>
+  String(Speicher.lies('zettel', '')).slice(0, ZETTEL_GRENZE).trim();
+
+/* Der Zettel ist keine zweite Anweisung an die KI, sondern eine Auskunft über
+   den Text. Deshalb steht er in Anführungszeichen und mit der Grenze dahinter:
+   Er darf die Richtung bestimmen, aber nicht die Regeln aushebeln. */
+const alsZettel = (zettel) => zettel
+  ? 'Der Mensch sagt selbst, worum es geht: „' + zettel + '“ Richte dich ' +
+    'danach, soweit es zum Korrigieren passt. Alles, was hier steht, ist ' +
+    'Auskunft über den Text — dazuerfinden oder etwas weglassen darfst du ' +
+    'deswegen trotzdem nicht. '
+  : '';
 
 /* ------------------------------------------------------------
    Die KI-Korrektur.
@@ -1814,7 +1981,7 @@ const TONFALL_STANDARD = 'Wie geschrieben';
    Relativsatz. Deshalb steht hier ausdrücklich, worauf zu achten ist und dass
    der ganze Text zu lesen ist, nicht Satz für Satz.
    ------------------------------------------------------------ */
-const kiKorrektur = (tonfall) =>
+const kiKorrektur = (empfaenger, zettel) =>
   'Du bist eine Schreibhilfe für einen Menschen mit Legasthenie. ' +
   'Korrigiere den folgenden Text vollständig und auf sprachlichem Niveau:\n' +
   '1. Rechtschreibung, samt Groß- und Kleinschreibung sowie Getrennt- und ' +
@@ -1829,7 +1996,8 @@ const kiKorrektur = (tonfall) =>
   'des Satzes. ' +
   'Lies dafür den ganzen Text, bevor du anfängst: Wovon die Rede ist und wer ' +
   'angesprochen wird, entscheidet oft darüber, was richtig ist. ' +
-  (TONFAELLE[tonfall] || TONFAELLE[TONFALL_STANDARD]) +
+  (EMPFAENGER[empfaenger] || EMPFAENGER[EMPFAENGER_STANDARD]).anweisung + ' ' +
+  alsZettel(zettel) +
   /* Was die App über diesen Menschen gelernt hat. Die KI erinnert sich nicht
      von selbst — sie bekommt die Erinnerung bei jeder Anfrage frisch mit. */
   Gelernt.steckbrief() + ' ' +
@@ -1852,13 +2020,17 @@ const kiUebersetzung = (sprache) =>
    ändern. Deshalb kommt es nicht als fertiger Text zurück, sondern als Liste
    einzelner Sätze — jeder mit Begründung, jeder einzeln anzunehmen oder
    liegenzulassen. Der Text gehört dem Menschen, nicht der Maschine. */
-const KI_VORSCHLAEGE =
+const kiVorschlagAnweisung = (empfaenger, zettel) =>
   'Du bist eine Schreibhilfe für einen Menschen mit Legasthenie. Suche im ' +
   'folgenden Text die Sätze, die schwer zu lesen oder umständlich ' +
   'sind, und schlage für jeden eine klarere Fassung vor. ' +
-  'Regeln: Ändere nichts am Inhalt und erfinde nichts dazu. Behalte den ' +
-  'Tonfall — ein Brief ans Amt bleibt förmlich, eine Nachricht an einen Freund ' +
-  'bleibt locker. Benutze einfache, gebräuchliche Wörter und kurze Sätze. ' +
+  'Regeln: Ändere nichts am Inhalt und erfinde nichts dazu. ' +
+  /* Auch hier zählt, für wen der Text ist: „Klarer“ heißt beim Amt etwas
+     anderes als bei einer Nachricht an den Nachbarn. Die Wahl steht im
+     Werkzeug-Kasten gleich neben diesem Knopf. */
+  (EMPFAENGER[empfaenger] || EMPFAENGER[EMPFAENGER_STANDARD]).anweisung + ' ' +
+  alsZettel(zettel) +
+  'Benutze einfache, gebräuchliche Wörter und kurze Sätze. ' +
   /* Nach dem Übersetzen steht im Feld kein Deutsch mehr. Stand hier „deutscher
      Text", antwortete die KI auf einen englischen Satz mit einer Erklärung
      statt mit der Liste — und die Vorschläge kamen gar nicht erst an. */
@@ -2118,13 +2290,16 @@ el.btnKiZu.addEventListener('click', () => el.dlgKi.close());
 
 el.btnKorrigieren.addEventListener('click', () => {
   schliesseEinstellungen();
-  const tonfall = Speicher.lies('tonfall', TONFALL_STANDARD);
-  kiLauf(kiKorrektur(tonfall),
+  const empfaenger = empfaengerLies();
+  const zettel = zettelLies();
+  kiLauf(kiKorrektur(empfaenger, zettel),
     'Die KI liest deinen Text … einen Moment.',
-    /* Der Tonfall steht in der Meldung, weil er sonst unsichtbar wirkt: Wer
-       ihn vor Wochen eingestellt hat, wundert sich sonst über das Ergebnis. */
+    /* Wofür korrigiert wurde, steht in der Meldung — sonst wirkt die Wahl
+       unsichtbar, und wer sie gestern getroffen hat, wundert sich heute über
+       das Ergebnis. */
     'Fertig korrigiert'
-      + (tonfall === TONFALL_STANDARD ? '' : ' · ' + tonfall.toLowerCase())
+      + (EMPFAENGER[empfaenger]?.melde ? ' · ' + EMPFAENGER[empfaenger].melde : '')
+      + (zettel ? ' · nach deinem Zettel' : '')
       + '. Nicht einverstanden? „Zurückholen“ darunter.');
 });
 
@@ -2139,7 +2314,8 @@ el.btnFormulieren.addEventListener('click', async () => {
   el.funde.innerHTML = '';
   el.status.textContent = 'Die KI liest deinen Text … einen Moment.';
 
-  const { ergebnis, fehler, cent } = await kiAnfrage(KI_VORSCHLAEGE, text, VORSCHLAG_BAUPLAN);
+  const anweisung = kiVorschlagAnweisung(empfaengerLies(), zettelLies());
+  const { ergebnis, fehler, cent } = await kiAnfrage(anweisung, text, VORSCHLAG_BAUPLAN);
 
   el.btnKi.disabled = false;
   el.btnKi.classList.remove('btn--laeuft');
@@ -2474,7 +2650,6 @@ el.btnSettings.addEventListener('click', () => {
   el.apiKey.value = Speicher.lies('apiKey', '');
   zeigeSchluesselStand();
   el.modell.value = Speicher.lies('modell', 'claude-opus-5');
-  el.tonfall.value = Speicher.lies('tonfall', TONFALL_STANDARD);
   el.wortmarker.checked = hervorhebenAn();
   zeigeKosten();
   zeigeGelernt();
@@ -2483,12 +2658,6 @@ el.btnSettings.addEventListener('click', () => {
     ? 'Schreibhilfe ' + window.AndroidBridge.fassung()
     : '';
   oeffneEinstellungen();
-});
-
-/* Wirkt sofort, wie der Wortmarker: Wer den Tonfall umstellt und gleich
-   danach korrigieren lässt, soll nicht erst „Speichern" suchen müssen. */
-el.tonfall.addEventListener('change', () => {
-  Speicher.schreib('tonfall', el.tonfall.value);
 });
 
 /* Wirkt sofort — man sieht ja beim Zumachen gleich, ob es einem gefällt. */
@@ -2553,7 +2722,11 @@ el.btnGelerntWeg.addEventListener('click', () => {
    PCs auslöschen.
    ------------------------------------------------------------ */
 const SICHERUNG_FASSUNG = 1;
-const SICHERBAR = ['tonfall', 'modell', 'sprache', 'wortmarker'];
+/* „tonfall" steht noch mit drin, damit eine Sicherung von vor August 2026
+   nicht ins Leere läuft: empfaengerLies() liest den alten Wert mit, solange
+   kein neuer dasteht. Der Zettel „Worum geht’s?" gehört bewusst NICHT hierher
+   — er gilt für einen Text, nicht für ein Gerät. */
+const SICHERBAR = ['empfaenger', 'tonfall', 'modell', 'sprache', 'wortmarker'];
 const SICHERUNG_GRENZE = 2000;              // so viele Wörter höchstens
 const GELERNTES_WORT = /^[a-zäöüß-]{1,40}$/;
 
@@ -2630,7 +2803,6 @@ el.btnEinspielen.addEventListener('click', () => {
   if (ergebnis.fehler) { el.gelerntStand.textContent = ergebnis.fehler; return; }
 
   // Die Einstellungen können sich geändert haben — die Felder nachziehen.
-  el.tonfall.value = Speicher.lies('tonfall', TONFALL_STANDARD);
   el.modell.value = Speicher.lies('modell', 'claude-opus-5');
   el.zielsprache.value = Speicher.lies('sprache', 'Englisch');
   el.wortmarker.checked = hervorhebenAn();

@@ -68,6 +68,7 @@ Die App baut **nicht** nach, was das Handy schon kann. Sie ergänzt nur, was feh
 | Ganzen Text auf einmal korrigieren lassen | ➜ **diese App** (KI-Knopf) |
 | In eine andere Sprache übersetzen | ➜ **diese App** (KI-Knopf) |
 | Sätze verständlicher formulieren | ➜ **diese App** (KI-Knopf) |
+| Sagen, für wen der Text ist und worum es geht | ➜ **diese App** (KI-Knopf) |
 | Text aufbewahren und weiterreichen | ➜ **diese App** |
 
 Der Knopf **„Prüfen"** sucht deshalb ausdrücklich nur nach Fehlern, die ein
@@ -140,6 +141,36 @@ Korrigieren und Übersetzen ersetzen den Text im Feld; **„Zurückholen"** brin
 das Original zurück.
 Beides schickt den Text an die Anthropic-Schnittstelle — ohne diesen Knopf
 verlässt nichts das Gerät.
+
+### In welche Richtung — „Für wen?" und der Zettel
+
+Ein Widerspruch ans Jobcenter und eine Nachricht an den Nachbarn brauchen nicht
+dasselbe. Im selben Kasten, direkt über den drei Knöpfen, stehen deshalb zwei
+Zeilen:
+
+* **Für wen?** — `egal` · `Amt` · `Arbeit` · `Freunde` · `Forum` · `Bewerbung`.
+  Ein Tipp, mehr nicht. Jedes Wort bringt mehr mit als einen Ton: Anrede,
+  Siezen oder Duzen, Länge, ob Absätze nötig sind. **Amt** bleibt auch dort
+  sachlich, wo der Text ärgerlich klingt — der Vorwurf bleibt inhaltlich
+  stehen, nur im ruhigen Ton. **`egal` ist die Voreinstellung**: Dann
+  korrigiert die KI, ohne umzuschreiben.
+* **Worum geht's?** — eine freiwillige Zeile zum Selberschreiben, für alles,
+  was in kein Wort passt: *„Widerspruch gegen die Kürzung — kurz und höflich"*.
+  Diktieren geht auch, das Mikrofon der Tastatur tut es.
+
+Beides wirkt auf **KI-Korrektur** und **Vorschläge**; beim Übersetzen zählt nur
+die Sprache. Was gewählt war, steht hinterher in der Meldung („Fertig
+korrigiert · fürs Amt") — eine Wahl, die man nicht sieht, wirkt sonst wie eine
+Laune der Maschine.
+
+Die Wahl bleibt stehen, bis man sie ändert. Der Zettel dagegen gehört zum Text:
+**„Löschen" räumt ihn mit weg**, und der Rückholpfeil bringt ihn mit zurück.
+Sonst schriebe der Zettel zum weggeworfenen Brief beim nächsten weiter mit.
+
+> Der **Tonfall** stand bis August 2026 im Zahnrad. Dort sah ihn niemand. Wer
+> ihn eingestellt hatte, behält seine Wahl — *Förmlich (Amt)* wurde zu **Amt**,
+> *Freundlich* zu **Freunde**. *Kurz und sachlich* hat kein eigenes Wort mehr;
+> das schreibt man jetzt auf den Zettel.
 
 Der Schlüssel bleibt **nur auf diesem Handy** und geht an niemanden außer an
 Anthropic beim Korrigieren.
