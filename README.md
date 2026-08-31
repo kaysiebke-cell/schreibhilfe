@@ -211,6 +211,41 @@ ist, kann nichts über den geladenen Betrag hinaus anfallen — mehr Kontrolle
 als jedes Abo. Ein Claude-Pro-Abo hilft hier übrigens **nicht**: Das gilt für
 die Claude-App, nicht für den API-Zugang.
 
+## 🖥️ Am PC: die App als eigenes Fenster
+
+Am Handy steckt die Web-App in einem Android-Rahmen. Für den PC gibt es
+denselben Rahmen unter Linux — ein Fenster, dieselben Dateien aus `online/`,
+kein zweiter Nachbau:
+
+```bash
+./linux/einrichten.sh
+```
+
+Danach steht **„Schreibhilfe (eigenes Fenster)"** im Menü. Das Skript legt nur
+eine Verknüpfung an, die auf diesen Ordner zeigt — verschiebt man ihn, läuft
+es noch einmal. `./linux/einrichten.sh --weg` entfernt den Eintrag.
+
+Gebraucht wird nur, was Ubuntu ohnehin mitbringt:
+
+```bash
+sudo apt install python3-gi gir1.2-webkit2-4.1
+```
+
+Warum nicht einfach ein Browserfenster auf die veröffentlichte Seite?
+
+* **Ollama.** Chrome lässt eine Seite, die aus dem Internet kommt, nicht an
+  einen Dienst auf dem eigenen Rechner heran — die Modelle blieben dort
+  ungrau. Hier kommt die Seite von `127.0.0.1`, und die Sperre entfällt.
+* **Es zeigt den eigenen Ordner**, nicht den zuletzt veröffentlichten Stand.
+* **Eigener Speicher** in `~/.local/share/schreibhilfe`, unabhängig davon,
+  welchen Browser man gerade benutzt.
+
+Der kleine Webserver hört ausschließlich auf `127.0.0.1` und endet mit dem
+Fenster. Von außen ist nichts zu erreichen.
+
+Wer von einem Browserfenster herüberwechselt, fängt mit leerem Gedächtnis an —
+Zahnrad ➜ *Gedächtnis* ➜ **Sichern** im alten, **Einspielen** im neuen.
+
 ## 💻 Statt Claude: die KI vom eigenen Rechner (Ollama)
 
 Am PC geht es auch ohne Schlüssel, ohne Guthaben und ohne Internet. **Ollama**

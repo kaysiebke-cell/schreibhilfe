@@ -4,6 +4,7 @@ Ein Projekt, drei Wege — und jeder hat seinen eigenen Ordner:
 
     online/       Handy und PC-Browser (das, was im Netz steht)
     android/      der Rahmen um die App herum, daraus wird die APK
+    linux/        derselbe Rahmen für den PC — ein Fenster ohne Browser
     libreoffice/  die Erweiterung für Writer
     .github/      die Abläufe, die APK und Netz-Seite bauen
 
@@ -31,6 +32,18 @@ Die App wird beim Bauen aus `online/` nach
 `android/app/src/main/assets/www/` kopiert.
 Dieser Ordner ist von git ausgenommen; im Projekt liegt die App kein
 zweites Mal.
+
+## Nur Linux
+    linux/schreibhilfe.py    Fenster (GTK) + WebKit + kleiner Server auf 127.0.0.1
+    linux/schreibhilfe.desktop  Vorlage für den Menüeintrag
+    linux/einrichten.sh      schreibt die Verknüpfung, --weg nimmt sie zurück
+
+Dasselbe Prinzip wie bei Android: ein Rahmen um `online/`, kein zweiter
+Nachbau. Die App wird nicht kopiert, sondern aus dem Ordner ausgeliefert.
+
+Der Umweg über einen Server statt `file://` hat einen Grund: Unter `file://`
+gilt die Seite nicht als sicherer Ursprung, und dann gibt es weder
+`localStorage` noch den Dienstarbeiter. `http://localhost` gilt als sicher.
 
 ## Nur LibreOffice
     libreoffice/schreibhilfe/schreibhilfe.py   Menü, Fenster, KI
