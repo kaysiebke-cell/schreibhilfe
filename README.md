@@ -218,12 +218,20 @@ denselben Rahmen unter Linux — ein Fenster, dieselben Dateien aus `online/`,
 kein zweiter Nachbau:
 
 ```bash
-./linux/einrichten.sh
+./linux/run-app.sh
 ```
 
-Danach steht **„Schreibhilfe (eigenes Fenster)"** im Menü. Das Skript legt nur
-eine Verknüpfung an, die auf diesen Ordner zeigt — verschiebt man ihn, läuft
-es noch einmal. `./linux/einrichten.sh --weg` entfernt den Eintrag.
+Das startet die App **und** legt den Menüeintrag „Schreibhilfe" an. Der
+Eintrag wird bei jedem Start frisch geschrieben: Eine `.desktop`-Datei braucht
+feste Pfade, und Pfade ändern sich. Verschiebt man den Ordner, genügt ein
+Start von hier, dann stimmt der Eintrag wieder. Das Symbol wandert dabei in
+den festen Symbol-Ordner des Systems und wird nur beim Namen gerufen — ein
+Symbol, das über den Projektpfad gesucht wird, verschwindet beim ersten
+Verschieben.
+
+`--nur-eintrag` legt nur die Verknüpfung an, `--weg` nimmt sie zurück.
+
+Derselbe Aufbau wie beim Schwesterprojekt Aktenlage, wo er sich bewährt hat.
 
 Gebraucht wird nur, was Ubuntu ohnehin mitbringt:
 

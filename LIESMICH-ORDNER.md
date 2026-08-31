@@ -35,8 +35,7 @@ zweites Mal.
 
 ## Nur Linux
     linux/schreibhilfe.py    Fenster (GTK) + WebKit + kleiner Server auf 127.0.0.1
-    linux/schreibhilfe.desktop  Vorlage für den Menüeintrag
-    linux/einrichten.sh      schreibt die Verknüpfung, --weg nimmt sie zurück
+    linux/run-app.sh         startet die App und schreibt den Menüeintrag neu
 
 Dasselbe Prinzip wie bei Android: ein Rahmen um `online/`, kein zweiter
 Nachbau. Die App wird nicht kopiert, sondern aus dem Ordner ausgeliefert.
