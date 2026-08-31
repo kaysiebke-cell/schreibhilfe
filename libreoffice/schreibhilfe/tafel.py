@@ -84,6 +84,14 @@ class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
         self.funde = None      # None = noch nicht geprüft
         self.ziel = None
         self.breite_px = 900
+        # Der Zettel „Worum geht’s?“ gehört zum Text, nicht zum Rechner:
+        # Er lebt, solange diese Tafel offen ist, und wird nie gespeichert.
+        # Sonst schriebe der Zettel zum Brief von vorgestern weiter mit.
+        self.zettel = ""
+        # Was zuletzt geschehen ist. Steht in derselben Zeile wie die Zahl der
+        # Funde — die Handy-App macht es genauso, statt ein Fenster aufzumachen,
+        # das man erst wegklicken muss.
+        self.meldung = None
 
         self.modell = self._dienst("com.sun.star.awt.UnoControlDialogModel")
         self.modell.PositionX, self.modell.PositionY = 0, 0
@@ -177,6 +185,27 @@ class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
         self.modell.insertByName(name, teil)
         return teil
 
+    def _liste(self, name, x, y, w, h, eintraege, gewaehlt):
+        teil = self.modell.createInstance("com.sun.star.awt.UnoControlListBoxModel")
+        teil.PositionX, teil.PositionY, teil.Width, teil.Height = x, y, w, h
+        teil.Dropdown = True
+        teil.StringItemList = tuple(eintraege)
+        teil.SelectedItems = (eintraege.index(gewaehlt)
+                              if gewaehlt in eintraege else 0,)
+        self.modell.insertByName(name, teil)
+        return teil
+
+    def _feld(self, name, x, y, w, h, text, hinweis=""):
+        teil = self.modell.createInstance("com.sun.star.awt.UnoControlEditModel")
+        teil.PositionX, teil.PositionY, teil.Width, teil.Height = x, y, w, h
+        teil.Text = text
+        # Ein Platzhalter IM Feld, wie ihn der Browser kennt, gibt es hier
+        # nicht. Der Hinweis wird deshalb zum Tooltip; das Beispiel steht
+        # sichtbar unter dem leeren Feld.
+        teil.HelpText = hinweis
+        self.modell.insertByName(name, teil)
+        return teil
+
     def _knopf(self, name, x, y, w, h, label):
         teil = self.modell.createInstance("com.sun.star.awt.UnoControlButtonModel")
         teil.PositionX, teil.PositionY, teil.Width, teil.Height = x, y, w, h
@@ -197,6 +226,9 @@ class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
 
         Bricht das Zeichnen ab, bleibt die Tafel sonst wortlos leer.
         """
+        # Das Feld wird beim Neubauen weggeräumt — was darin stand, muss vorher
+        # herüber, sonst ist der Zettel nach jedem „Prüfen“ leer.
+        self._zettel_merken()
         try:
             self._zeichne()
         except Exception:                                    # noqa: BLE001
@@ -235,6 +267,37 @@ class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
                    "Reicht das nicht?" if self.funde else "Noch etwas damit machen?",
                    TextColor=self.gui.farben()["blass"], FontHeight=SH.SCHRIFT_GRUND)
         y += 14
+
+        # Erst die Richtung, dann die Knöpfe — in der Reihenfolge, in der man
+        # es tut. Am Handy sind das sechs antippbare Wörter; hier ist eine
+        # Liste die Form, die Writer selbst überall benutzt.
+        werte = SH.lies_einstellungen()
+        blass = self.gui.farben()["blass"]
+        self._text("wenfrage", rand + 6, y, 34, 11, "Für wen?",
+                   TextColor=blass, FontHeight=SH.SCHRIFT_GRUND)
+        self._liste("empfaenger", rand + 42, y - 3, w - 48, 14,
+                    list(SH.EMPFAENGER.keys()), werte["empfaenger"])
+        y += 18
+
+        self._text("zettelfrage", rand + 6, y, w - 12, 11,
+                   "Worum geht’s? (freiwillig)",
+                   TextColor=blass, FontHeight=SH.SCHRIFT_GRUND)
+        y += 12
+        self._feld("zettel", rand + 6, y, w - 12, 14, self.zettel,
+                   "Was für ein Text das ist und worauf es dir ankommt. "
+                   "Leer ist der Normalfall.")
+        y += 16
+        # Das Beispiel steht unter dem leeren Feld und weicht, sobald etwas
+        # drinsteht — ein Platzhalter IM Feld wäre schöner, den kennt
+        # LibreOffice aber nicht. In die Zeile der Frage passt es nicht: Auf
+        # einer schmalen Tafel wäre es mitten im Wort abgeschnitten.
+        if not self.zettel.strip():
+            self._text("zettelbeispiel", rand + 6, y, w - 12, 11,
+                       "z. B. Widerspruch gegen die Kürzung — kurz und höflich",
+                       TextColor=blass, FontHeight=SH.SCHRIFT_GRUND)
+            y += 12
+        y += 4
+
         for name, beschriftung in (("ki", "KI-Korrektur"),
                                    ("vorschlaege", "Vorschläge"),
                                    ("uebersetzen", "Übersetzen")):
@@ -244,6 +307,8 @@ class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
         self.modell.Height = max(y + self.RAND, 80)
 
     def stand_text(self):
+        if self.meldung:
+            return self.meldung
         if self.funde is None:
             return "Noch nicht geprüft."
         if not self.funde:
@@ -291,6 +356,41 @@ class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
                     "Ändern")
         return y + hoch
 
+    # --- Die Richtung auslesen ----------------------------------------
+    def _zettel_merken(self):
+        """Holt den Zettel aus dem Feld, bevor die Tafel neu gebaut wird."""
+        try:
+            steuer = self.fenster.getControl("zettel")
+        except Exception:                                    # noqa: BLE001
+            return
+        if steuer is not None:
+            self.zettel = steuer.getText()[:SH.ZETTEL_GRENZE]
+
+    def _empfaenger_merken(self):
+        """Die Wahl aus der Liste — und gleich gespeichert.
+
+        Gespeichert wird erst beim Drücken, nicht bei jedem Umstellen: Ein
+        Horcher an der Liste wäre ein Bedienteil mehr, das am Leben gehalten
+        werden muss, und gebraucht wird die Wahl ohnehin nur jetzt.
+        """
+        werte = SH.lies_einstellungen()
+        try:
+            steuer = self.fenster.getControl("empfaenger")
+        except Exception:                                    # noqa: BLE001
+            steuer = None
+        if steuer is not None:
+            gewaehlt = steuer.getSelectedItem()
+            if gewaehlt in SH.EMPFAENGER and gewaehlt != werte["empfaenger"]:
+                werte["empfaenger"] = gewaehlt
+                # Lässt sich die Datei nicht schreiben, gilt die Wahl trotzdem
+                # für diesen Lauf — sie steht ja in „werte“. Nur gemerkt wird
+                # sie dann nicht, und daran soll die Korrektur nicht scheitern.
+                try:
+                    SH.schreib_einstellungen(werte)
+                except OSError:
+                    pass
+        return werte
+
     # --- Was die Knöpfe tun -------------------------------------------
     def gedrueckt(self, name):
         if name == "pruefen":
@@ -319,6 +419,7 @@ class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
         self.pruefen()
 
     def pruefen(self):
+        self.meldung = None
         if pruefung is None:
             self.gui.melde("Schreibhilfe", "Die Prüfung fehlt in dieser Fassung.",
                            "errorbox")
@@ -336,7 +437,8 @@ class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
 
     def ki_lauf(self, was):
         """Die drei KI-Wege. Sie arbeiten auf demselben Text wie die Prüfung."""
-        werte = SH.lies_einstellungen()
+        self._zettel_merken()
+        werte = self._empfaenger_merken()
         text, ziel = SH.hole_text(self._dokument())
         if not text.strip():
             self.gui.melde("Schreibhilfe", "Es steht noch kein Text da.")
@@ -345,8 +447,9 @@ class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
         if was == "vorschlaege":
             # Die Vorschläge sind ganze Sätze — die bekommen wie in der App
             # ihre eigenen Kästen, statt einzeln nachgefragt zu werden.
-            ergebnis, fehler = SH.frage_ki(SH.KI_VORSCHLAEGE, text, werte,
-                                           SH.VORSCHLAG_BAUPLAN)
+            ergebnis, fehler = SH.frage_ki(
+                SH.ki_vorschlag_anweisung(werte["empfaenger"], self.zettel),
+                text, werte, SH.VORSCHLAG_BAUPLAN)
             if fehler:
                 self.gui.melde("Schreibhilfe", fehler, "errorbox")
                 return
@@ -364,10 +467,14 @@ class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
             } for v in roh
                 if isinstance(v, dict) and isinstance(v.get("alt"), str)
                 and isinstance(v.get("neu"), str) and v["alt"] in ganz]
+            self.meldung = None
             self.zeichne()
             return
 
-        anweisung = (SH.ki_korrektur(werte["tonfall"], SH.steckbrief(werte))
+        # Beim Übersetzen zählt nur die Sprache — für wen der Text ist, steht
+        # ja schon drin und soll beim Übersetzen erhalten bleiben.
+        anweisung = (SH.ki_korrektur(werte["empfaenger"], self.zettel,
+                                     SH.steckbrief(werte))
                      if was == "korrigieren"
                      else SH.ki_uebersetzung(werte["sprache"]))
         ergebnis, fehler = SH.frage_ki(anweisung, text, werte)
@@ -376,6 +483,17 @@ class Tafel(unohelper.Base, XWindowListener, XTopWindowListener):
             return
         ziel.setString(ergebnis)
         self.funde = []
+        if was == "korrigieren":
+            # Wofür korrigiert wurde, steht in der Zeile — sonst wirkt die Wahl
+            # unsichtbar, und wer sie gestern getroffen hat, wundert sich heute.
+            melde = SH.EMPFAENGER.get(werte["empfaenger"], {}).get("melde") or ""
+            self.meldung = ("Fertig korrigiert"
+                            + (" · " + melde if melde else "")
+                            + (" · nach deinem Zettel" if self.zettel.strip() else "")
+                            + ". Strg+Z nimmt es zurück.")
+        else:
+            self.meldung = ("Übersetzt nach %s. Strg+Z holt das Deutsche zurück."
+                            % werte["sprache"])
         self.zeichne()
 
     # --- XWindowListener: mitwachsen ----------------------------------

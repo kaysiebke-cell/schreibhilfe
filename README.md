@@ -172,6 +172,21 @@ Sonst schriebe der Zettel zum weggeworfenen Brief beim nächsten weiter mit.
 > *Freundlich* zu **Freunde**. *Kurz und sachlich* hat kein eigenes Wort mehr;
 > das schreibt man jetzt auf den Zettel.
 
+**In LibreOffice** gibt es beides genauso, in der Tafel unten am Fenster —
+dieselbe Liste, derselbe Zettel, direkt über den drei KI-Knöpfen. Zwei
+Unterschiede, die aus dem Schreibprogramm kommen:
+
+* **„Für wen?" steht zusätzlich im Einstellungsfenster.** Die Tafel ist in
+  Writer eine eigene Ansicht; wer nur über das Menü korrigiert, käme sonst gar
+  nicht an die Wahl heran. Es ist derselbe gespeicherte Wert, nur eine zweite
+  Tür.
+* **Den Zettel gibt es nur in der Tafel.** Er gehört zum Text, und die Tafel
+  ist dort das Stück, das mit dem Text lebt: Sie zu, der Zettel weg. In die
+  Einstellungsdatei wird er nie geschrieben.
+
+Der Sicherungs-Text trägt die Wahl zwischen Handy und PC hin und her, wie
+bisher — den Zettel bewusst nicht.
+
 Der Schlüssel bleibt **nur auf diesem Handy** und geht an niemanden außer an
 Anthropic beim Korrigieren.
 
