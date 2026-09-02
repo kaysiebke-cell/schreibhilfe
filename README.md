@@ -27,7 +27,8 @@ Den Link **im Handy-Browser** öffnen → Datei antippen → *„Aus dieser Quel
 installieren"* erlauben → **Installieren**. Fertig.
 
 Der Link bleibt bei jeder neuen Fassung derselbe — am besten als **Lesezeichen**
-speichern. Ausführlich, samt Stolpersteinen: **[APK-HERUNTERLADEN.md](APK-HERUNTERLADEN.md)**
+speichern. Er zeigt immer auf die neueste; es gibt bewusst nur eine, damit
+man sich nicht in Fassungen verirrt. Ausführlich, samt Stolpersteinen: **[APK-HERUNTERLADEN.md](APK-HERUNTERLADEN.md)**
 
 **Ohne Installation** geht es auch im Browser:
 <https://kaysiebke-cell.github.io/schreibhilfe/>

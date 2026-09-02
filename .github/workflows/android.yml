@@ -184,14 +184,26 @@ jobs:
           path: out/schreibhilfe.apk
           if-no-files-found: error
 
+      # Ein Release entsteht NUR aus einem Tag.
+      #
+      # Vorher schrieb jeder Push auf main die APK zusätzlich in ein festes
+      # Release „v1.0". Damit lagen zwei fast gleiche Fassungen nebeneinander:
+      # die rollende unter v1.0 und die getaggte darüber. „Latest" zeigte auf
+      # die eine, der überall verteilte Link auf die andere — und niemand
+      # konnte sagen, welche er gerade heruntergeladen hatte.
+      #
+      # Jetzt gibt es zu jedem Zeitpunkt genau ein neuestes Release, und
+      # /releases/latest/download/schreibhilfe.apk zeigt immer darauf.
+      # Ein Push auf main baut weiterhin — aber nur zur Probe, das Ergebnis
+      # hängt als Artefakt am Lauf und nicht im Laden.
       - name: Release mit APK veröffentlichen (direkter Download, ohne ZIP)
         if: >-
           github.event_name == 'push'
-          && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+          && startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v1.0' }}
-          name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'Schreibhilfe v1.0' }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           make_latest: true
           files: out/schreibhilfe.apk
           body: |

@@ -108,6 +108,8 @@ die Adresse kennen.
 git tag -a v1.0.2 -m "was neu ist" && git push origin v1.0.2
 ```
 
-GitHub baut dann von selbst und hängt die APK an ein Release. IzzyOnDroid
+GitHub baut dann von selbst und legt ein Release an. **Nur ein Tag macht ein
+Release** — ein Push auf `main` baut bloß zur Probe. So gibt es immer genau
+eine neueste Fassung, und `/releases/latest/` zeigt immer darauf. IzzyOnDroid
 holt sie sich von dort; bei F-Droid sorgt `UpdateCheckMode: Tags` dafür.
 Ein zweiter Antrag ist in beiden Fällen nie wieder nötig.
