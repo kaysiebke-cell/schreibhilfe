@@ -73,17 +73,71 @@ VORLESER = {"lauf": None, "rechner": None}
 # Repo. Ist er da, spricht er; sonst bleibt es bei spd-say.
 PIPER_ORT = os.path.expanduser("~/.local/share/schreibhilfe/piper")
 PIPER = os.path.join(PIPER_ORT, "piper", "piper")
-PIPER_STIMME = os.path.join(PIPER_ORT, "de_DE-thorsten-medium.onnx")
+
+# Wie die Dateinamen auf Deutsch heißen. Wer „de_DE-eva_k-x_low" liest, weiß
+# nicht, ob das eine Frau ist — und genau danach sucht man in einer Liste.
+PIPER_NAMEN = {
+    "de_DE-thorsten-medium":  "Thorsten (männlich)",
+    "de_DE-thorsten-high":    "Thorsten, feiner (männlich)",
+    "de_DE-thorsten-low":     "Thorsten, gröber (männlich)",
+    "de_DE-karlsson-low":     "Karlsson (männlich)",
+    "de_DE-pavoque-low":      "Pavoque (männlich)",
+    "de_DE-kerstin-low":      "Kerstin (weiblich)",
+    "de_DE-ramona-low":       "Ramona (weiblich)",
+    "de_DE-eva_k-x_low":      "Eva (weiblich)",
+    "de_DE-mls-medium":       "Gemischt (mehrere Sprecher)",
+    "de_DE-thorsten_emotional-medium": "Thorsten mit Gefühl (männlich)",
+}
+
+
+def piper_stimmen():
+    """Die eingerichteten Stimmen, mit lesbarem Namen. Beste zuerst.
+
+    „high" vor „medium" vor „low": Die Stufe steckt im Dateinamen und sagt,
+    wie fein das Modell rechnet. Wer die Liste aufklappt, soll oben das Beste
+    finden und nicht die Reihenfolge des Alphabets.
+    """
+    if not (os.path.isfile(PIPER) and os.access(PIPER, os.X_OK)):
+        return []
+    stufe = {"high": 0, "medium": 1, "low": 2, "x_low": 3}
+    gefunden = []
+    for datei in sorted(os.listdir(PIPER_ORT)):
+        if not datei.endswith(".onnx"):
+            continue
+        kennung = datei[:-len(".onnx")]
+        gefunden.append((stufe.get(kennung.rsplit("-", 1)[-1], 9), kennung,
+                         PIPER_NAMEN.get(kennung, kennung.replace("de_DE-", ""))))
+    gefunden.sort(key=lambda e: (e[0], e[2]))
+    return [{"kennung": k, "name": n} for _, k, n in gefunden]
+
+
+def piper_stimme(kennung=""):
+    """Die Stimmdatei zur Kennung — oder die erste beste."""
+    if kennung:
+        pfad = os.path.join(PIPER_ORT, kennung + ".onnx")
+        if os.path.isfile(pfad):
+            return pfad
+    stimmen = piper_stimmen()
+    return os.path.join(PIPER_ORT, stimmen[0]["kennung"] + ".onnx") if stimmen else None
 
 
 def piper_da():
-    """Ist die gute Stimme eingerichtet — und lässt sie sich abspielen?"""
-    return bool(os.path.isfile(PIPER) and os.access(PIPER, os.X_OK)
-                and os.path.isfile(PIPER_STIMME)
+    """Ist eine gute Stimme eingerichtet — und lässt sie sich abspielen?"""
+    return bool(piper_stimme()
                 and (shutil.which("paplay") or shutil.which("aplay")))
 
 
-def vorlesen_mit_piper(text):
+def piper_laenge(tempo):
+    """Das Tempo (−100 bis 100) in Pipers Maß übersetzen.
+
+    Piper rechnet umgekehrt: „length_scale" ist die Länge eines Lautes, größer
+    heißt langsamer. 0 bleibt 1,0; −100 wird zu 1,5 und +100 zu 0,6.
+    """
+    t = max(-100, min(100, int(tempo or 0)))
+    return 1.0 - t * (0.4 / 100) if t > 0 else 1.0 - t * (0.5 / 100)
+
+
+def vorlesen_mit_piper(text, kennung="", tempo=0):
     """Piper schreibt rohen Ton, das Abspielprogramm nimmt ihn direkt entgegen.
 
     Über eine Zwischendatei zu gehen hieße: erst den ganzen Brief rechnen, dann
@@ -97,8 +151,12 @@ def vorlesen_mit_piper(text):
         abspielen = ["aplay", "-q", "-r", rate, "-f", "S16_LE", "-c", "1",
                      "-t", "raw", "-"]
 
+    stimme = piper_stimme(kennung)
+    if not stimme:
+        return False
     sprechen = subprocess.Popen(
-        [PIPER, "--model", PIPER_STIMME, "--output_raw"],
+        [PIPER, "--model", stimme, "--output_raw",
+         "--length_scale", "%.2f" % piper_laenge(tempo)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL, start_new_session=True)
     ton = subprocess.Popen(abspielen, stdin=sprechen.stdout,
@@ -119,7 +177,7 @@ def vorlesen_mit_piper(text):
     return True
 
 
-def vorlesen(text):
+def vorlesen(text, kennung="", tempo=0):
     """Liest den Text laut vor, über den Sprachdienst des Arbeitsplatzes.
 
     Im Browser gibt es dafür speechSynthesis. WebKitGTK bringt das nicht mit —
@@ -139,10 +197,14 @@ def vorlesen(text):
         return False
 
     if piper_da():
-        return vorlesen_mit_piper(text)
+        return vorlesen_mit_piper(text, kennung, tempo)
 
-    VORLESER["lauf"] = subprocess.Popen(
-        ["spd-say", "-l", "de", "-w", text], start_new_session=True)
+    befehl = ["spd-say", "-l", "de", "-w",
+              "-r", str(max(-100, min(100, int(tempo or 0))))]
+    if kennung:
+        befehl += ["-y", kennung]
+    befehl.append(text)
+    VORLESER["lauf"] = subprocess.Popen(befehl, start_new_session=True)
     return True
 
 
@@ -190,7 +252,7 @@ class Leise(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/kann-vorlesen":
             self._antworte({"ja": piper_da() or bool(shutil.which("spd-say")),
-                            "gut": piper_da()})
+                            "gut": piper_stimmen()})
             return
         if self.path == "/vorlesen-stopp":
             vorlesen_beenden()
@@ -205,10 +267,12 @@ class Leise(http.server.SimpleHTTPRequestHandler):
         laenge = int(self.headers.get("Content-Length") or 0)
         roh = self.rfile.read(laenge).decode("utf-8", "replace")
         try:
-            text = json.loads(roh).get("text", "")
+            wunsch = json.loads(roh)
         except ValueError:
-            text = ""
-        self._antworte({"ja": vorlesen(text)})
+            wunsch = {}
+        self._antworte({"ja": vorlesen(wunsch.get("text", ""),
+                                       wunsch.get("stimme", ""),
+                                       wunsch.get("tempo", 0))})
 
 
 def server_starten():

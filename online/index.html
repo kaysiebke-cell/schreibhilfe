@@ -252,6 +252,33 @@
       </div>
     </div>
 
+    <!-- Nur sichtbar, wenn dieses Gerät überhaupt sprechen kann. Am Handy
+         und im Browser bringt der Browser die Stimmen mit, im Linux-Fenster
+         der eigene Server. Kann keiner von beiden es, hat eine Wahl zwischen
+         nichts und nichts keinen Sinn. -->
+    <div class="gruppe" id="gruppe-vorlesen" hidden>
+      <span class="gruppe__titel">Vorlesen</span>
+      <div class="karte">
+        <label class="field">Stimme <em id="stimme-hinweis"></em>
+          <select id="lesestimme"></select>
+        </label>
+
+        <label class="field">Tempo
+          <em>Langsamer hilft beim Mithören oft mehr als eine andere Stimme.</em>
+          <div class="zeile">
+            <input id="lesetempo" type="range" min="-60" max="60" step="10" value="0">
+            <span class="hint" id="lesetempo-stand">normal</span>
+          </div>
+        </label>
+
+        <div class="zeile">
+          <button class="btn btn--klein" id="btn-stimme-probe" type="button">
+            <svg class="ic"><use href="#i-laut"></use></svg> Probe hören
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="gruppe">
       <span class="gruppe__titel">Beim Schreiben</span>
       <div class="karte">

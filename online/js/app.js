@@ -94,6 +94,12 @@ const el = {
   vorschlaege:   $('vorschlaege'),
   btnVorlesen:   $('btn-vorlesen'),
   wortVorlesen:  $('wort-vorlesen'),
+  gruppeVorlesen: $('gruppe-vorlesen'),
+  lesestimme:    $('lesestimme'),
+  stimmeHinweis: $('stimme-hinweis'),
+  lesetempo:     $('lesetempo'),
+  lesetempoStand: $('lesetempo-stand'),
+  btnStimmeProbe: $('btn-stimme-probe'),
 };
 
 /* ------------------------------------------------------------
@@ -121,6 +127,8 @@ let vorherigerZettel = null;
     deklariert, bräche die Datei ab. */
 let serverSpricht = false;
 let serverLaeuft = false;
+/** Die aufgenommenen Stimmen, die der eigene Server anbietet. */
+let serverStimmen = [];
 
 const Speicher = {
   lies(schluessel, ersatz) {
@@ -697,9 +705,12 @@ el.text.addEventListener('blur', () => {
   try {
     const antwort = await fetch('kann-vorlesen');
     if (!antwort.ok) return;
-    serverSpricht = !!(await antwort.json()).ja;
+    const daten = await antwort.json();
+    serverSpricht = !!daten.ja;
+    serverStimmen = daten.gut || [];
   } catch (e) { /* Im Browser gibt es diese Adresse nicht — dann eben nicht. */ }
   vorlesenZeigen();
+  stimmenZeigen();
 })();
 
 function kannVorlesen() {
@@ -733,7 +744,76 @@ function vorlesenZeigen() {
                       && el.btnVorlesen.hidden;
 }
 
+/* ------------------------------------------------------------
+   Die Wahl der Stimme
+
+   Sie hat bis hierher gefehlt, und man merkt es erst, wenn die Stimme nicht
+   gefällt: Dann gibt es nichts zu tun außer sie zu ertragen. Eine Stimme, der
+   man eine halbe Stunde zuhört, ist keine Kleinigkeit.
+   ------------------------------------------------------------ */
+
+/** Die Stimmen dieses Geräts — aufgenommene zuerst, dann die des Browsers. */
+function stimmenListe() {
+  if (serverStimmen.length) {
+    return serverStimmen.map((s) => ({ wert: s.kennung, name: s.name }));
+  }
+  if (!('speechSynthesis' in window)) return [];
+  return speechSynthesis.getVoices()
+    .filter((s) => s.lang && s.lang.indexOf('de') === 0)
+    .map((s) => ({ wert: s.voiceURI, name: s.name }));
+}
+
+function tempoWort(wert) {
+  const t = Number(wert) || 0;
+  if (t <= -40) return 'sehr langsam';
+  if (t < 0) return 'langsam';
+  if (t === 0) return 'normal';
+  if (t < 40) return 'schnell';
+  return 'sehr schnell';
+}
+
+function stimmenZeigen() {
+  const stimmen = stimmenListe();
+  /* Bei einer einzigen Stimme wäre eine Auswahl eine Wahl zwischen ihr und
+     ihr. Das Tempo lohnt trotzdem — deshalb bleibt die Gruppe stehen, nur die
+     Zeile mit der Stimme verschwindet. */
+  el.gruppeVorlesen.hidden = !kannVorlesen();
+  el.lesestimme.closest('.field').hidden = stimmen.length < 2;
+
+  const gemerkt = Speicher.lies('lesestimme', '');
+  el.lesestimme.innerHTML = '';
+  for (const s of stimmen) {
+    const o = document.createElement('option');
+    o.value = s.wert;
+    o.textContent = s.name;
+    if (s.wert === gemerkt) o.selected = true;
+    el.lesestimme.appendChild(o);
+  }
+
+  el.stimmeHinweis.textContent = serverStimmen.length
+    ? 'Aufgenommene Stimmen — sie klingen nicht nach Maschine.'
+    : 'Die Stimmen kommen von diesem Gerät.';
+
+  el.lesetempo.value = String(Speicher.lies('lesetempo', 0));
+  el.lesetempoStand.textContent = tempoWort(el.lesetempo.value);
+}
+
+el.lesestimme.addEventListener('change', () => {
+  Speicher.schreib('lesestimme', el.lesestimme.value);
+});
+el.lesetempo.addEventListener('input', () => {
+  Speicher.schreib('lesetempo', parseInt(el.lesetempo.value, 10) || 0);
+  el.lesetempoStand.textContent = tempoWort(el.lesetempo.value);
+});
+el.btnStimmeProbe.addEventListener('click', () => {
+  vorlesenText('Guten Tag. So klingt diese Stimme, wenn sie Ihnen Ihren Brief vorliest.');
+});
+
 function vorlesen() {
+  vorlesenText(el.text.value.trim());
+}
+
+function vorlesenText(was) {
   if (!kannVorlesen()) return;
 
   if (serverSpricht) {
@@ -743,34 +823,43 @@ function vorlesen() {
       vorlesenZeigen();
       return;
     }
-    const was = el.text.value.trim();
     if (!was) return;
     serverLaeuft = true;
     vorlesenZeigen();
-    /* Der Server antwortet erst, wenn er zu Ende gesprochen hat — spd-say
-       wartet mit „-w". Danach heißt der Knopf wieder „Vorlesen". */
+    /* Der Server antwortet erst, wenn er zu Ende gesprochen hat. Danach heißt
+       der Knopf wieder „Vorlesen". */
     fetch('vorlesen', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: was }),
+      body: JSON.stringify({
+        text: was,
+        stimme: Speicher.lies('lesestimme', ''),
+        tempo: Speicher.lies('lesetempo', 0),
+      }),
     }).catch(() => {}).finally(() => { serverLaeuft = false; vorlesenZeigen(); });
     return;
   }
 
   if (speechSynthesis.speaking) { speechSynthesis.cancel(); vorlesenZeigen(); return; }
+  if (!was) return;
 
-  const text = el.text.value.trim();
-  if (!text) return;
+  /* Das Tempo geht hier von −60 bis 60; „rate" von 0,1 bis 10, wobei 1 das
+     Gewohnte ist. Etwas unter 1 als Ausgangspunkt: Wer mithört, um Fehler zu
+     hören, braucht die Zeit. */
+  const tempo = Number(Speicher.lies('lesetempo', 0)) || 0;
+  const rate = Math.max(0.4, Math.min(2, 0.95 + tempo / 100));
+  const gewaehlt = Speicher.lies('lesestimme', '');
+  const stimme = speechSynthesis.getVoices().find((s) => s.voiceURI === gewaehlt)
+    || deutscheStimme();
 
   /* Satzweise statt am Stück: Manche Stimmen brechen lange Texte ab, und
      wer mithören will, braucht die Pausen ohnehin. */
-  const saetze = text.split(/(?<=[.!?:;])\s+|\n+/).filter((s) => s.trim());
+  const saetze = was.split(/(?<=[.!?:;])\s+|\n+/).filter((s) => s.trim());
   for (const satz of saetze) {
     const spruch = new SpeechSynthesisUtterance(satz);
-    const stimme = deutscheStimme();
     if (stimme) spruch.voice = stimme;
     spruch.lang = 'de-DE';
-    spruch.rate = 0.95;
+    spruch.rate = rate;
     speechSynthesis.speak(spruch);
   }
   /* Wenn die letzte Stimme fertig ist, heißt der Knopf wieder „Vorlesen". */
@@ -790,7 +879,10 @@ if ('speechSynthesis' in window) {
      Browser lädt sie nach und meldet sich dann. Ohne diese Zeile bliebe der
      Knopf für immer weg, weil beim Start noch keine Stimme da war. */
   speechSynthesis.getVoices();
-  speechSynthesis.addEventListener?.('voiceschanged', vorlesenZeigen);
+  speechSynthesis.addEventListener?.('voiceschanged', () => {
+    vorlesenZeigen();
+    stimmenZeigen();
+  });
   /* Beim Verlassen der Seite hört die Stimme sonst nicht auf. */
   addEventListener('pagehide', () => speechSynthesis.cancel());
 } else {
@@ -858,6 +950,7 @@ function zeigeEimerAls() {
      überhaupt gebraucht wird. Steht dort nichts als der Lautsprecher, ist
      das immer noch ein Grund für die Zeile. */
   if (typeof vorlesenZeigen === 'function') vorlesenZeigen();
+stimmenZeigen();
 }
 
 function holeZurueck() {

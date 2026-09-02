@@ -147,7 +147,22 @@ Das lädt [Piper](https://github.com/rhasspy/piper) und die deutsche Stimme
 „Thorsten" nach `~/.local/share/schreibhilfe/piper` — 90 MB, offline,
 kostenlos, ohne `sudo`, nichts im System und nichts im Repo. Das Linux-Fenster
 nimmt sie beim nächsten Start von selbst; ist sie nicht da, bleibt es bei
-espeak. Zum Entfernen genügt es, den Ordner zu löschen.
+espeak.
+
+Es gibt sieben deutsche Stimmen, männlich und weiblich:
+
+```bash
+./stimme-holen.sh --liste          # zeigen, was es gibt
+./stimme-holen.sh kerstin ramona   # weitere dazu
+./stimme-holen.sh --alle           # alle sieben (~450 MB)
+```
+
+Nach jedem Laden kommt eine Probe. Gewählt wird im Zahnrad unter
+**Vorlesen** — dort steht auch das Tempo. Zum Entfernen genügt es, die
+`.onnx`-Datei zu löschen.
+
+Am Handy braucht es nichts davon: Dort stehen die Stimmen des Geräts in
+derselben Liste.
 
 **„Teilen"** öffnet das System-Teilen-Menü von Android — darin stehen WhatsApp,
 SMS, E-Mail und alles andere. Eigene Knöpfe dafür hat die App nicht, das wäre
