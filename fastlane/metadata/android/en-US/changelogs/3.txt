@@ -1,0 +1,4 @@
+Suche nach dem Klang: "kwalität" findet Qualität, "fileicht" findet vielleicht.
+Wortvorhersage ab drei Buchstaben.
+Vorlesen mit Stimme und Tempo zur Wahl.
+Erste Fassung im F-Droid-Laden.

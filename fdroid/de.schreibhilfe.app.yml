@@ -1,0 +1,33 @@
+# Diese Datei gehört NICHT in dieses Verzeichnis, sondern in das von F-Droid:
+#   https://gitlab.com/fdroid/fdroiddata  →  metadata/de.schreibhilfe.app.yml
+#
+# Sie liegt hier mit, damit sie versioniert ist und bei der nächsten Fassung
+# nicht neu geschrieben werden muss. Wie sie dorthin kommt, steht in
+# fdroid/EINREICHEN.md.
+
+Categories:
+  - Writing
+  - Science & Education
+License: MIT
+AuthorName: Kay Siebke
+SourceCode: https://github.com/kaysiebke-cell/schreibhilfe
+IssueTracker: https://github.com/kaysiebke-cell/schreibhilfe/issues
+Changelog: https://github.com/kaysiebke-cell/schreibhilfe/releases
+
+AutoName: Schreibhilfe
+
+RepoType: git
+Repo: https://github.com/kaysiebke-cell/schreibhilfe.git
+
+Builds:
+  - versionName: 1.0.1
+    versionCode: 3
+    commit: v1.0.1
+    subdir: android/app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 1.0.1
+CurrentVersionCode: 3

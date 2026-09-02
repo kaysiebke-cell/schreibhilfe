@@ -96,10 +96,21 @@ android {
         applicationId "de.schreibhilfe.app"
         minSdk 24
         targetSdk 34
-        // Android verlangt für ein Update eine HÖHERE Zahl. In der CI zählt die
-        // Laufnummer hoch, lokal bleibt es bei 1.
-        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
-        versionName "1.0"
+        // Android verlangt für ein Update eine HÖHERE Zahl.
+        //
+        // Die Zahl steht hier fest im Quelltext, und das hat einen Grund:
+        // F-Droid baut die App selbst aus dem Repo, ohne Umgebungsvariablen.
+        // Stünde hier nur „env ?: 1", bekäme jede F-Droid-Fassung dieselbe 1
+        // und ließe sich nie aktualisieren. Wer eine neue Fassung dorthin
+        // gibt, setzt diese Zahl hoch und schreibt einen Eintrag unter
+        // fastlane/metadata/android/de-DE/changelogs/.
+        //
+        // Die CI überschreibt sie weiterhin (Laufnummer + 1000), damit die
+        // APK von GitHub immer über einer selbst gebauten Testfassung liegt.
+        // Beide Wege stören einander nicht: Sie tragen verschiedene
+        // Signaturen und lassen sich ohnehin nicht ineinander aktualisieren.
+        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "3")
+        versionName "1.0.1"
     }
 
     signingConfigs {

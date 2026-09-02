@@ -1,0 +1,13 @@
+A German writing aid for people with dyslexia.
+
+A spell checker finds words that do not exist. It does not find "das" where "dass" belongs — both are real German words. That is exactly where writing fails when it comes hard to you.
+
+This app deliberately looks only for the mistakes a spell checker <i>cannot</i> find: das/dass, seit/seid, wider/wieder, wrong verb agreement, missing commas, words typed together, sentence beginnings.
+
+It also helps while you write: word prediction after three letters, a search by sound (German "Kölner Phonetik", so "kwalität" finds "Qualität"), and reading the text aloud — the eye skips a mistake, the ear stumbles over it.
+
+<b>A gap is better than a false alarm.</b> Rules that would also flag correct sentences are left out on purpose.
+
+No account, no sign-up, no internet. What you write stays on the device. An optional AI for rewriting and translating can be enabled with your own key; without it everything else works unchanged.
+
+German only — the checking depends on the language.

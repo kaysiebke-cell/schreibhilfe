@@ -3,6 +3,9 @@
 Eine Schreibhilfe fürs Handy. Kein App Store, keine Anmeldung. Ohne den
 KI-Knopf verlässt kein Wort das Gerät.
 
+> **Im Browser ausprobieren, ohne alles:**
+> <https://kaysiebke-cell.github.io/schreibhilfe/>
+
 ## ⬇️ Aufs Handy — die App herunterladen
 
 **➡️ [schreibhilfe.apk herunterladen](https://github.com/kaysiebke-cell/schreibhilfe/releases/download/v1.0/schreibhilfe.apk)**
@@ -496,6 +499,18 @@ cd online && python3 -m http.server 8321
 
 Dann <http://localhost:8321> öffnen. Das `cd` muss sein — die Seite liegt in
 `online/`, vom Wurzelverzeichnis aus käme nur eine Ordnerliste.
+
+### F-Droid
+
+Die Beschreibungen und Bilder für den freien App-Laden liegen unter
+`fastlane/metadata/android/` — auf Deutsch und Englisch. Die Bau-Anleitung
+für F-Droid liegt in `fdroid/de.schreibhilfe.app.yml`, und wie sie dorthin
+kommt, steht in [fdroid/EINREICHEN.md](fdroid/EINREICHEN.md).
+
+Wichtig für jede neue Fassung: `versionCode` und `versionName` stehen fest in
+`android/app/build.gradle`, nicht nur in einer Umgebungsvariablen — F-Droid
+baut ohne die. Ein Eintrag unter `fastlane/.../changelogs/<versionCode>.txt`
+erscheint im Laden als „Was ist neu".
 
 ### Signaturschlüssel
 

@@ -1,0 +1,35 @@
+Ein Rechtschreibprüfer findet Wörter, die es nicht gibt. Er findet nicht "das" statt "dass" — beide Wörter gibt es ja.
+
+Genau daran scheitert man aber, wenn Schreiben schwerfällt.
+
+Die Schreibhilfe sucht deshalb ausdrücklich nur nach den Fehlern, die ein Rechtschreibprüfer nicht finden <i>kann</i>:
+
+* das / dass, seit / seid, wider / wieder
+* "wir hat" → "wir haben"
+* "größer wie" → "größer als"
+* fehlende Kommas vor weil, dass, wenn, aber
+* zusammengetippte Wörter, doppelte Wörter, Satzanfänge
+
+Dazu drei Hilfen beim Schreiben selbst:
+
+* <b>Wortvorhersage</b> ab drei Buchstaben. Wiedererkennen ist leichter als Erinnern.
+* <b>Suche nach dem Klang.</b> Wer "kwalität" schreibt, meint Qualität; wer "fileicht" schreibt, meint vielleicht. Ein Buchstabenabstand findet das nicht — der Klang schon.
+* <b>Vorlesen.</b> Über einen Fehler liest das Auge hinweg; das Ohr stolpert darüber.
+
+<b>Lieber eine Lücke als ein falscher Alarm.</b> Regeln, die auch richtige Sätze anmeckern würden, sind mit Absicht nicht drin. Wer ohnehin unsicher ist, den bringt ein falscher Alarm weiter vom Weg ab als eine übersehene Stelle.
+
+Jeder Fund wird einzeln angezeigt und erklärt. Nichts ändert sich von allein, und Rückgängig holt jede Änderung zurück.
+
+<b>Was die App nicht macht</b>
+
+Sie baut nicht nach, was das Handy schon kann. Diktieren, Teilen, Vorlesen von Ausgewähltem, Hell/Dunkel und die Schriftgröße kommen von Android — die App übernimmt sie.
+
+<b>Ohne Konto, ohne Anmeldung, ohne Internet.</b> Was geschrieben wird, bleibt auf dem Gerät. Es gibt keine Datensammlung, keine Statistik über deine Fehler und keine Werbung.
+
+Wer will, kann eine KI zum Korrigieren, Umformulieren oder Übersetzen dazuschalten. Das ist freiwillig, braucht einen eigenen Schlüssel und wird ausdrücklich angetippt. Ohne Schlüssel läuft alles Übrige unverändert weiter.
+
+<b>Eine Hilfe, kein Ersatz</b>
+
+Die App unterstützt beim Schreiben. Sie kann nicht garantieren, dass ein Text am Ende vollständig richtig ist. Gerade bei Legasthenie bleibt eine zweite Person wichtig, die gegenliest: Eigene Fehler werden beim späteren Lesen nicht immer erkannt, weil das Gehirn das Geschriebene teilweise so wahrnimmt, wie es gemeint war.
+
+Gebaut von jemandem, der sie selbst braucht.
