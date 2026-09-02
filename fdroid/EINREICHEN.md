@@ -1,65 +1,113 @@
-# Die App bei F-Droid einreichen
+# Die App in einen freien Laden bringen
 
-F-Droid ist der freie App-Laden für Android. Er nimmt keine fertige APK
-entgegen, sondern **baut selbst aus dem Quelltext** — deshalb steht in der
-Anleitung unten nur, wo der Quelltext liegt und wie er gebaut wird.
+Es gibt zwei Wege. **Der erste verlangt kein Konto mit Kreditkarte, der
+zweite schon** — deshalb steht er zuerst.
 
-Das ist der größte Hebel für Sichtbarkeit, den dieses Projekt hat: Dort
-suchen Menschen aktiv nach Werkzeugen, und es kostet nichts.
+---
 
-## Vorher prüfen
+## Weg 1: IzzyOnDroid (empfohlen)
 
-* [x] Lizenz ist MIT und liegt im Verzeichnis
-* [x] Keine unfreien Abhängigkeiten — nur `androidx.core`, `androidx.appcompat`,
-      `androidx.webkit`
-* [x] Der Bau läuft **ohne** Signaturschlüssel durch (dann Debug-Schlüssel)
-* [x] `versionCode` und `versionName` stehen fest im Quelltext, nicht nur in
-      einer Umgebungsvariablen — F-Droid baut ohne die
-* [x] Beschreibungen und Bilder liegen unter `fastlane/metadata/android/`
-* [x] Ein Git-Tag `v1.0.1` zeigt auf den Stand, der gebaut werden soll
-      — gesetzt am 2. September 2026, Stand `cb94d67`
+IzzyOnDroid ist der größte fremde F-Droid-Laden, rund 1300 Apps. Wer F-Droid
+auf dem Handy hat, kann diesen Laden mit zwei Klicks dazuschalten — viele
+tun das.
 
-Damit ist alles bereit. Für die nächste Fassung geht das so:
+**Der entscheidende Unterschied:** IzzyOnDroid baut nicht selbst, sondern
+nimmt **deine eigene, von dir signierte APK** aus den GitHub-Releases. Die
+Leute bekommen also genau die Datei, die du gebaut hast. Bei F-Droid wäre es
+eine andere, mit deren Signatur.
 
-```bash
-git tag -a v1.0.2 -m "was neu ist"
-git push origin v1.0.2
-```
+Der Antrag läuft über **Codeberg** — ein gemeinnütziger deutscher Verein.
+Dort braucht es nur Benutzernamen, E-Mail und Passwort. Keine Kreditkarte,
+keine Ausweisprüfung.
 
-## Einreichen
+### Die Bedingungen — alle geprüft am 2. September 2026
 
-1. Konto bei <https://gitlab.com> anlegen (nicht GitHub — F-Droid liegt auf
-   GitLab).
-2. <https://gitlab.com/fdroid/fdroiddata> aufrufen und **Fork** drücken.
-3. In deinem Fork die Datei `metadata/de.schreibhilfe.app.yml` anlegen und den
-   Inhalt aus `fdroid/de.schreibhilfe.app.yml` hineinkopieren — **ohne** die
-   Kommentarzeilen ganz oben.
-4. **Merge Request** auf `fdroid/fdroiddata` stellen. Titel: `New app:
-   Schreibhilfe`.
+| | |
+|---|---|
+| Freie Lizenz (OSI) | MIT |
+| Quelltext offen zugänglich | GitHub |
+| Keine Werbung, keine Verfolgung | nur `androidx.core`, `appcompat`, `webkit` |
+| `usesCleartextTraffic` | nicht gesetzt |
+| Für Endnutzer, keine Bibliothek | ja |
+| Eigener Paketname | `de.schreibhilfe.app` |
+| Kein Fork | ja |
+| Fastlane-Angaben mit Bildern | `fastlane/metadata/android/` |
+| Mit Release-Schlüssel signiert | `CN=Schreibhilfe, O=Kay Siebke` |
+| Nicht `debuggable`, nicht `testOnly` | geprüft, beides nicht gesetzt |
+| APK unter 30 MB | 3,5 MB |
+| APK liegt in den Releases | ja, ab `v1.0.1` |
 
-Danach baut die F-Droid-Maschine die App und meldet sich, wenn etwas fehlt.
-Es dauert meist einige Wochen und es kommen Rückfragen — das ist normal und
-kein schlechtes Zeichen.
+### So geht es
+
+1. Konto bei <https://codeberg.org> anlegen — Name, E-Mail, Passwort.
+2. <https://codeberg.org/IzzyOnDroid/repo/issues> aufrufen und **New Issue**
+   drücken.
+3. Ein Issue für diese eine App. Hineinschreiben:
+
+   * Was die App macht (zwei Sätze — der kurze Text aus
+     `fastlane/metadata/android/en-US/short_description.txt` reicht)
+   * Quelltext: <https://github.com/kaysiebke-cell/schreibhilfe>
+   * Releases: <https://github.com/kaysiebke-cell/schreibhilfe/releases>
+   * Lizenz: MIT
+   * Hinweis, dass die Fastlane-Angaben samt Bildern im Verzeichnis liegen
+
+Danach sieht sich jemand die App an. Es dauert meist Tage bis wenige Wochen.
+
+---
+
+## Weg 2: F-Droid selbst — nur wenn du das Konto willst
+
+F-Droid ist größer und hat den bekannteren Katalog. Aber:
+
+* Der Katalog liegt auf **gitlab.com**, und GitLab verlangt bei neuen Konten
+  inzwischen eine Prüfung per **Kreditkarte** oder Telefonnummer. Für das
+  Einreichen einer kostenlosen App ist das viel verlangt.
+* F-Droid **baut selbst** und signiert mit eigenem Schlüssel. Wer die App
+  vorher von GitHub installiert hat, kann nicht auf die F-Droid-Fassung
+  aktualisieren — die Signaturen passen nicht zueinander. Er müsste erst
+  deinstallieren, und dabei geht der gespeicherte Text verloren.
+
+Wenn du es trotzdem willst, liegt die fertige Bau-Anleitung in
+`fdroid/de.schreibhilfe.app.yml`:
+
+1. Konto bei <https://gitlab.com>
+2. <https://gitlab.com/fdroid/fdroiddata> forken
+3. Datei `metadata/de.schreibhilfe.app.yml` anlegen, Inhalt aus
+   `fdroid/de.schreibhilfe.app.yml` — **ohne** die Kommentarzeilen oben
+4. Merge Request, Titel `New app: Schreibhilfe`
+
+**Du musst das nicht selbst tun.** F-Droid nimmt Anträge auch von anderen an.
+Wenn das Projekt irgendwo auffällt, macht das oft jemand mit vorhandenem
+Konto.
+
+---
+
+## Weg 3: ganz ohne Laden
+
+**Obtainium** ist eine Android-App, die andere Apps direkt aus
+GitHub-Releases installiert und aktualisiert — kein Laden, kein Konto,
+nirgends. Wer sie hat, fügt die Adresse
+
+    https://github.com/kaysiebke-cell/schreibhilfe
+
+ein und bekommt ab dann jedes Update von selbst.
+
+Das funktioniert **heute schon**. Es fehlt nur die Auffindbarkeit: Man muss
+die Adresse kennen.
+
+---
 
 ## Bei jeder neuen Fassung
 
 1. `versionCode` und `versionName` in `android/app/build.gradle` hochsetzen
-2. Einen Eintrag unter `fastlane/metadata/android/de-DE/changelogs/<versionCode>.txt`
-   anlegen — F-Droid zeigt ihn im Laden als „Was ist neu"
-3. Tag setzen und pushen
+2. Eintrag unter `fastlane/metadata/android/de-DE/changelogs/<versionCode>.txt`
+   — das zeigen beide Läden als „Was ist neu"
+3. Tag setzen und pushen:
 
-`UpdateCheckMode: Tags` sorgt dafür, dass F-Droid neue Tags von selbst findet.
-Ein zweiter Merge Request ist dann nicht nötig.
+```bash
+git tag -a v1.0.2 -m "was neu ist" && git push origin v1.0.2
+```
 
-## Was im Laden steht
-
-| | |
-|---|---|
-| Titel | `fastlane/metadata/android/de-DE/title.txt` |
-| Ein Satz | `short_description.txt` |
-| Der lange Text | `full_description.txt` |
-| Bilder | `images/` — Symbol, Kopfbild, drei Bildschirmfotos |
-
-Alles auf Deutsch **und** Englisch. Die englische Fassung sagt ausdrücklich,
-dass die App nur Deutsch prüft — sonst laden sie Leute herunter, denen sie
-nicht helfen kann.
+GitHub baut dann von selbst und hängt die APK an ein Release. IzzyOnDroid
+holt sie sich von dort; bei F-Droid sorgt `UpdateCheckMode: Tags` dafür.
+Ein zweiter Antrag ist in beiden Fällen nie wieder nötig.

@@ -500,12 +500,20 @@ cd online && python3 -m http.server 8321
 Dann <http://localhost:8321> öffnen. Das `cd` muss sein — die Seite liegt in
 `online/`, vom Wurzelverzeichnis aus käme nur eine Ordnerliste.
 
-### F-Droid
+### In einen freien App-Laden
 
-Die Beschreibungen und Bilder für den freien App-Laden liegen unter
-`fastlane/metadata/android/` — auf Deutsch und Englisch. Die Bau-Anleitung
-für F-Droid liegt in `fdroid/de.schreibhilfe.app.yml`, und wie sie dorthin
-kommt, steht in [fdroid/EINREICHEN.md](fdroid/EINREICHEN.md).
+Die Beschreibungen und Bilder liegen unter `fastlane/metadata/android/` — auf
+Deutsch und Englisch, wie es beide Läden erwarten.
+
+Drei Wege, in [fdroid/EINREICHEN.md](fdroid/EINREICHEN.md) ausführlich:
+
+* **IzzyOnDroid** — nimmt die selbst signierte APK aus den Releases. Antrag
+  über Codeberg, dafür genügen Name, E-Mail und Passwort.
+* **F-Droid** — größerer Katalog, baut aber selbst mit eigener Signatur, und
+  der Antrag läuft über GitLab, das inzwischen eine Kreditkarte zur Prüfung
+  verlangt.
+* **Obtainium** — kein Laden, kein Konto: Die App holt Updates direkt aus den
+  GitHub-Releases. Funktioniert sofort.
 
 Wichtig für jede neue Fassung: `versionCode` und `versionName` stehen fest in
 `android/app/build.gradle`, nicht nur in einer Umgebungsvariablen — F-Droid
