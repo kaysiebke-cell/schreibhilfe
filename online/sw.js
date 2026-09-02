@@ -5,7 +5,7 @@
    und liefert die alte Fassung weiter aus — die neue Datei liegt auf dem Server
    und kommt trotzdem nie an. Beim Umbau auf das neue Layout ist genau das
    passiert: style.css, index.html und app.js waren neu, die Nummer nicht. */
-const LAGER = 'schreibhilfe-v50';
+const LAGER = 'schreibhilfe-v51';
 
 const DATEIEN = [
   './',
@@ -19,6 +19,7 @@ const DATEIEN = [
   './icon-512.png',
   './icon-maskable-512.png',
   './manifest.webmanifest',
+  './vorschau.png',
 ];
 
 /* daten/woerter.txt steht mit Absicht NICHT in der Liste: 4,7 MB beim
