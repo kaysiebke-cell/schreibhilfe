@@ -57,7 +57,66 @@ ZWISCHEN = os.path.expanduser("~/.cache/schreibhilfe")
 
 
 # Was gerade vorgelesen wird — damit ein zweiter Antipp es anhalten kann.
-VORLESER = {"lauf": None}
+VORLESER = {"lauf": None, "rechner": None}
+
+# Eine Stimme, die nicht nach Maschine klingt.
+#
+# speech-dispatcher spricht hier über espeak-ng, und das ist ein
+# Formantsynthesizer: Er rechnet Laute zusammen, statt sie aus Aufnahmen zu
+# setzen. Er KANN nicht menschlich klingen — das ist Bauart, nicht Einstellung.
+# Wer sich seinen Brief vorlesen lässt, um Fehler zu hören, hört sonst vor
+# allem espeak.
+#
+# Piper ist ein neuronaler Synthesizer, läuft offline auf der CPU und braucht
+# für viereinhalb Sekunden Ton eine Viertelsekunde. Er liegt außerhalb des
+# Projekts unter ~/.local/share/schreibhilfe/piper — 90 MB gehören nicht ins
+# Repo. Ist er da, spricht er; sonst bleibt es bei spd-say.
+PIPER_ORT = os.path.expanduser("~/.local/share/schreibhilfe/piper")
+PIPER = os.path.join(PIPER_ORT, "piper", "piper")
+PIPER_STIMME = os.path.join(PIPER_ORT, "de_DE-thorsten-medium.onnx")
+
+
+def piper_da():
+    """Ist die gute Stimme eingerichtet — und lässt sie sich abspielen?"""
+    return bool(os.path.isfile(PIPER) and os.access(PIPER, os.X_OK)
+                and os.path.isfile(PIPER_STIMME)
+                and (shutil.which("paplay") or shutil.which("aplay")))
+
+
+def vorlesen_mit_piper(text):
+    """Piper schreibt rohen Ton, das Abspielprogramm nimmt ihn direkt entgegen.
+
+    Über eine Zwischendatei zu gehen hieße: erst den ganzen Brief rechnen, dann
+    anfangen. So beginnt der Ton nach dem ersten Satz.
+    """
+    rate = "22050"      # steht so in de_DE-thorsten-medium.onnx.json
+    if shutil.which("paplay"):
+        abspielen = ["paplay", "--raw", "--rate=" + rate,
+                     "--format=s16le", "--channels=1"]
+    else:
+        abspielen = ["aplay", "-q", "-r", rate, "-f", "S16_LE", "-c", "1",
+                     "-t", "raw", "-"]
+
+    sprechen = subprocess.Popen(
+        [PIPER, "--model", PIPER_STIMME, "--output_raw"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL, start_new_session=True)
+    ton = subprocess.Popen(abspielen, stdin=sprechen.stdout,
+                           stderr=subprocess.DEVNULL, start_new_session=True)
+    # Sonst bekäme piper kein SIGPIPE, wenn das Abspielen abbricht.
+    sprechen.stdout.close()
+
+    def fuettern():
+        try:
+            sprechen.stdin.write(text.encode("utf-8"))
+            sprechen.stdin.close()
+        except (OSError, ValueError):
+            pass
+
+    threading.Thread(target=fuettern, daemon=True).start()
+    VORLESER["lauf"] = ton
+    VORLESER["rechner"] = sprechen
+    return True
 
 
 def vorlesen(text):
@@ -71,13 +130,16 @@ def vorlesen(text):
     """
     vorlesen_beenden()
 
-    if not shutil.which("spd-say"):
+    if not piper_da() and not shutil.which("spd-say"):
         return False
 
     # Nicht endlos: Der Dienst nimmt ohnehin nur begrenzt viel auf einmal.
     text = text.strip()[:20000]
     if not text:
         return False
+
+    if piper_da():
+        return vorlesen_mit_piper(text)
 
     VORLESER["lauf"] = subprocess.Popen(
         ["spd-say", "-l", "de", "-w", text], start_new_session=True)
@@ -86,13 +148,19 @@ def vorlesen(text):
 
 def vorlesen_beenden():
     """Hält das Vorlesen an — auch das, was noch in der Warteschlange steht."""
-    lauf = VORLESER["lauf"]
-    VORLESER["lauf"] = None
-    if lauf and lauf.poll() is None:
-        try:
-            lauf.terminate()
-        except OSError:
-            pass
+    # Bei Piper sind es zwei Prozesse: einer rechnet, einer spielt ab. Nur den
+    # zweiten anzuhalten hieße, dass der erste weiterrechnet.
+    for schluessel in ("lauf", "rechner"):
+        vorgang = VORLESER.get(schluessel)
+        VORLESER[schluessel] = None
+        if vorgang and vorgang.poll() is None:
+            try:
+                vorgang.terminate()
+                # Abholen, sonst bleibt ein Zombie stehen, bis zufällig das
+                # nächste Vorlesen ihn einsammelt.
+                vorgang.wait(timeout=2)
+            except (OSError, subprocess.SubprocessError):
+                pass
     if shutil.which("spd-say"):
         try:
             subprocess.run(["spd-say", "-C"], timeout=5)     # Warteschlange leeren
@@ -121,7 +189,8 @@ class Leise(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/kann-vorlesen":
-            self._antworte({"ja": bool(shutil.which("spd-say"))})
+            self._antworte({"ja": piper_da() or bool(shutil.which("spd-say")),
+                            "gut": piper_da()})
             return
         if self.path == "/vorlesen-stopp":
             vorlesen_beenden()

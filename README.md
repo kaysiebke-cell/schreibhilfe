@@ -133,6 +133,22 @@ Regel gibt. Am Handy und im Browser spricht der Browser selbst, im Linux-Fenster
 der Sprachdienst des Rechners. Kann niemand sprechen, steht der Knopf gar nicht
 erst da — ein toter Knopf ist schlimmer als keiner.
 
+Am Handy klingt das gut: Android bringt eine aufgenommene Stimme mit. **Am PC
+nicht** — dort spricht espeak-ng, ein Formantsynthesizer, der Laute
+zusammenrechnet, statt sie aus Aufnahmen zu setzen. Er *kann* nicht menschlich
+klingen; das ist Bauart, nicht Einstellung, und seine hundert „Stimmen" ändern
+nur die Klangfarbe. Ein Aufruf holt deshalb eine richtige:
+
+```bash
+./stimme-holen.sh
+```
+
+Das lädt [Piper](https://github.com/rhasspy/piper) und die deutsche Stimme
+„Thorsten" nach `~/.local/share/schreibhilfe/piper` — 90 MB, offline,
+kostenlos, ohne `sudo`, nichts im System und nichts im Repo. Das Linux-Fenster
+nimmt sie beim nächsten Start von selbst; ist sie nicht da, bleibt es bei
+espeak. Zum Entfernen genügt es, den Ordner zu löschen.
+
 **„Teilen"** öffnet das System-Teilen-Menü von Android — darin stehen WhatsApp,
 SMS, E-Mail und alles andere. Eigene Knöpfe dafür hat die App nicht, das wäre
 dieselbe Liste ein zweites Mal.
@@ -390,8 +406,11 @@ online/icon-maskable.svg      dasselbe Motiv mit Rand — Android schneidet rund
 online/icon-*.png             daraus erzeugt, für den Startbildschirm im Browser
 
 linux/schreibhilfe.py         Fenster + kleiner Server für den PC; liefert
-                              dieselben Dateien und das Vorlesen über spd-say
+                              dieselben Dateien und das Vorlesen — über Piper,
+                              sonst über spd-say
 linux/run-app.sh              startet es und schreibt den Menüeintrag
+stimme-holen.sh               holt Piper und die Stimme „Thorsten" (freiwillig,
+                              landet außerhalb des Repos unter ~/.local/share)
 android/                      Rahmen für die APK (WebView um dieselbe Web-App)
 .github/workflows/android.yml  baut auf jedem Zweig, veröffentlicht nur von main
 APK-HERUNTERLADEN.md          Anleitung fürs Handy + Signaturschlüssel
