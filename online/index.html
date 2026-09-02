@@ -45,6 +45,7 @@
   <symbol id="i-auto"     viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-mehr" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></symbol>
   <symbol id="i-close"    viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-laut"     viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/><path d="M15.5 9.5a4 4 0 0 1 0 5M18 7a7.5 7.5 0 0 1 0 10"/></symbol>
   <!-- Erdkugel: das übliche Zeichen für Sprache und Übersetzen. -->
   <symbol id="i-globus"   viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.3 3.4 5.3 3.4 8.5s-1.2 6.2-3.4 8.5c-2.2-2.3-3.4-5.3-3.4-8.5S9.8 5.8 12 3.5z"/></symbol>
 </svg>
@@ -78,6 +79,14 @@
     <div id="ergebnis" class="ergebnis" hidden tabindex="0"
          role="button" aria-label="Ergebnis — antippen zum Weiterschreiben"></div>
   </div>
+
+  <!-- Vorschläge zu dem Wort, an dem gerade geschrieben wird. Steht das Wort
+       nicht im Wörterbuch, stehen hier Verbesserungen; steht es dort und ist
+       noch nicht fertig, stehen hier Fortsetzungen. Am Handy gibt es keinen
+       Rechtsklick — deshalb eine Leiste statt eines Menüs, und sie erscheint
+       von selbst, statt darauf zu warten, dass jemand sie sucht. -->
+  <div id="vorschlaege" class="vorschlaege" hidden aria-live="polite"
+       aria-label="Wortvorschläge"></div>
 
   <!-- Die Funde entstehen erst nach dem Prüfen. Ohne „aria-live" bekommt eine
        Vorlesefunktion gar nicht mit, dass hier etwas erschienen ist. -->
@@ -117,6 +126,9 @@
   <div id="klein" class="leiste__klein" hidden>
     <button class="btn btn--text" id="btn-zurueck" hidden>
       <svg class="ic"><use href="#i-undo"></use></svg> Rückgängig
+    </button>
+    <button class="btn btn--text" id="btn-vorlesen" hidden>
+      <svg class="ic"><use href="#i-laut"></use></svg> <span id="wort-vorlesen">Vorlesen</span>
     </button>
     <button class="btn btn--text btn--gefahr" id="btn-leeren" hidden>
       <svg class="ic"><use href="#i-trash"></use></svg> Löschen

@@ -24,8 +24,11 @@ ausschließlich auf 127.0.0.1 — von außen ist nichts zu erreichen.
 
 import functools
 import http.server
+import json
 import os
+import shutil
 import socket
+import subprocess
 import sys
 import threading
 
@@ -53,11 +56,90 @@ DATEN = os.path.expanduser("~/.local/share/schreibhilfe")
 ZWISCHEN = os.path.expanduser("~/.cache/schreibhilfe")
 
 
+# Was gerade vorgelesen wird — damit ein zweiter Antipp es anhalten kann.
+VORLESER = {"lauf": None}
+
+
+def vorlesen(text):
+    """Liest den Text laut vor, über den Sprachdienst des Arbeitsplatzes.
+
+    Im Browser gibt es dafür speechSynthesis. WebKitGTK bringt das nicht mit —
+    in diesem Fenster gäbe es die Sprachausgabe also gar nicht, ausgerechnet
+    dort, wo ein längerer Brief geschrieben wird. Über einen Fehler liest das
+    Auge hinweg; das Ohr stolpert darüber. Deshalb hier derselbe Weg wie im
+    Schreibprogramm: spd-say.
+    """
+    vorlesen_beenden()
+
+    if not shutil.which("spd-say"):
+        return False
+
+    # Nicht endlos: Der Dienst nimmt ohnehin nur begrenzt viel auf einmal.
+    text = text.strip()[:20000]
+    if not text:
+        return False
+
+    VORLESER["lauf"] = subprocess.Popen(
+        ["spd-say", "-l", "de", "-w", text], start_new_session=True)
+    return True
+
+
+def vorlesen_beenden():
+    """Hält das Vorlesen an — auch das, was noch in der Warteschlange steht."""
+    lauf = VORLESER["lauf"]
+    VORLESER["lauf"] = None
+    if lauf and lauf.poll() is None:
+        try:
+            lauf.terminate()
+        except OSError:
+            pass
+    if shutil.which("spd-say"):
+        try:
+            subprocess.run(["spd-say", "-C"], timeout=5)     # Warteschlange leeren
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+
 class Leise(http.server.SimpleHTTPRequestHandler):
-    """Wie der eingebaute Server, nur ohne Zeile für jede Datei."""
+    """Wie der eingebaute Server, nur ohne Zeile für jede Datei.
+
+    Dazu die eine Auskunft, die eine Webseite nicht selbst geben kann: ob auf
+    diesem Rechner jemand sprechen kann, und wenn ja, das Sprechen selbst.
+    """
 
     def log_message(self, format, *args):                   # noqa: A002
         pass
+
+    def _antworte(self, inhalt):
+        roh = json.dumps(inhalt).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(roh)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(roh)
+
+    def do_GET(self):
+        if self.path == "/kann-vorlesen":
+            self._antworte({"ja": bool(shutil.which("spd-say"))})
+            return
+        if self.path == "/vorlesen-stopp":
+            vorlesen_beenden()
+            self._antworte({"ja": True})
+            return
+        super().do_GET()
+
+    def do_POST(self):
+        if self.path != "/vorlesen":
+            self.send_error(404)
+            return
+        laenge = int(self.headers.get("Content-Length") or 0)
+        roh = self.rfile.read(laenge).decode("utf-8", "replace")
+        try:
+            text = json.loads(roh).get("text", "")
+        except ValueError:
+            text = ""
+        self._antworte({"ja": vorlesen(text)})
 
 
 def server_starten():

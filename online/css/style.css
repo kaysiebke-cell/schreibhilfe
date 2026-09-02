@@ -677,3 +677,45 @@ body.seite-offen > .leiste{ display:none !important; }
 }
 :root[data-theme="dark"] .seite .form__actions{box-shadow:0 -8px 14px -8px rgba(0,0,0,.6)}
 .form__actions .btn--haupt{width:auto;min-height:3rem;padding:.75rem 1.5rem;font-size:.9375rem}
+
+/* ============================================================
+   Die Vorschlagsleiste unter dem Schreibfeld
+
+   Waagerecht und rollbar statt untereinander: Sie steht zwischen Feld und
+   Funden, und jede Zeile, die sie einnimmt, schiebt den Text nach oben aus
+   dem Blick. Eine Zeile bleibt eine Zeile, egal wie viele Wörter kommen.
+   ============================================================ */
+.vorschlaege{
+  display:flex;align-items:center;gap:var(--s2);
+  margin-top:var(--s2);padding:var(--s2) var(--s1);
+  overflow-x:auto;
+  /* Kein Rollbalken quer über die Leiste — auf dem Handy sieht man ihn
+     ohnehin nur beim Wischen. */
+  scrollbar-width:none;
+}
+.vorschlaege::-webkit-scrollbar{display:none}
+
+.vorschlaege__was{
+  flex:0 0 auto;
+  color:var(--ink-faint);font-size:.78rem;
+  padding-left:var(--s1);
+}
+
+.vorschlaege__wort{
+  flex:0 0 auto;
+  border:1px solid var(--line);border-radius:var(--r-klein);
+  background:var(--surface);color:var(--ink);
+  padding:.4rem .7rem;font:inherit;font-size:.95rem;
+  cursor:pointer;
+  /* Am Handy wird mit dem Daumen getroffen, nicht mit dem Zeiger. */
+  min-height:2.2rem;
+}
+.vorschlaege__wort:first-of-type{
+  border-color:var(--petrol);
+  background:var(--petrol-container);
+  font-weight:600;
+}
+.vorschlaege__wort:active{background:var(--surface-2)}
+@media (hover:hover){
+  .vorschlaege__wort:hover{border-color:var(--petrol)}
+}

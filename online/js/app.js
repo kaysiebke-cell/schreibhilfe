@@ -91,6 +91,9 @@ const el = {
   btnSchluesselZeigen:   $('btn-schluessel-zeigen'),
   btnSchluesselKopieren: $('btn-schluessel-kopieren'),
   wortZeigen:    $('wort-zeigen'),
+  vorschlaege:   $('vorschlaege'),
+  btnVorlesen:   $('btn-vorlesen'),
+  wortVorlesen:  $('wort-vorlesen'),
 };
 
 /* ------------------------------------------------------------
@@ -111,6 +114,13 @@ let zurueckImEimer = false;
     und der Rückholpfeil bringt ihn mit zurück. Sonst schriebe der Zettel zum
     weggeworfenen Brief beim nächsten weiter mit. */
 let vorherigerZettel = null;
+
+/** Ob der eigene Server sprechen kann, und ob er es gerade tut.
+    Aus demselben Grund hier oben wie die beiden darüber: zeigeEimerAls() läuft
+    schon beim Start mit und fragt über vorlesenZeigen() danach — weiter unten
+    deklariert, bräche die Datei ab. */
+let serverSpricht = false;
+let serverLaeuft = false;
 
 const Speicher = {
   lies(schluessel, ersatz) {
@@ -515,6 +525,281 @@ el.text.addEventListener('focus', markiereWort);
 el.text.addEventListener('blur', markiereWort);
 addEventListener('resize', markiereWort);
 
+/* ------------------------------------------------------------
+   Die Vorschlagsleiste unter dem Feld
+
+   Zwei Hilfen, eine Leiste. Steht das Wort unter dem Zeiger nicht im
+   Wörterbuch, stehen hier Verbesserungen; steht es dort, stehen hier
+   Fortsetzungen. Beides ist dasselbe Angebot — „nimm dieses Wort" —, und
+   zwei getrennte Kästen dafür wären am Handy einer zu viel.
+
+   Sie erscheint von selbst. Am Rechner gibt es die rechte Maustaste, am
+   Handy nichts Vergleichbares: Was man erst suchen muss, findet niemand,
+   der ohnehin mit dem Schreiben kämpft.
+
+   Angezeigt wird erst, wenn der Zeiger am Wortende steht. Mitten im Wort
+   wäre jeder Vorschlag ein Eingriff in etwas, das gerade entsteht.
+   ------------------------------------------------------------ */
+
+/* Das Suchen läuft durch 355.322 Wörter. Beim Tippen jedes Zeichens wäre das
+   am Handy zu spüren — also erst, wenn die Finger kurz stillhalten. */
+let vorschlagUhr = null;
+
+function vorschlagslage() {
+  if (document.activeElement !== el.text) return null;
+  if (el.text.selectionStart !== el.text.selectionEnd) return null;
+
+  const text = el.text.value;
+  const bis = el.text.selectionStart;
+  // Nur am Wortende. Steht der Zeiger mitten im Wort, wird nichts angeboten.
+  if (bis < text.length && WORT_ZEICHEN.test(text[bis])) return null;
+
+  let von = bis;
+  while (von > 0 && WORT_ZEICHEN.test(text[von - 1])) von--;
+  const wort = text.slice(von, bis);
+  if (wort.length < 3) return null;
+  return { von, bis, wort };
+}
+
+function vorschlaegeVerbergen() {
+  el.vorschlaege.hidden = true;
+  el.vorschlaege.innerHTML = '';
+}
+
+/* Die Schreibweise des Getippten übernehmen — wer „Fileicht" am Satzanfang
+   schreibt, will „Vielleicht", nicht „vielleicht".
+
+   Bringt der Vorschlag selbst schon einen großen Anfangsbuchstaben mit, bleibt
+   er stehen: Er kommt dann aus dem Gedächtnis oder aus den Regeln, wo
+   „Widerspruch" mit Absicht so steht. Die große Wortliste ist durchgehend
+   kleingeschrieben und weiß von Hauptwörtern nichts — dort bleibt es beim
+   Muster des Getippten. */
+/* Die große Wortliste ist durchgehend kleingeschrieben — sie weiß von
+   Hauptwörtern nichts. Für einen Teil davon braucht sie es auch nicht: Diese
+   Endungen sind im Deutschen ausnahmslos Hauptwörter. Das ist keine Schätzung,
+   sondern Wortbildung — es gibt kein Eigenschaftswort auf -ung, -keit oder
+   -schaft.
+
+   Die Mindestlänge muss sein: „jung" endet auf -ung und ist keines. Ab sieben
+   Buchstaben bleibt von den kurzen Ausreißern nichts übrig.
+
+   Das deckt Qualität, Berechnung, Zahlung, Bestätigung, Möglichkeit ab — nicht
+   Bescheid, Unterlagen, Widerspruch. Dafür bräuchte es eine Hauptwortliste,
+   die es hier nicht gibt. Bei denen bleibt es beim Muster des Getippten, und
+   das trifft meistens: Wer „Wid" schreibt, hat den großen Buchstaben schon. */
+const HAUPTWORT_ENDE =
+  /(ung|ungen|heit|heiten|keit|keiten|schaft|schaften|tion|tionen|tät|täten|nis|nisse|tum|ismus|ment|mente)$/;
+
+function istHauptwort(wort) {
+  return wort.length >= 7 && HAUPTWORT_ENDE.test(wort);
+}
+
+function mitSchreibweise(getippt, wort) {
+  if (/^[A-ZÄÖÜ]/.test(wort)) return wort;
+  if (/^[A-ZÄÖÜ]/.test(getippt) || istHauptwort(wort)) {
+    return wort[0].toUpperCase() + wort.slice(1);
+  }
+  return wort;
+}
+
+/** Ein Vorschlag wird genommen: das Wort im Feld ersetzen, Zeiger dahinter. */
+function vorschlagNehmen(lage, wort) {
+  const neu = mitSchreibweise(lage.wort, wort);
+
+  el.text.focus();
+  /* setRangeText statt value neu zu setzen: Nur so bleibt der Rückgängig-
+     Stapel des Browsers heil, und die Tastatur klappt nicht weg. */
+  el.text.setRangeText(neu, lage.von, lage.bis, 'end');
+  vorschlaegeVerbergen();
+  textGeaendert();
+  vergissZurueck();
+  zeigeDanach(false);
+}
+
+function vorschlaegeZeichnen() {
+  const lage = vorschlagslage();
+  if (!lage) { vorschlaegeVerbergen(); return; }
+
+  /* Was zuerst? Erst stand hier „steht es im Woerterbuch, dann fortsetzen,
+     sonst verbessern". Das war verkehrt herum: Ein Wort im Entstehen steht
+     fast nie im Woerterbuch — „wid" nicht, „unt" nicht —, und so kam auf
+     „wid" die Verbesserung „wird" statt der Fortsetzung „Widerspruch".
+
+     Richtig ist die andere Reihenfolge: Gibt es Woerter, die so anfangen,
+     ist das Getippte ein Anfang und wird fortgesetzt. Gibt es keine, ist es
+     zu Ende getippt und offenbar falsch — dann wird verbessert. */
+  const weiter = faengtAnMit(lage.wort, 5);
+  const unbekannt = !weiter.length;
+  const woerter = unbekannt ? vorschlaegeFuer(lage.wort, 5) : weiter;
+
+  if (!woerter.length) { vorschlaegeVerbergen(); return; }
+
+  el.vorschlaege.innerHTML = '';
+
+  const marke = document.createElement('span');
+  marke.className = 'vorschlaege__was';
+  marke.textContent = unbekannt ? 'Meintest du' : 'Weiter mit';
+  el.vorschlaege.appendChild(marke);
+
+  for (const wort of woerter) {
+    const knopf = document.createElement('button');
+    knopf.type = 'button';
+    knopf.className = 'vorschlaege__wort';
+    knopf.textContent = mitSchreibweise(lage.wort, wort);
+    /* Den Fokus im Feld lassen: Sonst springt die Tastatur zu, und beim
+       Zurückspringen steht der Zeiger nicht mehr, wo er stand. */
+    knopf.addEventListener('mousedown', (e) => e.preventDefault());
+    knopf.addEventListener('click', () => vorschlagNehmen(lage, wort));
+    el.vorschlaege.appendChild(knopf);
+  }
+
+  el.vorschlaege.hidden = false;
+}
+
+function vorschlaegeAuffrischen() {
+  clearTimeout(vorschlagUhr);
+  /* Sofort weg, sobald der Zeiger die Lage verlässt — ein stehengebliebener
+     Vorschlag zum vorigen Wort ist schlimmer als gar keiner. */
+  if (!vorschlagslage()) { vorschlaegeVerbergen(); return; }
+  vorschlagUhr = setTimeout(vorschlaegeZeichnen, 180);
+}
+
+document.addEventListener('selectionchange', vorschlaegeAuffrischen);
+el.text.addEventListener('input', vorschlaegeAuffrischen);
+el.text.addEventListener('blur', () => {
+  /* Ein Klick auf einen Vorschlag nimmt dem Feld kurz den Fokus. Deshalb
+     nicht sofort verbergen — sonst wäre der Knopf weg, ehe er wirkt. */
+  setTimeout(() => { if (document.activeElement !== el.text) vorschlaegeVerbergen(); }, 150);
+});
+
+/* ------------------------------------------------------------
+   Vorlesen
+
+   Über einen Fehler liest das Auge hinweg; das Ohr stolpert darüber. Das
+   ist keine zweite Prüfung, sondern die einzige, die Sätze findet, für die
+   es keine Regel gibt — schief gebaute, doppelt gesagte, zu lange.
+
+   Der Browser bringt die Stimmen selbst mit: am Handy die des Systems, am
+   Rechner die von speech-dispatcher. Nichts wird geladen, nichts geht ins
+   Netz — der Text bleibt auf dem Gerät.
+   ------------------------------------------------------------ */
+/* Als Funktion, nicht als Konstante: zeigeEimerAls() läuft schon beim Start
+   und fragt danach. Eine Konstante wäre zu diesem Zeitpunkt noch nicht
+   angelegt und risse die ganze Datei mit — dieselbe Falle, in die weiter
+   oben schon gruenStellen und vorherigerText gelaufen sind. */
+/* Zwei Wege zur Stimme. Im Browser und in der Android-App spricht
+   speechSynthesis; WebKitGTK — das Fenster am Linux-Rechner — kennt das gar
+   nicht. Dort fragt die App stattdessen ihren eigenen Server, der den
+   Sprachdienst des Arbeitsplatzes anwirft. Für den Menschen davor ist es
+   derselbe Knopf. */
+(async () => {
+  if ('speechSynthesis' in window) return;   // dann braucht es den Server nicht
+  try {
+    const antwort = await fetch('kann-vorlesen');
+    if (!antwort.ok) return;
+    serverSpricht = !!(await antwort.json()).ja;
+  } catch (e) { /* Im Browser gibt es diese Adresse nicht — dann eben nicht. */ }
+  vorlesenZeigen();
+})();
+
+function kannVorlesen() {
+  if (!('speechSynthesis' in window)
+      || typeof SpeechSynthesisUtterance !== 'function') return serverSpricht;
+  /* Die Schnittstelle allein genügt nicht. Manche Browser bringen sie mit,
+     ohne dass eine einzige Stimme dahintersteht — dann läge hier ein Knopf,
+     der beim Antippen nichts tut. Ein toter Knopf ist schlimmer als keiner,
+     besonders für jemanden, der ohnehin unsicher ist, ob er etwas falsch
+     gemacht hat. Also erst zeigen, wenn wirklich jemand sprechen kann. */
+  try { return speechSynthesis.getVoices().length > 0; }
+  catch (e) { return false; }
+}
+
+function deutscheStimme() {
+  if (!kannVorlesen()) return null;
+  const stimmen = speechSynthesis.getVoices();
+  return stimmen.find((s) => s.lang === 'de-DE')
+      || stimmen.find((s) => s.lang && s.lang.startsWith('de'))
+      || null;
+}
+
+function vorlesenZeigen() {
+  const laeuft = kannVorlesen()
+    && (serverSpricht ? serverLaeuft : speechSynthesis.speaking);
+  el.wortVorlesen.textContent = laeuft ? 'Anhalten' : 'Vorlesen';
+  el.btnVorlesen.querySelector('use')?.setAttribute(
+    'href', laeuft ? '#i-close' : '#i-laut');
+  el.btnVorlesen.hidden = !kannVorlesen() || (!el.text.value.trim() && !laeuft);
+  el.kleinReihe.hidden = el.btnLeeren.hidden && el.btnZurueck.hidden
+                      && el.btnVorlesen.hidden;
+}
+
+function vorlesen() {
+  if (!kannVorlesen()) return;
+
+  if (serverSpricht) {
+    if (serverLaeuft) {
+      serverLaeuft = false;
+      fetch('vorlesen-stopp').catch(() => {});
+      vorlesenZeigen();
+      return;
+    }
+    const was = el.text.value.trim();
+    if (!was) return;
+    serverLaeuft = true;
+    vorlesenZeigen();
+    /* Der Server antwortet erst, wenn er zu Ende gesprochen hat — spd-say
+       wartet mit „-w". Danach heißt der Knopf wieder „Vorlesen". */
+    fetch('vorlesen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: was }),
+    }).catch(() => {}).finally(() => { serverLaeuft = false; vorlesenZeigen(); });
+    return;
+  }
+
+  if (speechSynthesis.speaking) { speechSynthesis.cancel(); vorlesenZeigen(); return; }
+
+  const text = el.text.value.trim();
+  if (!text) return;
+
+  /* Satzweise statt am Stück: Manche Stimmen brechen lange Texte ab, und
+     wer mithören will, braucht die Pausen ohnehin. */
+  const saetze = text.split(/(?<=[.!?:;])\s+|\n+/).filter((s) => s.trim());
+  for (const satz of saetze) {
+    const spruch = new SpeechSynthesisUtterance(satz);
+    const stimme = deutscheStimme();
+    if (stimme) spruch.voice = stimme;
+    spruch.lang = 'de-DE';
+    spruch.rate = 0.95;
+    speechSynthesis.speak(spruch);
+  }
+  /* Wenn die letzte Stimme fertig ist, heißt der Knopf wieder „Vorlesen". */
+  const wacht = setInterval(() => {
+    if (!speechSynthesis.speaking) { clearInterval(wacht); vorlesenZeigen(); }
+  }, 400);
+  vorlesenZeigen();
+}
+
+/* Der Klick gilt für beide Wege — er stand vorher in der Bedingung darunter
+   und wurde damit ausgerechnet im Linux-Fenster nie vergeben, wo es
+   speechSynthesis nicht gibt. Der Knopf war dort sichtbar und tot. */
+el.btnVorlesen.addEventListener('click', vorlesen);
+
+if ('speechSynthesis' in window) {
+  /* Die Stimmen stehen beim ersten Aufruf fast nie schon bereit — der
+     Browser lädt sie nach und meldet sich dann. Ohne diese Zeile bliebe der
+     Knopf für immer weg, weil beim Start noch keine Stimme da war. */
+  speechSynthesis.getVoices();
+  speechSynthesis.addEventListener?.('voiceschanged', vorlesenZeigen);
+  /* Beim Verlassen der Seite hört die Stimme sonst nicht auf. */
+  addEventListener('pagehide', () => speechSynthesis.cancel());
+} else {
+  addEventListener('pagehide', () => {
+    if (serverLaeuft) fetch('vorlesen-stopp').catch(() => {});
+  });
+}
+vorlesenZeigen();
+
 /* Kein „Wirklich löschen?“-Fenster: In der Android-App gibt es kein
    window.confirm — es liefert wortlos false, und der Knopf täte dann gar
    nichts. Der Text ist auch so nicht weg, ein zweites Tippen holt ihn zurück.
@@ -569,6 +854,10 @@ function zeigeEimerAls() {
   el.btnLeeren.hidden = !el.text.value && !pfeil;
   // Zwei versteckte Knöpfe hinterlassen sonst eine leere Zeile samt Abstand.
   el.kleinReihe.hidden = el.btnLeeren.hidden && el.btnZurueck.hidden;
+  /* Vorlesen steht in derselben Zeile und entscheidet mit darüber, ob sie
+     überhaupt gebraucht wird. Steht dort nichts als der Lautsprecher, ist
+     das immer noch ein Grund für die Zeile. */
+  if (typeof vorlesenZeigen === 'function') vorlesenZeigen();
 }
 
 function holeZurueck() {
@@ -1215,6 +1504,295 @@ function nachbarWoerter(w) {
     for (const c of ABC) aus.add(w.slice(0, i) + c + w.slice(i));   // eingefügt
   }
   return aus;
+}
+
+/* ------------------------------------------------------------
+   Kölner Phonetik — was gleich klingt, ist gemeint
+
+   Wer Legasthenie hat, verschreibt sich selten um einen Buchstaben —
+   er schreibt, wie er hört. „kwalität", „fileicht", „ferzeihung".
+   Die Nachbarsuche oben findet das nicht: Von „kwalität" zu „Qualität"
+   sind es drei Änderungen, das ist zu weit.
+
+   Die Kölner Phonetik übersetzt ein Wort in seinen Klang. Klingen zwei
+   Wörter gleich, haben sie denselben Schlüssel — egal wie verschieden
+   sie geschrieben sind. Sie stammt von 1969 und ist fürs Deutsche
+   gemacht, anders als Soundex, das fürs Englische gebaut wurde.
+   ------------------------------------------------------------ */
+function koelnerPhonetik(wort) {
+  const w = String(wort).toUpperCase()
+    .replace(/Ä/g, 'A').replace(/Ö/g, 'O').replace(/Ü/g, 'U').replace(/ß/g, 'SS')
+    /* „Qu" spricht man „kw" — Qualität und kwalität klingen gleich, und genau
+       so verschreibt man sich. Die Kölner Phonetik sieht das nicht vor; ohne
+       diese Zeile bekämen die beiden verschiedene Schlüssel. */
+    .replace(/QU/g, 'KW')
+    /* Ebenso „Ph": Philosophie klingt wie Filosofie. */
+    .replace(/PH/g, 'F')
+    .replace(/[^A-Z]/g, '');
+  if (!w) return '';
+
+  const laute = [];
+  for (let i = 0; i < w.length; i++) {
+    const c = w[i];
+    const vor = w[i - 1];
+    const nach = w[i + 1];
+    let code = null;
+
+    if ('AEIOUYJ'.includes(c)) code = '0';
+    else if (c === 'B') code = '1';
+    else if (c === 'P') code = nach === 'H' ? '3' : '1';
+    else if ('DT'.includes(c)) code = 'CSZ'.includes(nach) ? '8' : '2';
+    else if ('FVW'.includes(c)) code = '3';
+    else if ('GKQ'.includes(c)) code = '4';
+    else if (c === 'C') {
+      /* „C" ist der schwierige Fall: In „Christian" klingt es wie K, in
+         „Cent" wie Z. Es hängt davon ab, was davor und danach steht. */
+      if (i === 0) code = 'AHKLOQRUX'.includes(nach) ? '4' : '8';
+      else if ('SZ'.includes(vor)) code = '8';
+      else code = 'AHKOQUX'.includes(nach) ? '4' : '8';
+    }
+    else if (c === 'X') code = 'CKQ'.includes(vor) ? '8' : '48';
+    else if (c === 'L') code = '5';
+    else if ('MN'.includes(c)) code = '6';
+    else if (c === 'R') code = '7';
+    else if ('SZ'.includes(c)) code = '8';
+    else if (c === 'H') code = null;                 // H trägt keinen eigenen Laut
+
+    if (code !== null) laute.push(code);
+  }
+
+  /* Doppelte zusammenziehen und die Nullen streichen — außer der ersten.
+     Vokale unterscheiden im Deutschen zu wenig, um sie mitzuzählen. */
+  let aus = '';
+  for (let i = 0; i < laute.length; i++) {
+    for (const z of laute[i]) {
+      if (z !== aus[aus.length - 1]) aus += z;
+    }
+  }
+  return aus[0] + aus.slice(1).replace(/0/g, '');
+}
+
+/* Der Klangschlüssel für jedes Wort im Wörterbuch — einmal gebaut, dann
+   nachgeschlagen. Ohne diese Tabelle müsste bei jeder Suche die ganze Liste
+   durchgerechnet werden; bei 355.322 Wörtern merkt man das auch am Handy.
+   Gebaut wird erst, wenn zum ersten Mal jemand einen Vorschlag braucht —
+   wer nur tippt und teilt, zahlt den Aufbau nie. */
+let KLANGTAFEL = null;
+
+function klangtafelBauen() {
+  if (KLANGTAFEL || !WOERTERBUCH_GROSS) return KLANGTAFEL;
+  KLANGTAFEL = new Map();
+  for (const wort of WOERTERBUCH_GROSS) {
+    /* Sehr kurze Wörter klingen zu oft gleich („er", „ehr", „eher") — die
+       brächten mehr Verwirrung als Hilfe. */
+    if (wort.length < 4) continue;
+    const klang = koelnerPhonetik(wort);
+    if (!klang) continue;
+    const gleiche = KLANGTAFEL.get(klang);
+    if (gleiche) gleiche.push(wort);
+    else KLANGTAFEL.set(klang, [wort]);
+  }
+  return KLANGTAFEL;
+}
+
+/** Wörter, die so klingen wie das eingetippte — die ähnlichsten zuerst. */
+function klingtWie(wort, hoechstens = 15) {
+  const tafel = klangtafelBauen();
+  if (!tafel) return [];
+  const w = String(wort).toLowerCase();
+  if (w.length < 4) return [];
+  const klang = koelnerPhonetik(w);
+  if (!klang) return [];
+
+  const gleiche = (tafel.get(klang) || []).filter((k) => k !== w);
+  if (gleiche.length <= 1) return gleiche;
+
+  /* Gleicher Klang heißt nicht gleich nah: „fileicht" klingt wie „vielleicht"
+     und wie „flaggt". Geordnet wird nach dem tatsächlichen Abstand der
+     Schreibweisen — nach dem gemeinsamen Wortanfang zu ordnen wäre falsch:
+     Gerade die häufigste deutsche Verwechslung, f statt v, hat gar keinen
+     gemeinsamen Anfang. Ein geläufiges Wort zählt, als läge es zwei
+     Buchstaben näher; sonst gewinnt jedes seltene, das zufällig kürzer ist. */
+  const gewicht = (k) => wortAbstandVoll(w, k) - (HAEUFIG.has(k) ? 2 : 0);
+
+  return gleiche
+    .slice()
+    .sort((a, b) => gewicht(a) - gewicht(b)
+                 || Math.abs(a.length - w.length) - Math.abs(b.length - w.length)
+                 || a.localeCompare(b, 'de'))
+    .slice(0, hoechstens);
+}
+
+/* ------------------------------------------------------------
+   Die Wörter, die im Deutschen ständig vorkommen.
+
+   Ohne sie gewinnt beim Vorschlagen der kürzere Abstand — und „fileicht"
+   wurde zu „flicht" statt zu „vielleicht". Beides klingt gleich, beides steht
+   im Wörterbuch; nur eines davon schreibt jemand wirklich.
+
+   Eine vollständige Häufigkeitsliste wäre eine eigene Datei. Diese hier deckt
+   ab, was in einem Brief vorkommt, und wiegt beim Sortieren so viel wie zwei
+   Buchstaben Abstand.
+   ------------------------------------------------------------ */
+const HAEUFIG = new Set(('der die das den dem des ein eine einen einem einer eines und oder aber '
+  + 'ich du er sie es wir ihr mich dich sich uns euch mir dir ihm ihnen mein dein sein unser '
+  + 'ist sind war waren bin bist wird werden wurde wurden haben hat hatte hatten habe '
+  + 'kann können konnte konnten muss müssen musste mussten will wollen wollte darf dürfen '
+  + 'soll sollen sollte möchte mag nicht kein keine keinen nichts noch schon nur auch sehr '
+  + 'mehr weniger viel viele vielen wenig alle alles jeder jede jedes man jemand niemand '
+  + 'für mit von zu zum zur bei nach aus über unter vor hinter neben zwischen ohne gegen um '
+  + 'auf an in im ins am seit bis durch wegen trotz während innerhalb außerhalb '
+  + 'wenn dann weil dass ob wie was wer wo wann warum wieder immer nie oft manchmal '
+  + 'heute gestern morgen jetzt bald später früher hier dort da dahin dorthin '
+  + 'vielleicht sicher bestimmt wirklich eigentlich natürlich leider hoffentlich '
+  + 'gut gute guten besser beste schlecht groß große klein kleine neu neue alt alte '
+  + 'lang lange kurz kurze hoch hohe tief richtig falsch wichtig einfach schwierig '
+  + 'jahr jahre monat monate woche wochen tag tage stunde minute zeit zeiten '
+  + 'mensch menschen frau frauen mann männer kind kinder familie vater mutter '
+  + 'haus häuser wohnung stadt land straße weg geld arbeit beruf schule '
+  + 'brief antrag bescheid amt behörde termin termine unterlagen frist widerspruch '
+  + 'anlage kopie original nachweis bestätigung mitteilung schreiben antwort '
+  + 'sehr geehrte geehrter damen herren freundlichen grüßen hochachtungsvoll '
+  + 'bitte danke gern gerne leid entschuldigung verzeihung '
+  + 'machen macht gemacht tun getan geben gibt gegeben nehmen nimmt genommen '
+  + 'sagen sagt gesagt sehen sieht gesehen kommen kommt gekommen gehen geht gegangen '
+  + 'stehen steht gestanden liegen liegt gelegen bleiben bleibt geblieben '
+  + 'finden findet gefunden bringen bringt gebracht halten hält gehalten '
+  + 'sprechen spricht gesprochen schreiben schreibt geschrieben lesen liest gelesen '
+  + 'verstehen versteht verstanden wissen weiß gewusst denken denkt gedacht '
+  + 'brauchen braucht gebraucht helfen hilft geholfen fragen fragt gefragt '
+  + 'arbeiten arbeitet gearbeitet warten wartet gewartet zahlen zahlt gezahlt '
+  + 'bekommen bekommt erhalten erhält beantragen beantragt prüfen prüft geprüft '
+  + 'stellen stellt gestellt setzen setzt gesetzt legen legt gelegt '
+  + 'stimmt stimmen berechnung zahlung betrag summe kosten rechnung '
+  + 'grund gründe fall fälle frage fragen sache sachen ding dinge teil teile '
+  + 'seite seiten stelle stellen art weise möglichkeit grundlage '
+  + 'wohl doch schon eben halt zwar also somit deshalb darum dafür dagegen '
+  + 'qualität quittung quartal').split(/\s+/).filter(Boolean));
+
+/* Wie viele Änderungen trennen zwei Wörter? Einfügen, Löschen, Ersetzen — das
+   gewohnte Maß. Die App hat weiter oben schon ein wortAbstand(), das bei 3
+   abbricht; hier wird der volle Wert gebraucht, um Vorschläge zu ordnen. */
+function wortAbstandVoll(a, b) {
+  if (a === b) return 0;
+  const m = a.length;
+  const n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+
+  const zeile = new Array(n + 1);
+  for (let j = 0; j <= n; j++) zeile[j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    let vorherige = zeile[0];
+    zeile[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const diagonal = vorherige;
+      vorherige = zeile[j];
+      zeile[j] = Math.min(
+        zeile[j] + 1,                                   // löschen
+        zeile[j - 1] + 1,                               // einfügen
+        diagonal + (a[i - 1] === b[j - 1] ? 0 : 1));    // ersetzen
+    }
+  }
+  return zeile[n];
+}
+
+/** Steht das Wort so im Wörterbuch? Ohne Liste wird nichts angemeckert. */
+function kennt(wort) {
+  if (!WOERTERBUCH_GROSS) return true;
+  return WOERTERBUCH_GROSS.has(String(wort).toLowerCase());
+}
+
+/* ------------------------------------------------------------
+   Mehrere Vorschläge zu einem Wort — für die Leiste unter dem Feld.
+
+   Die Prüfung nimmt sich nur den besten Treffer und meldet ihn als Fund.
+   Hier sollen mehrere stehen: Wer den Zeiger auf ein Wort setzt, will eine
+   Auswahl — und sei es „dazu nichts gefunden".
+
+   Absichtlich getrennt von tippfehlerVorschlag(): Die Prüfung bleibt so eng
+   wie sie war. Der Klang findet mehr, aber er findet auch mehr daneben; als
+   Angebot ist das richtig, als automatisch gemeldeter Fund wäre es falsch.
+   ------------------------------------------------------------ */
+function vorschlaegeFuer(wort, hoechstens = 6) {
+  if (!WOERTERBUCH_GROSS) return [];
+  const w = String(wort).toLowerCase();
+  if (w.length < 2 || w.length > 24 || WOERTERBUCH_GROSS.has(w)) return [];
+
+  const treffer = [];
+  for (const kandidat of nachbarWoerter(w)) {
+    if (WOERTERBUCH_GROSS.has(kandidat)) treffer.push(kandidat);
+  }
+  for (const kandidat of klingtWie(w)) {
+    if (!treffer.includes(kandidat)) treffer.push(kandidat);
+  }
+
+  /* Was die App über diesen Menschen gelernt hat, gehört nach ganz oben:
+     Wer „Halloch" schon einmal zu „Hallo" gemacht hat, will es wieder. */
+  const gelernt = Gelernt.wort(w);
+  if (gelernt && !treffer.includes(gelernt)) treffer.unshift(gelernt);
+
+  const istTeilfolge = (kurz, lang) => {
+    let i = 0;
+    for (const c of lang) if (i < kurz.length && kurz[i] === c) i++;
+    return i === kurz.length;
+  };
+  const klangGleich = new Set(klingtWie(w));
+  const rang = (k) => k === gelernt ? -1
+    : istTeilfolge(w, k) ? 0
+    : istTeilfolge(k, w) ? 1
+    : klangGleich.has(k) ? 1        // klingt gleich: so nah wie ein fehlender Buchstabe
+    : 2;
+  const gleicherAnfang = (k) => {
+    let i = 0;
+    while (i < k.length && i < w.length && k[i] === w[i]) i++;
+    return i;
+  };
+  const gewicht = (k) => wortAbstandVoll(w, k) - (HAEUFIG.has(k) ? 2 : 0);
+
+  treffer.sort((a, b) =>
+    rang(a) - rang(b) ||
+    gewicht(a) - gewicht(b) ||
+    gleicherAnfang(b) - gleicherAnfang(a) ||
+    a.length - b.length ||
+    a.localeCompare(b, 'de'));
+
+  return [...new Set(treffer)].slice(0, hoechstens);
+}
+
+/* ------------------------------------------------------------
+   Wortvorhersage
+
+   Nach drei Buchstaben stehen die Wörter zur Wahl, die so anfangen. Wer
+   unsicher schreibt, muss das Wort dann nicht mehr zu Ende raten — er erkennt
+   es wieder. Wiedererkennen ist leichter als Erinnern.
+
+   Die Reihenfolge entscheidet alles. „Das kürzeste zuerst" wäre naheliegend
+   und wäre falsch: Bei „wid" kämen Widder und widern, während „Widerspruch"
+   fehlte. Kurz heißt nicht häufig. Also zuerst, was dieser Mensch schon
+   einmal gewählt hat, dann was im Deutschen ohnehin ständig vorkommt.
+   ------------------------------------------------------------ */
+function faengtAnMit(anfang, hoechstens = 8) {
+  if (!WOERTERBUCH_GROSS) return [];
+  const a = String(anfang).toLowerCase();
+  if (a.length < 3 || a.length > 20) return [];
+
+  const treffer = [];
+  for (const wort of WOERTERBUCH_GROSS) {
+    if (wort.length > a.length && wort.startsWith(a)) treffer.push(wort);
+  }
+  if (!treffer.length) return [];
+
+  const schonGewaehlt = new Set(Object.values(Gelernt.lies().woerter || {}));
+
+  treffer.sort((x, y) =>
+    (schonGewaehlt.has(y) ? 1 : 0) - (schonGewaehlt.has(x) ? 1 : 0)
+    || (HAEUFIG.has(y) ? 1 : 0) - (HAEUFIG.has(x) ? 1 : 0)
+    || x.length - y.length
+    || x.localeCompare(y, 'de'));
+
+  return treffer.slice(0, hoechstens);
 }
 
 function tippfehlerVorschlag(wort) {
