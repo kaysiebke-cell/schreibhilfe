@@ -65,6 +65,9 @@ Die App baut **nicht** nach, was das Handy schon kann. Sie ergänzt nur, was feh
 | Doppelte Wörter, Abstände, Satzanfänge | ➜ **diese App** |
 | Zu lange Sätze, fehlender Punkt am Ende | ➜ **diese App** |
 | Zeigen, an welchem Wort man gerade schreibt | ➜ **diese App** |
+| „kwalität" → Qualität, „fileicht" → vielleicht | ➜ **diese App** |
+| Ein angefangenes Wort zu Ende schreiben | ➜ **diese App** |
+| Den eigenen Text im Feld anhören | ➜ **diese App** |
 | Ganzen Text auf einmal korrigieren lassen | ➜ **diese App** (KI-Knopf) |
 | In eine andere Sprache übersetzen | ➜ **diese App** (KI-Knopf) |
 | Sätze verständlicher formulieren | ➜ **diese App** (KI-Knopf) |
@@ -97,6 +100,38 @@ gerade bist — damit die Stelle nicht verlorengeht, wenn der Blick kurz
 abschweift. Abschalten geht im Zahnrad. Der Streifen liegt *hinter* dem Text,
 nicht darin: Die Tastatur unterringelt weiterhin, Markieren und Diktieren
 merken nichts davon.
+
+**Unter dem Feld steht eine Leiste mit Wörtern** — mal zum Fortsetzen, mal zum
+Verbessern. Welches von beidem, entscheidet sich von selbst: Gibt es Wörter,
+die so anfangen wie das Getippte, ist es ein Anfang und wird fortgesetzt
+(*„Weiter mit"*). Gibt es keine, ist es zu Ende getippt und offenbar falsch —
+dann stehen dort Verbesserungen (*„Meintest du"*). Gesucht wird in denselben
+355.321 Wörtern, die auch das Trennen zusammengetippter Wörter benutzt.
+
+Das steht in der Tabelle oben scheinbar gegen die Regel, nichts nachzubauen,
+was die Tastatur schon kann. Es sind aber zwei verschiedene Dinge:
+
+* Die Tastatur rät das **nächste** Wort aus dem, was üblich ist. Die Leiste
+  hier vervollständigt das Wort, das **gerade dasteht** — bei „wid" also
+  *Widerspruch*, nicht *wird*.
+* Und sie sucht nach dem **Klang**, nicht nach Buchstaben. Wer Legasthenie hat,
+  vertippt sich selten um einen Buchstaben — er schreibt, wie er hört. Von
+  „kwalität" zu „Qualität" sind es drei Änderungen; für jede Tippfehlersuche
+  ist das zu weit. Über den Klang ist es dasselbe Wort. Dahinter steckt die
+  Kölner Phonetik von 1969, fürs Deutsche gemacht.
+
+Die Leiste füttert **nur die Vorschläge, nicht die Prüfung**. Der Klang findet
+mehr, aber er findet auch mehr daneben. Als Angebot ist das richtig, als
+gemeldeter Fund wäre es falsch — „lieber eine Lücke als ein falscher Alarm"
+gilt für den Knopf *Prüfen* unverändert.
+
+**„Vorlesen"** liest den Text im Feld vor. Android kann Ausgewähltes vorlesen,
+aber nicht das, was gerade im Schreibfeld entsteht — und am PC gibt es das
+überhaupt nicht. Über einen Fehler liest das Auge hinweg; das Ohr stolpert
+darüber. Es ist die einzige Prüfung, die schiefe Sätze findet, für die es keine
+Regel gibt. Am Handy und im Browser spricht der Browser selbst, im Linux-Fenster
+der Sprachdienst des Rechners. Kann niemand sprechen, steht der Knopf gar nicht
+erst da — ein toter Knopf ist schlimmer als keiner.
 
 **„Teilen"** öffnet das System-Teilen-Menü von Android — darin stehen WhatsApp,
 SMS, E-Mail und alles andere. Eigene Knöpfe dafür hat die App nicht, das wäre
@@ -340,23 +375,36 @@ das ist richtig so: Ein Handy hat kein Ollama.
 ```
 online/index.html             Aufbau der Seite
 online/css/style.css          Gestaltung (Papier-Optik, hell und dunkel)
-online/js/app.js              Prüfen, KI, Teilen, Einstellungen
+online/js/app.js              Prüfen, Klangsuche, Wortvorhersage, Vorlesen,
+                              KI, Teilen, Einstellungen
+online/js/systempruefer.js    Brücke zur Rechtschreibprüfung von Android
 online/daten/regeln.js        der Wortschatz der Prüfung — dieselbe Datei
                               liest die LibreOffice-Erweiterung
-sw.js                         Offline-Betrieb im Browser (in der App abgeschaltet)
-manifest.webmanifest          Angaben für den Startbildschirm
-icon.svg                      App-Symbol (Quelle)
-icon-maskable.svg             dasselbe Motiv mit Rand — Android schneidet rund zu
-icon-*.png                    daraus erzeugt, für den Startbildschirm im Browser
+online/daten/woerter.txt      355.321 deutsche Wörter: trennt zusammen-
+                              getippte Wörter, trägt Klangsuche und
+                              Wortvorhersage
+online/sw.js                  Offline-Betrieb im Browser (in der App abgeschaltet)
+online/manifest.webmanifest   Angaben für den Startbildschirm
+online/icon.svg               App-Symbol (Quelle)
+online/icon-maskable.svg      dasselbe Motiv mit Rand — Android schneidet rund zu
+online/icon-*.png             daraus erzeugt, für den Startbildschirm im Browser
 
+linux/schreibhilfe.py         Fenster + kleiner Server für den PC; liefert
+                              dieselben Dateien und das Vorlesen über spd-say
+linux/run-app.sh              startet es und schreibt den Menüeintrag
 android/                      Rahmen für die APK (WebView um dieselbe Web-App)
 .github/workflows/android.yml  baut auf jedem Zweig, veröffentlicht nur von main
 APK-HERUNTERLADEN.md          Anleitung fürs Handy + Signaturschlüssel
 ```
 
-Die Dateien im Wurzelverzeichnis sind die **einzige Quelle**: dieselbe Web-App
-bedient GitHub Pages *und* steckt in der APK. Der Android-Build kopiert sie beim
-Bauen nach `assets/www`.
+`online/` ist die **einzige Quelle**: dieselbe Web-App bedient GitHub Pages,
+das Linux-Fenster *und* die APK. Der Android-Build kopiert sie beim Bauen nach
+`assets/www` — der Ordner steht deshalb in `.gitignore` und darf nicht von Hand
+gepflegt werden. Welche Dateien mitkommen, steht als Liste in
+`android/app/build.gradle` unter `copyWebApp`: **eine neue Datei außerhalb von
+`css/`, `js/` und `daten/` muss dort eingetragen werden, sonst fehlt sie in der
+APK.** Der Kopiervorgang hängt an jedem `merge…Assets`, läuft also von selbst
+mit; `./gradlew clean` löscht `assets/www` wieder.
 
 Geladen wird in der App über den `WebViewAssetLoader` unter
 `https://appassets.androidplatform.net` statt über `file://` — nur so gelten
@@ -399,10 +447,21 @@ Eine Installation aus der Zeit davor meldet ihn beim ersten Start selbst ab.
 ### Am PC ausprobieren
 
 ```bash
-python3 -m http.server 8321
+./linux/run-app.sh
 ```
 
-Dann <http://localhost:8321> öffnen.
+Das ist der Weg, der alles zeigt: eigenes Fenster, eigener Speicher, Ollama
+erreichbar — und das Vorlesen, das nur über diesen Server geht. WebKit bringt
+im Gegensatz zum Browser keine Stimme mit; ohne den Server bliebe der Knopf weg.
+
+Nur die Seite, ohne Fenster und ohne Vorlesen:
+
+```bash
+cd online && python3 -m http.server 8321
+```
+
+Dann <http://localhost:8321> öffnen. Das `cd` muss sein — die Seite liegt in
+`online/`, vom Wurzelverzeichnis aus käme nur eine Ordnerliste.
 
 ### Signaturschlüssel
 

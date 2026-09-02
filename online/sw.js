@@ -21,6 +21,16 @@ const DATEIEN = [
   './manifest.webmanifest',
 ];
 
+/* daten/woerter.txt steht mit Absicht NICHT in der Liste: 4,7 MB beim
+   Einrichten wären auf einem Handy mit knappem Netz das Falsche. Sie kommt
+   beim ersten Laden über den Umweg unten mit ins Lager — dort wird jede
+   erfolgreich geholte eigene Datei abgelegt.
+
+   Das war schon so, als nur das Trennen zusammengetippter Wörter daran hing.
+   Inzwischen hängen drei Hilfen daran: Trennen, Klangsuche und Wortvorhersage.
+   Wer die App also zum allerersten Mal ohne Netz öffnet, bekommt die Prüfung,
+   aber noch keine Vorschlagsleiste. Ab dem zweiten Mal ist alles da. */
+
 /* Beim Einrichten wird das neue Lager gefüllt — und zwar AUS DEM NETZ.
 
    Ohne „cache: 'reload'“ darf der Browser die Dateien aus seinem eigenen alten
