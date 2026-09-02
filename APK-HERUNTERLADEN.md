@@ -2,7 +2,7 @@
 
 ## ⬇️ Direkt herunterladen (immer die neueste Fassung)
 
-**➡️ [schreibhilfe.apk herunterladen](https://github.com/kaysiebke-cell/schreibhilfe/releases/download/v1.0/schreibhilfe.apk)**
+**➡️ [schreibhilfe.apk herunterladen](https://github.com/kaysiebke-cell/schreibhilfe/releases/latest/download/schreibhilfe.apk)**
 
 Diese Datei wird bei **jeder Änderung automatisch aktualisiert** — der Link bleibt
 aber immer derselbe. Am besten im Handy-Browser als **Lesezeichen** speichern.
