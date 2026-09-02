@@ -16,14 +16,14 @@ suchen Menschen aktiv nach Werkzeugen, und es kostet nichts.
 * [x] `versionCode` und `versionName` stehen fest im Quelltext, nicht nur in
       einer Umgebungsvariablen — F-Droid baut ohne die
 * [x] Beschreibungen und Bilder liegen unter `fastlane/metadata/android/`
-* [ ] **Ein Git-Tag `v1.0.1` zeigt auf den Stand, der gebaut werden soll**
+* [x] Ein Git-Tag `v1.0.1` zeigt auf den Stand, der gebaut werden soll
+      — gesetzt am 2. September 2026, Stand `cb94d67`
 
-Das letzte Häkchen setzt du:
+Damit ist alles bereit. Für die nächste Fassung geht das so:
 
 ```bash
-cd "/home/kaysiebke/Dropbox/Desktop/Projeckt Ordner/schreibhilfe"
-git tag -a v1.0.1 -m "Klangsuche, Wortvorhersage, Vorlesen"
-git push origin v1.0.1
+git tag -a v1.0.2 -m "was neu ist"
+git push origin v1.0.2
 ```
 
 ## Einreichen
