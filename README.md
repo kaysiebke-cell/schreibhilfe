@@ -6,9 +6,22 @@ KI-Knopf verlässt kein Wort das Gerät.
 > **Im Browser ausprobieren, ohne alles:**
 > <https://kaysiebke-cell.github.io/schreibhilfe/>
 
+<table>
+<tr>
+<td width="33%"><img src="fastlane/metadata/android/de-DE/images/phoneScreenshots/1-pruefen.png" alt="Ein Widerspruchsbrief, darunter zwei Fundkarten: glaube das wird zu glaube, dass; Wir hat zu Wir haben."></td>
+<td width="33%"><img src="fastlane/metadata/android/de-DE/images/phoneScreenshots/2-vorschlag.png" alt="Beim Tippen von wid stehen unter dem Feld die Woerter widerspruch, wider, widme zur Wahl."></td>
+<td width="33%"><img src="fastlane/metadata/android/de-DE/images/phoneScreenshots/3-klang.png" alt="kwalitaet getippt, darunter steht als erster Vorschlag Qualitaet."></td>
+</tr>
+<tr>
+<td><b>Pr&uuml;fen.</b> Jeder Fund als eigene Karte, mit Erkl&auml;rung. Nichts &auml;ndert sich von allein.</td>
+<td><b>Weiter mit.</b> Ab drei Buchstaben stehen passende W&ouml;rter da. Wiedererkennen ist leichter als Erinnern.</td>
+<td><b>Meintest du.</b> Gesucht wird nach dem Klang: &bdquo;kwalit&auml;t&ldquo; findet Qualit&auml;t.</td>
+</tr>
+</table>
+
 ## ⬇️ Aufs Handy — die App herunterladen
 
-**➡️ [schreibhilfe.apk herunterladen](https://github.com/kaysiebke-cell/schreibhilfe/releases/download/v1.0/schreibhilfe.apk)**
+**➡️ [schreibhilfe.apk herunterladen](https://github.com/kaysiebke-cell/schreibhilfe/releases/latest/download/schreibhilfe.apk)**
 
 Den Link **im Handy-Browser** öffnen → Datei antippen → *„Aus dieser Quelle
 installieren"* erlauben → **Installieren**. Fertig.
