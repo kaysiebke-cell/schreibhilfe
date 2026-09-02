@@ -130,6 +130,17 @@ let serverLaeuft = false;
 /** Die aufgenommenen Stimmen, die der eigene Server anbietet. */
 let serverStimmen = [];
 
+/** Der dritte Weg zur Stimme: die App am Handy.
+
+    Eine Android-WebView kennt speechSynthesis, hat aber keine einzige Stimme
+    dahinter — getVoices() bleibt dort für immer leer. kannVorlesen() sagt
+    darum nein, und das ganze Vorlesen blendet sich aus. In der App sah es
+    deshalb aus, als fehlte die Neuerung, während sie in der APK längst
+    drinlag. Android selbst kann sprechen; Vorleser.kt reicht es herüber. */
+const Stimmbruecke = typeof window.AndroidStimme !== 'undefined' ? window.AndroidStimme : null;
+let brueckeStimmen = [];
+let brueckeLaeuft = false;
+
 const Speicher = {
   lies(schluessel, ersatz) {
     try {
@@ -714,6 +725,9 @@ el.text.addEventListener('blur', () => {
 })();
 
 function kannVorlesen() {
+  /* Die Brücke zuerst: Wo sie steht, ist sie der einzige Weg, der wirklich
+     spricht — speechSynthesis läge daneben und meldete null Stimmen. */
+  if (Stimmbruecke) return brueckeStimmen.length > 0;
   if (!('speechSynthesis' in window)
       || typeof SpeechSynthesisUtterance !== 'function') return serverSpricht;
   /* Die Schnittstelle allein genügt nicht. Manche Browser bringen sie mit,
@@ -726,6 +740,8 @@ function kannVorlesen() {
 }
 
 function deutscheStimme() {
+  /* Nur für den Browser-Weg. Über die Brücke wählt Android die Stimme selbst. */
+  if (Stimmbruecke) return null;
   if (!kannVorlesen()) return null;
   const stimmen = speechSynthesis.getVoices();
   return stimmen.find((s) => s.lang === 'de-DE')
@@ -733,9 +749,15 @@ function deutscheStimme() {
       || null;
 }
 
+/** Spricht gerade jemand? Drei Wege, eine Antwort. */
+function spricht() {
+  if (Stimmbruecke) return brueckeLaeuft;
+  if (serverSpricht) return serverLaeuft;
+  return 'speechSynthesis' in window && speechSynthesis.speaking;
+}
+
 function vorlesenZeigen() {
-  const laeuft = kannVorlesen()
-    && (serverSpricht ? serverLaeuft : speechSynthesis.speaking);
+  const laeuft = kannVorlesen() && spricht();
   el.wortVorlesen.textContent = laeuft ? 'Anhalten' : 'Vorlesen';
   el.btnVorlesen.querySelector('use')?.setAttribute(
     'href', laeuft ? '#i-close' : '#i-laut');
@@ -754,6 +776,9 @@ function vorlesenZeigen() {
 
 /** Die Stimmen dieses Geräts — aufgenommene zuerst, dann die des Browsers. */
 function stimmenListe() {
+  /* Drüben heißt der technische Name „kennung" — hier wie bei den
+     Server-Stimmen „wert", damit stimmenZeigen() nur eine Form kennt. */
+  if (Stimmbruecke) return brueckeStimmen.map((s) => ({ wert: s.kennung, name: s.name }));
   if (serverStimmen.length) {
     return serverStimmen.map((s) => ({ wert: s.kennung, name: s.name }));
   }
@@ -816,6 +841,21 @@ function vorlesen() {
 function vorlesenText(was) {
   if (!kannVorlesen()) return;
 
+  if (Stimmbruecke) {
+    if (brueckeLaeuft) { Stimmbruecke.anhalten(); return; }
+    if (!was) return;
+    brueckeLaeuft = true;
+    vorlesenZeigen();
+    /* Satzweise zerlegt drüben Vorleser.kt, und von dort kommt auch die
+       Meldung, wenn der letzte Satz gesprochen ist. */
+    Stimmbruecke.sprich(
+      was,
+      Speicher.lies('lesestimme', ''),
+      Number(Speicher.lies('lesetempo', 0)) || 0,
+    );
+    return;
+  }
+
   if (serverSpricht) {
     if (serverLaeuft) {
       serverLaeuft = false;
@@ -873,6 +913,24 @@ function vorlesenText(was) {
    und wurde damit ausgerechnet im Linux-Fenster nie vergeben, wo es
    speechSynthesis nicht gibt. Der Knopf war dort sichtbar und tot. */
 el.btnVorlesen.addEventListener('click', vorlesen);
+
+if (Stimmbruecke) {
+  /* Die Stimmen stehen beim Start noch nicht bereit: Android richtet
+     TextToSpeech erst ein und meldet sich danach. Dasselbe Muster wie
+     „voiceschanged" im Browser — ohne diesen zweiten Blick bliebe die
+     Gruppe für immer aus, weil beim ersten Fragen noch keine Stimme da war. */
+  const stimmenHolen = () => {
+    try { brueckeStimmen = JSON.parse(Stimmbruecke.stimmen() || '[]'); }
+    catch (e) { brueckeStimmen = []; }
+    vorlesenZeigen();
+    stimmenZeigen();
+  };
+  stimmenHolen();
+  addEventListener('stimmen-da', stimmenHolen);
+  /* Kommt, wenn der letzte Satz gesprochen ist oder jemand angehalten hat. */
+  addEventListener('vorlesen-fertig', () => { brueckeLaeuft = false; vorlesenZeigen(); });
+  addEventListener('pagehide', () => Stimmbruecke.anhalten());
+}
 
 if ('speechSynthesis' in window) {
   /* Die Stimmen stehen beim ersten Aufruf fast nie schon bereit — der

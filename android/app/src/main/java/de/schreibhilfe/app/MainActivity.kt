@@ -38,6 +38,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var assetLoader: WebViewAssetLoader
 
+    /* Die Stimme des Handys. Sie gehoert der Activity und nicht der WebView,
+       weil sie beim Schliessen wieder abgeraeumt werden muss - sonst spricht
+       sie weiter, wenn die App schon weg ist. */
+    private lateinit var vorleser: Vorleser
+
     /** Text, der beim Start von außen hereingereicht wurde (Teilen / Verarbeiten). */
     private var uebergebenerText: String? = null
     private var seiteFertig = false
@@ -99,6 +104,13 @@ class MainActivity : AppCompatActivity() {
         if (seiteFertig) reicheTextHinein(text)
     }
 
+    /* Wird die App geschlossen, hoert die Stimme auf. Ohne das spricht sie den
+       Satz zu Ende, obwohl der Bildschirm laengst schwarz ist. */
+    override fun onDestroy() {
+        if (::vorleser.isInitialized) vorleser.beenden()
+        super.onDestroy()
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private fun richteWebViewEin() {
         /* Erlaubt, die Seite in der App vom PC aus zu untersuchen. Damit lässt
@@ -119,6 +131,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.addJavascriptInterface(AndroidBruecke(), "AndroidBridge")
+
+        /* Vorlesen. Eine WebView bringt speechSynthesis mit, aber keine Stimme
+           dahinter: getVoices() bleibt leer, und die Web-App blendet das
+           Vorlesen deshalb aus. Ueber diese Bruecke spricht stattdessen
+           Android selbst. */
+        vorleser = Vorleser(this, webView)
+        webView.addJavascriptInterface(vorleser, "AndroidStimme")
 
         // Androids eigene Rechtschreibprüfung. Hängt noch nicht in der Bedienung —
         // sie ist da, um sie gegen den eigenen Wörterbuch-Teil zu messen.
