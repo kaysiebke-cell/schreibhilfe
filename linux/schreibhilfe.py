@@ -31,12 +31,14 @@ import socket
 import subprocess
 import sys
 import threading
+import time
 
 import gi
 
+gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 gi.require_version("WebKit2", "4.1")
-from gi.repository import GLib, Gtk, WebKit2                # noqa: E402
+from gi.repository import Gdk, GLib, Gtk, WebKit2                # noqa: E402
 
 # Ohne diese Zeile heißt das Fenster für den Arbeitsplatz „schreibhilfe.py“.
 # Dann findet der Menüeintrag sein eigenes Fenster nicht wieder, und in der
@@ -230,6 +232,72 @@ def vorlesen_beenden():
             pass
 
 
+# ---------------------------------------------------------------------------
+# Text in ein anderes Fenster setzen
+#
+# Der Knopf „Einfügen“ legt den Text in die Zwischenablage, holt das Fenster
+# nach vorn, in dem man zuletzt gearbeitet hat, und drückt dort Strg+V. Kein
+# Enter: Abschicken bleibt Sache des Menschen. Das Fenster bleibt danach aktiv.
+# Das geht nur unter X11 (xdotool + xclip); Wayland erlaubt es fremden
+# Programmen nicht, Tasten an andere Fenster zu schicken.
+# ---------------------------------------------------------------------------
+_ZIEL = {"id": None}
+_TERMINALE = ("terminal", "konsole", "xterm", "alacritty", "kitty", "tilix",
+              "terminator", "urxvt", "wezterm", "foot", "xfce4-terminal")
+
+
+def einfuegen_geht():
+    return (os.environ.get("XDG_SESSION_TYPE", "x11") != "wayland"
+            and bool(shutil.which("xdotool")) and bool(shutil.which("xclip")))
+
+
+def _xdo(*argumente):
+    try:
+        antwort = subprocess.run(["xdotool", *argumente], capture_output=True,
+                                 text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return antwort.stdout.strip() if antwort.returncode == 0 else None
+
+
+def _ist_unser(fenster):
+    return (_xdo("getwindowpid", fenster) == str(os.getpid())
+            or _xdo("getwindowname", fenster) == "Schreibhilfe")
+
+
+def ziel_beobachten():
+    """Merkt sich, welches fremde Fenster zuletzt aktiv war.
+
+    Sobald man in der Schreibhilfe auf den Knopf drückt, ist sie selbst das
+    aktive Fenster — das vorige muss man also schon vorher kennen.
+    """
+    while True:
+        aktiv = _xdo("getactivewindow")
+        if aktiv and aktiv != _ZIEL["id"] and not _ist_unser(aktiv):
+            _ZIEL["id"] = aktiv
+        time.sleep(0.4)
+
+
+def in_fenster_einfuegen(text):
+    """True, wenn der Text im vorigen Fenster angekommen ist."""
+    ziel = _ZIEL["id"]
+    if not text or not ziel or not einfuegen_geht():
+        return False
+    try:
+        subprocess.run(["xclip", "-selection", "clipboard"],
+                       input=text.encode("utf-8"), timeout=5, check=True)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    if _xdo("windowactivate", "--sync", ziel) is None:
+        _ZIEL["id"] = None                                  # Fenster gibt es nicht mehr
+        return False
+    klasse = (_xdo("getwindowclassname", ziel) or "").lower()
+    taste = "ctrl+shift+v" if any(t in klasse for t in _TERMINALE) else "ctrl+v"
+    time.sleep(0.15)                                        # das Fenster braucht einen Moment
+    return _xdo("key", "--clearmodifiers", taste) is not None
+
+
+
 class Leise(http.server.SimpleHTTPRequestHandler):
     """Wie der eingebaute Server, nur ohne Zeile für jede Datei.
 
@@ -254,6 +322,9 @@ class Leise(http.server.SimpleHTTPRequestHandler):
             self._antworte({"ja": piper_da() or bool(shutil.which("spd-say")),
                             "gut": piper_stimmen()})
             return
+        if self.path == "/kann-einfuegen":
+            self._antworte({"ja": einfuegen_geht()})
+            return
         if self.path == "/vorlesen-stopp":
             vorlesen_beenden()
             self._antworte({"ja": True})
@@ -261,7 +332,7 @@ class Leise(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
-        if self.path != "/vorlesen":
+        if self.path not in ("/vorlesen", "/einfuegen"):
             self.send_error(404)
             return
         laenge = int(self.headers.get("Content-Length") or 0)
@@ -270,6 +341,9 @@ class Leise(http.server.SimpleHTTPRequestHandler):
             wunsch = json.loads(roh)
         except ValueError:
             wunsch = {}
+        if self.path == "/einfuegen":
+            self._antworte({"ja": in_fenster_einfuegen(wunsch.get("text", ""))})
+            return
         self._antworte({"ja": vorlesen(wunsch.get("text", ""),
                                        wunsch.get("stimme", ""),
                                        wunsch.get("tempo", 0))})
@@ -287,10 +361,70 @@ def server_starten():
         if probe.connect_ex(("127.0.0.1", PORT)) == 0:
             return PORT                                     # liefert schon wer
 
+    if einfuegen_geht():
+        threading.Thread(target=ziel_beobachten, daemon=True).start()
+
     aufgabe = functools.partial(Leise, directory=WEB)
     server = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), aufgabe)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return PORT
+
+
+def fenster_lage_laden(fenster, pfad):
+    """Größe, Platz und „maximiert“ vom letzten Mal wiederherstellen."""
+    try:
+        with open(pfad, encoding="utf-8") as f:
+            lage = json.load(f)
+        fenster.set_default_size(int(lage["b"]), int(lage["h"]))
+        if "x" in lage:
+            fenster.move(int(lage["x"]), int(lage["y"]))
+        if lage.get("max"):
+            fenster.maximize()
+    except (OSError, ValueError, KeyError, TypeError):
+        # Erster Start: wie eine Seitenleiste an den rechten Rand des Desktops,
+        # in voller Höhe, ohne Leiste und Menü zu überdecken.
+        feld = Gdk.Display.get_default().get_primary_monitor().get_workarea()
+        breite = min(520, feld.width)
+        fenster.set_default_size(breite, feld.height)
+        fenster.move(feld.x + feld.width - breite, feld.y)
+
+
+def fenster_lage_merken(fenster, pfad):
+    try:
+        gross = bool(fenster.is_maximized())
+        lage = {"max": gross}
+        if not gross:                      # sonst würde die Vollbildgröße gemerkt
+            lage["b"], lage["h"] = fenster.get_size()
+            lage["x"], lage["y"] = fenster.get_position()
+        else:
+            try:
+                with open(pfad, encoding="utf-8") as f:
+                    alt = json.load(f)
+                lage.update({k: alt[k] for k in ("b", "h", "x", "y") if k in alt})
+            except (OSError, ValueError):
+                pass
+            lage.setdefault("b", 1000); lage.setdefault("h", 780)
+        with open(pfad, "w", encoding="utf-8") as f:
+            json.dump(lage, f)
+    except OSError:
+        pass
+    return True
+
+
+def desklet_machen(fenster):
+    """Wie ein Desklet: ohne Rahmen, rechts auf dem Desktop, hinter den
+    anderen Fenstern, auf jeder Arbeitsfläche, nicht in der Fensterleiste."""
+    feld = Gdk.Display.get_default().get_primary_monitor().get_workarea()
+    rand = 16
+    breite, hoehe = min(420, feld.width), min(640, feld.height - 2 * rand)
+    fenster.set_decorated(False)
+    fenster.set_resizable(False)
+    fenster.set_skip_taskbar_hint(True)
+    fenster.set_skip_pager_hint(True)
+    fenster.set_keep_below(True)
+    fenster.stick()
+    fenster.set_default_size(breite, hoehe)
+    fenster.move(feld.x + feld.width - breite - rand, feld.y + rand)
 
 
 def main():
@@ -321,10 +455,17 @@ def main():
     einst.set_user_agent(einst.get_user_agent() + " Schreibhilfe/1.0")
 
     fenster = Gtk.Window(title="Schreibhilfe")
+    # Das Symbol wird beim Namen gerufen, wie im Menüeintrag: Dann nimmt
+    # Cinnamon dasselbe für Fensterleiste, Alt+Tab und Titelzeile.
+    fenster.set_icon_name("schreibhilfe")
     fenster.set_default_size(1000, 780)
-    symbol = os.path.expanduser("~/.local/share/icons/schreibhilfe.png")
-    if os.path.isfile(symbol):
-        fenster.set_icon_from_file(symbol)
+    lage = os.path.join(DATEN, "fenster.json")
+    desklet = "--desklet" in sys.argv
+    if not desklet:
+        fenster_lage_laden(fenster, lage)
+        fenster.connect("delete-event", lambda w, e: fenster_lage_merken(w, lage) and False)
+    if "--desklet" in sys.argv:
+        desklet_machen(fenster)
     fenster.add(ansicht)
     fenster.connect("destroy", Gtk.main_quit)
 

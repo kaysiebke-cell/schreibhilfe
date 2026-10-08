@@ -43,6 +43,10 @@ jobs:
 
       - name: Android-SDK einrichten
         uses: android-actions/setup-android@v3
+        with:
+          # Standard wäre „tools platform-tools“. Das Paket „tools“ gibt es in den
+          # neuen Android-Werkzeugen nicht mehr; sdkmanager brach damit ab.
+          packages: platform-tools
 
       - name: Gradle-Cache
         uses: actions/cache@v4

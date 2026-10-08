@@ -53,6 +53,7 @@ const el = {
   kleinReihe:    $('klein'),
   ergebnis:      $('ergebnis'),
   btnTeilen:     $('btn-teilen'),
+  btnEinsetzen:  $('btn-einsetzen'),
   btnKopieren:   $('btn-kopieren'),
   dlg:           $('dlg-settings'),
   dlgKi:         $('dlg-ki'),
@@ -3326,6 +3327,35 @@ el.btnTeilen.addEventListener('click', async () => {
   }
   // Kein Teilen möglich — dafür heißt der Knopf oben schon „Kopieren“.
   kopiere(text, 'Text kopiert. Jetzt in WhatsApp, Mail oder Word einfügen.');
+});
+
+/* Nur im Linux-Fenster: Der eigene Server setzt den Text in das Fenster, in
+   dem man zuletzt gearbeitet hat (Strg+V, kein Enter). Im Browser und in der
+   Android-App gibt es diese Adresse nicht — dann bleibt der Knopf weg. */
+(async () => {
+  try {
+    const antwort = await fetch('kann-einfuegen');
+    if (!antwort.ok) return;
+    el.btnEinsetzen.hidden = !(await antwort.json()).ja;
+  } catch (e) { /* kein Linux-Fenster */ }
+})();
+
+el.btnEinsetzen.addEventListener('click', async () => {
+  const text = holeText(); if (!text) return;
+  try {
+    const antwort = await fetch('einfuegen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const ok = antwort.ok && (await antwort.json()).ja;
+    el.status.textContent = ok
+      ? 'Text eingefügt.'
+      : 'Kein anderes Fenster gefunden. Klicken Sie erst in das Fenster, '
+        + 'in das der Text soll, und danach hier auf den Knopf.';
+  } catch (e) {
+    el.status.textContent = 'Einfügen hat nicht geklappt.';
+  }
 });
 
 /* ------------------------------------------------------------
