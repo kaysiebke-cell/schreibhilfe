@@ -14,6 +14,7 @@
 #
 # Aufruf:  ./linux/run-app.sh              startet die App
 #          ./linux/run-app.sh --nur-eintrag   legt nur den Menüeintrag an
+#          ./linux/run-app.sh --desklet    rahmenlos rechts auf dem Desktop
 #          ./linux/run-app.sh --weg           nimmt den Eintrag zurück
 
 set -euo pipefail
@@ -68,4 +69,4 @@ if ! python3 -c "import gi; gi.require_version('WebKit2','4.1')" 2>/dev/null; th
   exit 1
 fi
 
-exec python3 "$HIER/schreibhilfe.py"
+exec python3 "$HIER/schreibhilfe.py" "$@"
